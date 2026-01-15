@@ -1,37 +1,44 @@
-import { type User, type InsertUser } from "@shared/schema";
+import type { UploadedFile, ProgramInfo } from "@shared/schema";
 import { randomUUID } from "crypto";
 
-// modify the interface with any CRUD methods
-// you might need
-
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  addUploadedFile(file: UploadedFile): Promise<UploadedFile>;
+  getUploadedFile(id: string): Promise<UploadedFile | undefined>;
+  removeUploadedFile(id: string): Promise<void>;
+  getAllUploadedFiles(): Promise<UploadedFile[]>;
+  setFileText(id: string, text: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+  private uploadedFiles: Map<string, UploadedFile>;
 
   constructor() {
-    this.users = new Map();
+    this.uploadedFiles = new Map();
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async addUploadedFile(file: UploadedFile): Promise<UploadedFile> {
+    this.uploadedFiles.set(file.id, file);
+    return file;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async getUploadedFile(id: string): Promise<UploadedFile | undefined> {
+    return this.uploadedFiles.get(id);
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async removeUploadedFile(id: string): Promise<void> {
+    this.uploadedFiles.delete(id);
+  }
+
+  async getAllUploadedFiles(): Promise<UploadedFile[]> {
+    return Array.from(this.uploadedFiles.values());
+  }
+
+  async setFileText(id: string, text: string): Promise<void> {
+    const file = this.uploadedFiles.get(id);
+    if (file) {
+      file.extractedText = text;
+      this.uploadedFiles.set(id, file);
+    }
   }
 }
 
