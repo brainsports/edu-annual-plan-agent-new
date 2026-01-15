@@ -3,42 +3,41 @@ import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/lib/store";
 import { ArrowRight, FileText, Sparkles, Calendar } from "lucide-react";
 import type { UploadedFile } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 
 export function UploadPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { uploadedFiles, addUploadedFile, removeUploadedFile, setCurrentStep } =
-    useAppStore();
+  const {
+    uploadedFiles,
+    addUploadedFile,
+    removeUploadedFile,
+    setCurrentStep,
+  } = useAppStore();
 
   const [isUploading, setIsUploading] = useState(false);
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      // ✅ 임시 업로드 성공 처리 (서버 없이도 다음 단계로 진행 가능)
-      const fake = {
-        id: String(Date.now()),
-        name: file.name,
-        type: "evaluation",
-        size: file.size,
-      } as unknown as UploadedFile;
-
-      // 업로드처럼 보이게 살짝 대기(선택)
-      await new Promise((r) => setTimeout(r, 200));
-
-      return fake;
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+      
+      return response.json() as Promise<UploadedFile>;
     },
-
     onSuccess: (data) => {
       addUploadedFile(data);
       toast({
@@ -65,9 +64,7 @@ export function UploadPage() {
   };
 
   const handleNext = () => {
-    const evaluationFiles = uploadedFiles.filter(
-      (f) => f.type === "evaluation",
-    );
+    const evaluationFiles = uploadedFiles.filter((f) => f.type === "evaluation");
     if (evaluationFiles.length === 0) {
       toast({
         title: "파일 필요",
@@ -134,8 +131,8 @@ export function UploadPage() {
           <CardHeader>
             <CardTitle>프로그램 평가서 업로드</CardTitle>
             <CardDescription>
-              지역아동센터 프로그램 평가서 PDF 파일을 업로드해주세요. AI가
-              자동으로 주요 정보를 추출하여 연간/월간 계획서를 생성합니다.
+              지역아동센터 프로그램 평가서 PDF 파일을 업로드해주세요. 
+              AI가 자동으로 주요 정보를 추출하여 연간/월간 계획서를 생성합니다.
             </CardDescription>
           </CardHeader>
           <CardContent>
