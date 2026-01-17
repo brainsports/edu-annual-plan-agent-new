@@ -1,20 +1,16 @@
 import { z } from "zod";
 
+/* =========================
+   공통: 프로그램 분류
+========================= */
+
 export const programCategorySchema = z.enum([
   "보호",
-  "교육", 
+  "교육",
   "문화",
   "정서지원",
-  "지역연계"
+  "지역연계",
 ]);
-
-export const programSubCategorySchema = z.object({
-  보호: z.enum(["생활", "안전"]).optional(),
-  교육: z.enum(["성장과권리", "학습", "특기적성"]).optional(),
-  문화: z.enum(["체험활동"]).optional(),
-  정서지원: z.enum(["상담"]).optional(),
-  지역연계: z.enum(["연계"]).optional(),
-});
 
 export const programInfoSchema = z.object({
   id: z.string(),
@@ -28,6 +24,8 @@ export const programInfoSchema = z.object({
   sessions: z.number(),
   plan: z.string(),
   goal: z.string(),
+
+  // 선택(있어도 되고 없어도 됨)
   purpose: z.string().optional(),
   expectedEffect: z.string().optional(),
   evaluationMethod: z.string().optional(),
@@ -39,23 +37,45 @@ export const programInfoSchema = z.object({
   managerOpinion: z.string().optional(),
 });
 
-export const annualPlanSectionSchema = z.object({
-  id: z.string(),
-  category: programCategorySchema,
-  subCategory: z.string(),
-  problems: z.string(),
-  improvements: z.string(),
+/* =========================
+   연간계획: PART 공통 필드(키워드/요청/내용)
+   - PART1 화면에서 이미 이 구조를 쓰고 있어요.
+========================= */
+
+export const draftFieldSchema = z.object({
+  keyword: z.string(),
+  request: z.string(),
+  content: z.string(),
 });
+
+/**
+ * PART1 / PART2 는 "필드명이 고정"일 수도 있지만
+ * 지금처럼 계속 늘어날 가능성이 높으니
+ * 가장 안전하게 record(키:필드명) 구조로 둡니다.
+ */
+export const annualPartSchema = z.record(draftFieldSchema);
+
+/* =========================
+   연간계획(새 구조)
+   - annualPlan.part1 / part2 / firstHalf / secondHalf 로 확장 가능
+========================= */
 
 export const annualPlanSchema = z.object({
   id: z.string(),
   title: z.string(),
-  necessity: z.string(),
-  localCharacteristics: z.string(),
-  sections: z.array(annualPlanSectionSchema),
-  overallEvaluation: z.string(),
   createdAt: z.string(),
+
+  part1: annualPartSchema.optional(),
+  part2: annualPartSchema.optional(),
+
+  // 상/하반기는 나중에 월간/표 구조로 바뀔 수 있어 일단 유연하게
+  firstHalf: z.any().optional(),
+  secondHalf: z.any().optional(),
 });
+
+/* =========================
+   월간계획(기존 유지)
+========================= */
 
 export const monthlyPlanItemSchema = z.object({
   id: z.string(),
@@ -72,19 +92,23 @@ export const monthlyPlanSchema = z.object({
   month: z.number(),
   year: z.number(),
   objectives: z.string(),
-  weeklyTasks: z.array(z.object({
-    week: z.number(),
-    tasks: z.array(z.string()),
-  })),
-  dailySchedule: z.array(z.object({
-    time: z.string(),
-    mon: z.string(),
-    tue: z.string(),
-    wed: z.string(),
-    thu: z.string(),
-    fri: z.string(),
-    sat: z.string(),
-  })),
+  weeklyTasks: z.array(
+    z.object({
+      week: z.number(),
+      tasks: z.array(z.string()),
+    })
+  ),
+  dailySchedule: z.array(
+    z.object({
+      time: z.string(),
+      mon: z.string(),
+      tue: z.string(),
+      wed: z.string(),
+      thu: z.string(),
+      fri: z.string(),
+      sat: z.string(),
+    })
+  ),
   items: z.array(monthlyPlanItemSchema),
   budget: z.object({
     income: z.array(z.object({ item: z.string(), amount: z.number() })),
@@ -101,20 +125,32 @@ export const uploadedFileSchema = z.object({
   uploadedAt: z.string(),
 });
 
+/* =========================
+   프로젝트 상태
+========================= */
+
 export const projectStateSchema = z.object({
-  currentStep: z.number().min(1).max(5),
+  currentStep: z.number().min(1).max(7),
   uploadedFiles: z.array(uploadedFileSchema),
   extractedPrograms: z.array(programInfoSchema),
   annualPlan: annualPlanSchema.optional(),
   monthlyPlans: z.array(monthlyPlanSchema),
 });
 
+/* =========================
+   Types
+========================= */
+
 export type ProgramCategory = z.infer<typeof programCategorySchema>;
 export type ProgramInfo = z.infer<typeof programInfoSchema>;
-export type AnnualPlanSection = z.infer<typeof annualPlanSectionSchema>;
+
+export type DraftField = z.infer<typeof draftFieldSchema>;
+export type AnnualPart = z.infer<typeof annualPartSchema>;
 export type AnnualPlan = z.infer<typeof annualPlanSchema>;
+
 export type MonthlyPlanItem = z.infer<typeof monthlyPlanItemSchema>;
 export type MonthlyPlan = z.infer<typeof monthlyPlanSchema>;
+
 export type UploadedFile = z.infer<typeof uploadedFileSchema>;
 export type ProjectState = z.infer<typeof projectStateSchema>;
 
