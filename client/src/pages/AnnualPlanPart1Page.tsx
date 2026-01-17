@@ -112,8 +112,13 @@ export function AnnualPlanPart1Page() {
     if (!nextAuto) {
       // ✅ 예시 작성
       const part1 = buildExamplePart1(extractedPrograms);
+      const base = annualPlan ?? {
+        id: `annual-${Date.now()}`,
+        title: `${new Date().getFullYear()}년 연간사업계획`,
+        createdAt: new Date().toISOString(),
+      };
       const next = {
-        ...annualPlan,
+        ...base,
         part1,
       };
       setAnnualPlan(next);
