@@ -107,51 +107,51 @@ export function UploadPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 max-w-4xl w-full space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="flex-1 w-full space-y-4 md:space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <FileText className="w-6 h-6 text-primary" />
+            <CardContent className="pt-4 md:pt-6 px-3 md:px-6">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2 md:mb-3">
+                <FileText className="w-5 h-5 md:w-6 md:h-6 text-primary" />
               </div>
-              <h3 className="font-semibold mb-1">PDF 업로드</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-sm md:text-base mb-1 truncate">PDF 업로드</h3>
+              <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
                 프로그램 평가서 PDF를 업로드합니다
               </p>
             </CardContent>
           </Card>
 
           <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <Sparkles className="w-6 h-6 text-primary" />
+            <CardContent className="pt-4 md:pt-6 px-3 md:px-6">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2 md:mb-3">
+                <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-primary" />
               </div>
-              <h3 className="font-semibold mb-1">AI 자동 분류</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-sm md:text-base mb-1 truncate">AI 자동 분류</h3>
+              <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
                 주요 정보를 자동으로 분류합니다
               </p>
             </CardContent>
           </Card>
 
           <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <Calendar className="w-6 h-6 text-primary" />
+            <CardContent className="pt-4 md:pt-6 px-3 md:px-6">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2 md:mb-3">
+                <Calendar className="w-5 h-5 md:w-6 md:h-6 text-primary" />
               </div>
-              <h3 className="font-semibold mb-1">계획서 생성</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-sm md:text-base mb-1 truncate">계획서 생성</h3>
+              <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
                 연간/월간 계획서를 생성합니다
               </p>
             </CardContent>
           </Card>
 
           <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <Download className="w-6 h-6 text-primary" />
+            <CardContent className="pt-4 md:pt-6 px-3 md:px-6">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2 md:mb-3">
+                <Download className="w-5 h-5 md:w-6 md:h-6 text-primary" />
               </div>
-              <h3 className="font-semibold mb-1">다운로드</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="font-semibold text-sm md:text-base mb-1 truncate">다운로드</h3>
+              <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
                 생성된 문서를 다운로드합니다
               </p>
             </CardContent>
@@ -180,11 +180,11 @@ export function UploadPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end pt-2 md:pt-4">
           <Button
             onClick={handleNext}
             disabled={evaluationFiles.length === 0}
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto whitespace-nowrap"
             data-testid="button-next-step"
           >
             다음 단계로 이동

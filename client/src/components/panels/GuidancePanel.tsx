@@ -98,23 +98,23 @@ export function GuidancePanel({ step }: GuidancePanelProps) {
   const IconComponent = guidance.icon;
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="font-semibold text-base">작성 가이드</h2>
+        <h2 className="font-semibold text-sm sm:text-base">작성 가이드</h2>
       </div>
 
       {/* Main Guidance Card */}
       <Card>
-        <CardHeader className="py-4 px-4">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <IconComponent className="w-4 h-4 text-primary" />
+        <CardHeader className="py-3 sm:py-4 px-3 sm:px-4">
+          <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <IconComponent className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
             </div>
-            <span>{guidance.title}</span>
+            <span className="truncate">{guidance.title}</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <p className="text-sm text-muted-foreground mb-4">
+        <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {guidance.description}
           </p>
         </CardContent>
@@ -122,17 +122,17 @@ export function GuidancePanel({ step }: GuidancePanelProps) {
 
       {/* Tips Section */}
       <Card>
-        <CardHeader className="py-3 px-4">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Lightbulb className="w-4 h-4 text-amber-500" />
+        <CardHeader className="py-2.5 sm:py-3 px-3 sm:px-4">
+          <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
+            <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 flex-shrink-0" />
             작성 팁
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <ul className="space-y-2">
+        <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4">
+          <ul className="space-y-1.5 sm:space-y-2">
             {guidance.tips.map((tip, index) => (
-              <li key={index} className="flex items-start gap-2 text-sm">
-                <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+              <li key={index} className="flex items-start gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary mt-0.5 flex-shrink-0" />
                 <span className="text-muted-foreground">{tip}</span>
               </li>
             ))}
@@ -143,13 +143,13 @@ export function GuidancePanel({ step }: GuidancePanelProps) {
       {/* Next Action */}
       {guidance.nextAction && (
         <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="py-4 px-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ArrowRight className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">다음 단계</span>
+          <CardContent className="py-3 sm:py-4 px-3 sm:px-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                <span className="text-xs sm:text-sm font-medium whitespace-nowrap">다음 단계</span>
               </div>
-              <span className="text-sm text-primary font-medium">
+              <span className="text-xs sm:text-sm text-primary font-medium truncate">
                 {guidance.nextAction}
               </span>
             </div>

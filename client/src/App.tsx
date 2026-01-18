@@ -8,6 +8,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { StepIndicator, getStepLabel } from "@/components/StepIndicator";
 import { RightPanel } from "@/components/RightPanel";
+import { MobileStepDrawer } from "@/components/MobileStepDrawer";
+import { MobileRightPanelSheet } from "@/components/MobileRightPanelSheet";
 
 import { UploadPage } from "@/pages/UploadPage";
 import { ClassifyPage } from "@/pages/ClassifyPage";
@@ -67,14 +69,14 @@ function Router() {
 
 function LeftSidebar({ location, onStepClick }: { location: string; onStepClick: (step: number) => void }) {
   return (
-    <aside className="w-[260px] flex-shrink-0 min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col sticky top-0 h-screen">
-      <div className="flex items-center gap-2.5 px-4 py-5 border-b border-sidebar-border">
-        <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-primary-foreground" />
+    <aside className="hidden md:flex w-[200px] xl:w-[260px] flex-shrink-0 min-h-screen bg-sidebar border-r border-sidebar-border flex-col sticky top-0 h-screen">
+      <div className="flex items-center gap-2 xl:gap-2.5 px-3 xl:px-4 py-4 xl:py-5 border-b border-sidebar-border">
+        <div className="w-8 h-8 xl:w-9 xl:h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+          <Sparkles className="w-4 h-4 xl:w-5 xl:h-5 text-primary-foreground" />
         </div>
-        <div className="flex flex-col">
-          <span className="font-semibold text-sm text-sidebar-foreground">참참 4.3</span>
-          <span className="text-xs text-muted-foreground">연간프로그램 AI 도우미</span>
+        <div className="flex flex-col min-w-0">
+          <span className="font-semibold text-sm text-sidebar-foreground truncate">참참 4.3</span>
+          <span className="text-xs text-muted-foreground truncate hidden xl:block">연간프로그램 AI 도우미</span>
         </div>
       </div>
 
@@ -85,30 +87,38 @@ function LeftSidebar({ location, onStepClick }: { location: string; onStepClick:
         />
       </div>
 
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-3 xl:p-4 border-t border-sidebar-border">
         <ThemeToggle />
       </div>
     </aside>
   );
 }
 
-function MainContent({ location }: { location: string }) {
+function MainContent({ location, onStepClick }: { location: string; onStepClick: (step: number) => void }) {
   const currentStep = useMemo(() => getStepFromPath(location), [location]);
   const stepLabel = getStepLabel(currentStep);
 
   return (
     <div className="flex-1 flex flex-col min-h-screen min-w-0">
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">{stepLabel}</h1>
-            <p className="text-sm text-muted-foreground">단계 {currentStep} / 7</p>
+      <MobileStepDrawer currentStep={currentStep} onStepClick={onStepClick} />
+      
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 md:px-6 xl:px-8 py-3 md:py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg md:text-xl font-semibold text-foreground truncate">{stepLabel}</h1>
+            <p className="text-xs md:text-sm text-muted-foreground hidden md:block">단계 {currentStep} / 7</p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <MobileRightPanelSheet currentStep={currentStep} />
+            <div className="md:hidden">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
+      <main className="flex-1 p-4 md:p-6 xl:p-8 overflow-y-auto">
+        <div className="w-full xl:max-w-4xl xl:mx-auto">
           <Router />
         </div>
       </main>
@@ -120,7 +130,7 @@ function RightSidebar({ location }: { location: string }) {
   const currentStep = useMemo(() => getStepFromPath(location), [location]);
 
   return (
-    <aside className="w-[340px] flex-shrink-0 min-h-screen bg-muted/30 border-l border-border sticky top-0 h-screen overflow-y-auto">
+    <aside className="hidden xl:block w-[340px] flex-shrink-0 min-h-screen bg-muted/30 border-l border-border sticky top-0 h-screen overflow-y-auto">
       <RightPanel currentStep={currentStep} />
     </aside>
   );
@@ -139,7 +149,7 @@ function App() {
         <TooltipProvider>
           <div className="flex min-h-screen w-full bg-background">
             <LeftSidebar location={location} onStepClick={handleStepClick} />
-            <MainContent location={location} />
+            <MainContent location={location} onStepClick={handleStepClick} />
             <RightSidebar location={location} />
           </div>
           <Toaster />

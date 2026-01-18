@@ -34,12 +34,14 @@ Preferred communication style: Simple, everyday language.
 **Design System**: 
 - B2B SaaS professional style - clean, work-focused interface
 - Brand color: #7CB342 (green) for primary actions and highlights
-- Three-column layout: Left sidebar (260px) + Main content (max-w-4xl) + Right panel (340px)
-- Vertical step indicator with 7 steps in left sidebar
+- Responsive layout:
+  - Desktop (>=1280px): 3-column - Left sidebar (260px) + Main content + Right panel (340px)
+  - Tablet (>=768px): 2-column - Left sidebar (200px) + Main content
+  - Mobile (<768px): 1-column with mobile step drawer and sheet panels
+- Vertical step indicator with 7 steps (accordion on mobile)
 - Right panel shows step-specific content (upload queue, progress, guidance)
 - Light/dark mode support via CSS variables
 - Pretendard font optimized for Korean typography
-- PC-only optimized layout (no mobile responsiveness required)
 - Component styling follows design guidelines in `design_guidelines.md`
 
 ### Backend Architecture
@@ -110,19 +112,22 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (2026-01-18)
 
-### UI/UX Redesign - B2B SaaS 3-Column Layout
+### UI/UX Redesign - B2B SaaS Responsive Layout
 - Changed from horizontal step indicator to vertical sidebar-based navigation
-- Three-column layout for balanced PC display:
-  - Left sidebar (260px): Branding + Step Indicator + Theme Toggle
-  - Main content (flex-1, max-w-4xl): Centered page content
-  - Right panel (340px): Step-specific status/guidance panels
+- Responsive layout with Tailwind breakpoints:
+  - **Desktop (>=1280px/xl):** 3-column - Left sidebar (260px) + Main content (max-w-4xl) + Right panel (340px)
+  - **Tablet (>=768px, <1280px/md-xl):** 2-column - Left sidebar (200px) + Main content, right panel via Sheet toggle
+  - **Mobile (<768px):** 1-column - Mobile step drawer at top, right panel via Sheet
 - Right panel changes based on current step:
   - Step 1: UploadQueuePanel - file list, stats, bulk actions
   - Step 2: ClassificationProgressPanel - progress bar, failed files, category summary
   - Step 3-7: GuidancePanel - writing tips and next actions
+- Mobile components:
+  - MobileStepDrawer: Accordion-style step navigation for mobile
+  - MobileRightPanelSheet: Sheet overlay for right panel content
 - Brand color: #7CB342 (green) across light/dark modes
 - Schema updates: uploadedFiles now has size/status fields, added classificationStatus
-- All pages updated to use new layout pattern (flex h-full, space-y-6)
+- All pages updated with responsive padding (p-4 md:p-6 xl:p-8) and text sizes
 - CompletePage fixed to use current schema (part1/part2 instead of deprecated sections)
 
 ### Monthly Plan Implementation

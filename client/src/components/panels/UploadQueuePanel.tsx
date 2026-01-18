@@ -46,37 +46,37 @@ export function UploadQueuePanel() {
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-base">업로드 현황</h2>
-        <Badge variant="secondary" className="text-xs">
+    <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-semibold text-sm sm:text-base truncate">업로드 현황</h2>
+        <Badge variant="secondary" className="text-xs whitespace-nowrap flex-shrink-0">
           {totalFiles}개 파일
         </Badge>
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-2">
-        <Card className="p-3">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+        <Card className="p-2 sm:p-3">
           <div className="flex flex-col items-center text-center">
-            <Upload className="w-4 h-4 text-muted-foreground mb-1" />
-            <span className="text-lg font-bold text-primary">{totalFiles}</span>
-            <span className="text-xs text-muted-foreground">전체</span>
+            <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground mb-0.5 sm:mb-1" />
+            <span className="text-base sm:text-lg font-bold text-primary">{totalFiles}</span>
+            <span className="text-[10px] sm:text-xs text-muted-foreground">전체</span>
           </div>
         </Card>
-        <Card className="p-3">
+        <Card className="p-2 sm:p-3">
           <div className="flex flex-col items-center text-center">
-            <HardDrive className="w-4 h-4 text-muted-foreground mb-1" />
-            <span className="text-lg font-bold">{formatSize(totalSize)}</span>
-            <span className="text-xs text-muted-foreground">용량</span>
+            <HardDrive className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground mb-0.5 sm:mb-1" />
+            <span className="text-base sm:text-lg font-bold truncate w-full">{formatSize(totalSize)}</span>
+            <span className="text-[10px] sm:text-xs text-muted-foreground">용량</span>
           </div>
         </Card>
-        <Card className="p-3">
+        <Card className="p-2 sm:p-3">
           <div className="flex flex-col items-center text-center">
-            <AlertCircle className="w-4 h-4 text-destructive mb-1" />
-            <span className="text-lg font-bold text-destructive">
+            <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive mb-0.5 sm:mb-1" />
+            <span className="text-base sm:text-lg font-bold text-destructive">
               {failedFiles.length}
             </span>
-            <span className="text-xs text-muted-foreground">실패</span>
+            <span className="text-[10px] sm:text-xs text-muted-foreground">실패</span>
           </div>
         </Card>
       </div>
@@ -110,11 +110,11 @@ export function UploadQueuePanel() {
                         <FileText className="w-4 h-4 text-muted-foreground" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <p className="text-xs sm:text-sm font-medium truncate">
                         {file.name}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">
                         {formatSize(file.size || 0)}
                       </p>
                     </div>
@@ -137,28 +137,28 @@ export function UploadQueuePanel() {
 
       {/* Bulk Actions */}
       {totalFiles > 0 && (
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           {failedFiles.length > 0 && (
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 gap-1.5"
+              className="flex-1 gap-1.5 text-xs sm:text-sm whitespace-nowrap"
               onClick={handleRetryFailed}
               data-testid="button-retry-failed"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              실패 재시도 ({failedFiles.length})
+              <RefreshCw className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">재시도 ({failedFiles.length})</span>
             </Button>
           )}
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 gap-1.5 text-destructive hover:text-destructive"
+            className="flex-1 gap-1.5 text-xs sm:text-sm text-destructive hover:text-destructive whitespace-nowrap"
             onClick={handleClearAll}
             data-testid="button-clear-all"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            전체 삭제
+            <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="truncate">전체 삭제</span>
           </Button>
         </div>
       )}

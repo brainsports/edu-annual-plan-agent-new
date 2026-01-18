@@ -41,20 +41,49 @@
 
 ## Layout System
 
-### Three-Column Structure (PC-Only)
+### Responsive Layout Structure
+
+**Desktop (>= 1280px / xl):** 3-Column Layout
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │ [Left Sidebar]  │  [Main Content Area]   │  [Right Panel]       │
 │ 260px           │  flex-1, max-w-4xl     │  340px               │
 │                 │                         │                      │
 │ Logo + Branding │  Header (Step Title)   │  Status/Guidance     │
-│                 │  ────────────────────  │  Panel that changes  │
-│ Step Indicator  │                         │  per step            │
-│ (Vertical)      │  Page Content           │                      │
-│                 │  (Cards, Forms, Tables) │  Step 1: UploadQueue │
+│                 │  ────────────────────  │  Panel per step      │
+│ Step Indicator  │  Page Content           │                      │
+│ (Vertical)      │  (Cards, Forms, Tables) │  Step 1: Upload      │
 │                 │                         │  Step 2: Progress    │
 │ Theme Toggle    │                         │  Step 3-7: Guidance  │
 └──────────────────────────────────────────────────────────────────┘
+```
+
+**Tablet (>= 768px, < 1280px / md to xl):** 2-Column Layout
+```
+┌──────────────────────────────────────────────┐
+│ [Left Sidebar]  │  [Main Content Area]      │
+│ 200px           │  flex-1                    │
+│                 │  Header + [Info Button]   │
+│ Step Indicator  │  Page Content              │
+│ (Compact)       │                            │
+│ Theme Toggle    │  [Right Panel via Sheet]  │
+└──────────────────────────────────────────────┘
+```
+
+**Mobile (< 768px):** 1-Column Layout
+```
+┌────────────────────────────────┐
+│ [Mobile Step Drawer Toggle]    │
+│ ┌──────────────────────────┐   │
+│ │ Step 1: PDF 업로드       │   │
+│ │ 단계 1/7            [▼]  │   │
+│ └──────────────────────────┘   │
+│ Header + [Info] + [Theme]      │
+│ ──────────────────────────     │
+│ Page Content (full width)      │
+│                                │
+│ [Right Panel via BottomSheet] │
+└────────────────────────────────┘
 ```
 
 ### Left Sidebar (260px fixed width)

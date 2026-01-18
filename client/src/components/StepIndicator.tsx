@@ -86,7 +86,7 @@ export function StepIndicator({
   const activeNumber = STEP_FLOW[currentIndex]?.number ?? 1;
 
   return (
-    <nav className="flex flex-col gap-1 py-4 px-3">
+    <nav className="flex flex-col gap-1 py-3 xl:py-4 px-2 xl:px-3">
       {STEP_FLOW.map((step, index) => {
         const isCompleted = activeNumber > step.number;
         const isCurrent = activeNumber === step.number;
@@ -98,7 +98,7 @@ export function StepIndicator({
               onClick={() => isClickable && onStepClick?.(step.number)}
               disabled={!isClickable}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-left w-full",
+                "flex items-center gap-2 xl:gap-3 px-2 xl:px-3 py-2 xl:py-2.5 rounded-lg transition-all duration-200 text-left w-full",
                 isCurrent && "bg-primary text-primary-foreground",
                 isCompleted && !isCurrent && "text-foreground hover-elevate",
                 !isCompleted && !isCurrent && "text-muted-foreground",
@@ -109,18 +109,18 @@ export function StepIndicator({
             >
               <div
                 className={cn(
-                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 border-2",
+                  "w-6 h-6 xl:w-7 xl:h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 border-2",
                   isCurrent && "bg-white text-primary border-white",
                   isCompleted && !isCurrent && "bg-primary/15 text-primary border-primary/30",
                   !isCompleted && !isCurrent && "bg-muted text-muted-foreground border-muted"
                 )}
               >
-                {isCompleted ? <Check className="w-3.5 h-3.5" /> : step.number}
+                {isCompleted ? <Check className="w-3 h-3 xl:w-3.5 xl:h-3.5" /> : step.number}
               </div>
 
               <span
                 className={cn(
-                  "text-sm font-medium",
+                  "text-xs xl:text-sm font-medium truncate",
                   isCurrent && "text-primary-foreground",
                   isCompleted && !isCurrent && "text-foreground",
                   !isCompleted && !isCurrent && "text-muted-foreground"
@@ -131,10 +131,10 @@ export function StepIndicator({
             </button>
 
             {index < STEP_FLOW.length - 1 && (
-              <div className="ml-[22px] pl-px py-1">
+              <div className="ml-[18px] xl:ml-[22px] pl-px py-0.5 xl:py-1">
                 <div
                   className={cn(
-                    "w-0.5 h-4",
+                    "w-0.5 h-3 xl:h-4",
                     activeNumber > step.number ? "bg-primary/40" : "bg-muted"
                   )}
                 />
