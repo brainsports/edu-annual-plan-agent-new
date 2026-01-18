@@ -200,13 +200,10 @@ export function MonthlyPlanPage({ mode = "ALL" }: Props) {
         : "월별 사업계획서를 작성하고 관리할 수 있습니다.";
 
   return (
-    <div className="min-h-[calc(100vh-12rem)] flex flex-col">
-      <div className="max-w-5xl mx-auto w-full px-4 py-8 flex-1">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">{pageTitle}</h1>
-            <p className="text-muted-foreground mt-1">{pageDesc}</p>
-          </div>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <p className="text-muted-foreground">{pageDesc}</p>
 
           <div className="flex items-center gap-2">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>

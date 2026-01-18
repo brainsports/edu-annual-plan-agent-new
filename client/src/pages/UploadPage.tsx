@@ -106,19 +106,9 @@ export function UploadPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-12rem)] flex flex-col">
-      <div className="max-w-4xl mx-auto w-full px-4 py-8 flex-1">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">
-            연간프로그램 AI 생성도우미
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            PDF 평가서를 업로드하면 AI가 자동으로 연간/월간 계획서를 생성합니다
-          </p>
-        </div>
-
-        {/* ✅ 3개 → 4개 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 max-w-4xl w-full space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="text-center">
             <CardContent className="pt-6">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
@@ -168,7 +158,7 @@ export function UploadPage() {
           </Card>
         </div>
 
-        <Card className="mb-8">
+        <Card>
           <CardHeader>
             <CardTitle>프로그램 평가서 업로드</CardTitle>
             <CardDescription>
@@ -189,17 +179,15 @@ export function UploadPage() {
             />
           </CardContent>
         </Card>
-      </div>
 
-      <div className="sticky bottom-0 bg-background border-t p-4">
-        <div className="max-w-4xl mx-auto flex justify-end">
+        <div className="flex justify-end pt-4">
           <Button
             onClick={handleNext}
             disabled={evaluationFiles.length === 0}
             className="gap-2"
             data-testid="button-next-step"
           >
-            다음 단계
+            다음 단계로 이동
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>

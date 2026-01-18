@@ -658,20 +658,12 @@ export default function MonthlyPlanSecondHalfPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-12rem)] flex flex-col">
-      <div className="max-w-7xl mx-auto w-full px-4 py-8 flex-1">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1
-              className="text-2xl md:text-3xl font-bold"
-              data-testid="heading-second-half"
-            >
-              월간 사업계획서 (하반기)
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              7월~12월 월별 사업계획을 작성합니다.
-            </p>
-          </div>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <p className="text-muted-foreground" data-testid="heading-second-half">
+            7월~12월 월별 사업계획을 작성합니다.
+          </p>
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"

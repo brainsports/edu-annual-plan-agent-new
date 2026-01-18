@@ -157,15 +157,12 @@ export function ClassifyPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-12rem)] flex flex-col">
-      <div className="max-w-6xl mx-auto w-full px-4 py-8 flex-1">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">자동 분류 결과</h1>
-            <p className="text-muted-foreground mt-1">
-              PDF에서 추출된 프로그램 정보를 확인하고 수정할 수 있습니다
-            </p>
-          </div>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 space-y-6">
+        <div className="flex items-center justify-between">
+          <p className="text-muted-foreground">
+            PDF에서 추출된 프로그램 정보를 확인하고 수정할 수 있습니다
+          </p>
 
           <div className="flex gap-2">
             <Button

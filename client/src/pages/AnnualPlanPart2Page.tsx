@@ -518,17 +518,11 @@ export function AnnualPlanPart2Page() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-12rem)] flex flex-col">
-      <div className="max-w-7xl mx-auto w-full px-4 py-8 flex-1">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1
-              className="text-2xl md:text-3xl font-bold"
-              data-testid="heading-part2"
-            >
-              연간 PART 2
-            </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-muted-foreground" data-testid="heading-part2">
               세부사업내용과 평가계획을 영역별로 작성합니다.
             </p>
             <p className="text-sm text-muted-foreground mt-1">

@@ -158,21 +158,13 @@ export function DownloadPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-12rem)] flex flex-col">
-      <div className="max-w-4xl mx-auto w-full px-4 py-8 flex-1">
-        <div className="mb-8">
-          <h1
-            className="text-2xl md:text-3xl font-bold"
-            data-testid="heading-download"
-          >
-            문서 다운로드
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            작성한 계획서를 Word(.docx) 파일로 다운로드합니다.
-          </p>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 max-w-4xl w-full space-y-6">
+        <p className="text-muted-foreground" data-testid="heading-download">
+          작성한 계획서를 Word(.docx) 파일로 다운로드합니다.
+        </p>
 
-        <Card className="mb-6">
+        <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <FileText className="w-5 h-5" />
@@ -190,7 +182,7 @@ export function DownloadPage() {
                   <div
                     className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center ${
                       item.hasData
-                        ? "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400"
+                        ? "bg-primary/15 text-primary"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
@@ -235,10 +227,8 @@ export function DownloadPage() {
           <p>• 작성된 내용이 있는 문서만 다운로드할 수 있습니다.</p>
           <p>• 다운로드한 Word 파일은 필요에 따라 편집할 수 있습니다.</p>
         </div>
-      </div>
 
-      <div className="sticky bottom-0 bg-background border-t p-4">
-        <div className="max-w-4xl mx-auto flex justify-between">
+        <div className="flex justify-start pt-4">
           <Button
             variant="outline"
             onClick={handlePrev}
@@ -248,7 +238,6 @@ export function DownloadPage() {
             <ArrowLeft className="w-4 h-4" />
             이전 단계
           </Button>
-          <div></div>
         </div>
       </div>
     </div>
