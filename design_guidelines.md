@@ -41,22 +41,23 @@
 
 ## Layout System
 
-### Two-Column Structure (PC-Only)
+### Three-Column Structure (PC-Only)
 ```
-┌──────────────────────────────────────────────────┐
-│ [Sidebar 264px]  │  [Main Content Area flex-1]   │
-│                  │                                │
-│ Logo + Branding  │  Header (Step Title)          │
-│                  │  ────────────────────         │
-│ Step Indicator   │                                │
-│ (Vertical)       │  Page Content                  │
-│                  │  (Cards, Forms, Tables)        │
-│                  │                                │
-│ Theme Toggle     │                                │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│ [Left Sidebar]  │  [Main Content Area]   │  [Right Panel]       │
+│ 260px           │  flex-1, max-w-4xl     │  340px               │
+│                 │                         │                      │
+│ Logo + Branding │  Header (Step Title)   │  Status/Guidance     │
+│                 │  ────────────────────  │  Panel that changes  │
+│ Step Indicator  │                         │  per step            │
+│ (Vertical)      │  Page Content           │                      │
+│                 │  (Cards, Forms, Tables) │  Step 1: UploadQueue │
+│                 │                         │  Step 2: Progress    │
+│ Theme Toggle    │                         │  Step 3-7: Guidance  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-### Sidebar (Left - 264px fixed width)
+### Left Sidebar (260px fixed width)
 - **Position:** Sticky, full height (h-screen)
 - **Background:** bg-sidebar (white/very light)
 - **Border:** Right border (border-sidebar-border)
@@ -65,10 +66,29 @@
   2. **Step Indicator:** Vertical list of 7 steps
   3. **Theme Toggle:** Bottom of sidebar
 
-### Main Content Area
+### Main Content Area (flex-1, centered)
 - **Header:** Sticky top, shows current step label + progress
 - **Content:** Padded area (p-8) for page-specific content
-- **Max Width:** Content should not exceed max-w-7xl
+- **Max Width:** Content wrapped in max-w-4xl mx-auto (prevents too wide)
+- **Overflow:** Scrollable (overflow-y-auto)
+
+### Right Panel (340px fixed width)
+- **Position:** Sticky, full height (h-screen)
+- **Background:** bg-muted/30 (slightly shaded)
+- **Border:** Left border (border-border)
+- **Content:** Step-specific panels:
+  - **Step 1 (PDF 업로드):** UploadQueuePanel
+    - Summary stats (file count, total size, failed count)
+    - File list with scroll area
+    - Bulk actions (retry failed, clear all)
+  - **Step 2 (자동 분류):** ClassificationProgressPanel
+    - Progress bar with percentage
+    - Failed files list with retry button
+    - Classification summary by category
+  - **Steps 3-7:** GuidancePanel
+    - Step title and description
+    - Writing tips
+    - Next action indicator
 
 ### Spacing Primitives
 Use Tailwind units: 2, 3, 4, 6, 8, 12, 16

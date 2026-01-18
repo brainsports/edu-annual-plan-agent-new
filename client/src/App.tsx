@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { StepIndicator, getStepLabel } from "@/components/StepIndicator";
+import { RightPanel } from "@/components/RightPanel";
 
 import { UploadPage } from "@/pages/UploadPage";
 import { ClassifyPage } from "@/pages/ClassifyPage";
@@ -64,9 +65,9 @@ function Router() {
   );
 }
 
-function AppSidebar({ location, onStepClick }: { location: string; onStepClick: (step: number) => void }) {
+function LeftSidebar({ location, onStepClick }: { location: string; onStepClick: (step: number) => void }) {
   return (
-    <aside className="w-64 min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col sticky top-0 h-screen">
+    <aside className="w-[260px] flex-shrink-0 min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col sticky top-0 h-screen">
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-sidebar-border">
         <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
           <Sparkles className="w-5 h-5 text-primary-foreground" />
@@ -96,7 +97,7 @@ function MainContent({ location }: { location: string }) {
   const stepLabel = getStepLabel(currentStep);
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col min-h-screen min-w-0">
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -107,9 +108,21 @@ function MainContent({ location }: { location: string }) {
       </header>
 
       <main className="flex-1 p-8 overflow-y-auto">
-        <Router />
+        <div className="max-w-4xl mx-auto">
+          <Router />
+        </div>
       </main>
     </div>
+  );
+}
+
+function RightSidebar({ location }: { location: string }) {
+  const currentStep = useMemo(() => getStepFromPath(location), [location]);
+
+  return (
+    <aside className="w-[340px] flex-shrink-0 min-h-screen bg-muted/30 border-l border-border sticky top-0 h-screen overflow-y-auto">
+      <RightPanel currentStep={currentStep} />
+    </aside>
   );
 }
 
@@ -124,9 +137,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <div className="flex min-h-screen bg-background">
-            <AppSidebar location={location} onStepClick={handleStepClick} />
+          <div className="flex min-h-screen w-full bg-background">
+            <LeftSidebar location={location} onStepClick={handleStepClick} />
             <MainContent location={location} />
+            <RightSidebar location={location} />
           </div>
           <Toaster />
         </TooltipProvider>

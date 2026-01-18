@@ -138,6 +138,8 @@ export const uploadedFileSchema = z.object({
   type: z.enum(["evaluation", "annual_template", "monthly_template"]),
   extractedText: z.string().optional(),
   uploadedAt: z.string(),
+  size: z.number().optional(),
+  status: z.enum(["pending", "success", "error"]).optional(),
 });
 
 /* =========================
@@ -150,6 +152,7 @@ export const projectStateSchema = z.object({
   extractedPrograms: z.array(programInfoSchema),
   annualPlan: annualPlanSchema.optional(),
   monthlyPlans: z.array(monthlyPlanSchema),
+  classificationStatus: z.enum(["idle", "processing", "complete", "error"]).optional(),
 });
 
 /* =========================

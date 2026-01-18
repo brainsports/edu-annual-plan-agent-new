@@ -16,6 +16,8 @@ interface AppState extends ProjectState {
 
   addUploadedFile: (file: UploadedFile) => void;
   removeUploadedFile: (fileId: string) => void;
+  setUploadedFiles: (files: UploadedFile[]) => void;
+  setClassificationStatus: (status: ProjectState["classificationStatus"]) => void;
 
   setExtractedPrograms: (programs: ProgramInfo[]) => void;
   updateProgram: (program: ProgramInfo) => void;
@@ -50,6 +52,7 @@ const initialState: ProjectState = {
   extractedPrograms: [],
   annualPlan: undefined,
   monthlyPlans: [],
+  classificationStatus: "idle",
 };
 
 export const useAppStore = create<AppState>()(
@@ -68,6 +71,10 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           uploadedFiles: state.uploadedFiles.filter((f) => f.id !== fileId),
         })),
+
+      setUploadedFiles: (files) => set({ uploadedFiles: files }),
+      
+      setClassificationStatus: (status) => set({ classificationStatus: status }),
 
       setExtractedPrograms: (programs) => set({ extractedPrograms: programs }),
 

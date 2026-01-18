@@ -34,8 +34,9 @@ Preferred communication style: Simple, everyday language.
 **Design System**: 
 - B2B SaaS professional style - clean, work-focused interface
 - Brand color: #7CB342 (green) for primary actions and highlights
-- Two-column layout: Left sidebar (264px) + Main content area
-- Vertical step indicator with 7 steps in sidebar
+- Three-column layout: Left sidebar (260px) + Main content (max-w-4xl) + Right panel (340px)
+- Vertical step indicator with 7 steps in left sidebar
+- Right panel shows step-specific content (upload queue, progress, guidance)
 - Light/dark mode support via CSS variables
 - Pretendard font optimized for Korean typography
 - PC-only optimized layout (no mobile responsiveness required)
@@ -109,15 +110,18 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (2026-01-18)
 
-### UI/UX Redesign - B2B SaaS Layout
+### UI/UX Redesign - B2B SaaS 3-Column Layout
 - Changed from horizontal step indicator to vertical sidebar-based navigation
-- Two-column layout: Left sidebar (264px sticky) + Main content area
-- Sidebar contains:
-  - Branding: "참참 4.3" with subtitle "연간프로그램 AI 도우미"
-  - Vertical step indicator (7 steps)
-  - Theme toggle at bottom
-- Main content header shows step title and progress ("단계 X / 7")
-- Brand color updated to #7CB342 (green) across light/dark modes
+- Three-column layout for balanced PC display:
+  - Left sidebar (260px): Branding + Step Indicator + Theme Toggle
+  - Main content (flex-1, max-w-4xl): Centered page content
+  - Right panel (340px): Step-specific status/guidance panels
+- Right panel changes based on current step:
+  - Step 1: UploadQueuePanel - file list, stats, bulk actions
+  - Step 2: ClassificationProgressPanel - progress bar, failed files, category summary
+  - Step 3-7: GuidancePanel - writing tips and next actions
+- Brand color: #7CB342 (green) across light/dark modes
+- Schema updates: uploadedFiles now has size/status fields, added classificationStatus
 - All pages updated to use new layout pattern (flex h-full, space-y-6)
 - CompletePage fixed to use current schema (part1/part2 instead of deprecated sections)
 
