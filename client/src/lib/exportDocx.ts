@@ -11,14 +11,25 @@ import {
   AlignmentType,
 } from "docx";
 import { saveAs } from "file-saver";
-import type { MonthlyPlan, AnnualPlan, DraftField } from "@shared/schema";
+import type { MonthlyPlan, AnnualPlan, DraftField, ProgramInfo } from "@shared/schema";
+
+interface ProgramExportRow {
+  category: string;
+  subCategory: string;
+  programName: string;
+  target: string;
+  executionDate: string;
+  personnel: string;
+  content: string;
+}
 
 type ExportBlock =
   | { type: "h1" | "h2" | "h3" | "h4"; text: string }
   | { type: "p"; text: string }
   | { type: "bullets"; items: string[] }
   | { type: "table"; rows: { label: string; value: string }[] }
-  | { type: "weeklyTable"; weeks: { week: number; tasks: string }[] };
+  | { type: "weeklyTable"; weeks: { week: number; tasks: string }[] }
+  | { type: "programTable"; programs: ProgramExportRow[] };
 
 const BORDER_STYLE = {
   style: BorderStyle.SINGLE,
@@ -93,6 +104,39 @@ function createWeeklyTable(
   });
 }
 
+function createProgramTable(programs: ProgramExportRow[]): Table {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          createTableCell("대분류", 10, true),
+          createTableCell("중분류", 10, true),
+          createTableCell("프로그램명", 15, true),
+          createTableCell("대상", 10, true),
+          createTableCell("실행일자", 12, true),
+          createTableCell("수행인력", 10, true),
+          createTableCell("사업내용", 33, true),
+        ],
+      }),
+      ...programs.map(
+        (p) =>
+          new TableRow({
+            children: [
+              createTableCell(p.category || "-", 10),
+              createTableCell(p.subCategory || "-", 10),
+              createTableCell(p.programName || "-", 15),
+              createTableCell(p.target || "-", 10),
+              createTableCell(p.executionDate || "-", 12),
+              createTableCell(p.personnel || "-", 10),
+              createTableCell(p.content || "-", 33),
+            ],
+          })
+      ),
+    ],
+  });
+}
+
 const toParagraphs = (blocks: ExportBlock[]) => {
   const out: (Paragraph | Table)[] = [];
 
@@ -119,6 +163,21 @@ const toParagraphs = (blocks: ExportBlock[]) => {
     if (b.type === "weeklyTable") {
       out.push(createWeeklyTable(b.weeks));
       out.push(new Paragraph({ text: "" }));
+      continue;
+    }
+
+    if (b.type === "programTable") {
+      if (b.programs.length > 0) {
+        out.push(createProgramTable(b.programs));
+        out.push(new Paragraph({ text: "" }));
+      } else {
+        out.push(
+          new Paragraph({
+            children: [new TextRun({ text: "배정된 프로그램이 없습니다.", italics: true })],
+          })
+        );
+        out.push(new Paragraph({ text: "" }));
+      }
       continue;
     }
 
@@ -263,11 +322,60 @@ function parseObjectivesJson(objectives: string): {
   return { objectives: objectives || "", focus: "", notes: "" };
 }
 
-function monthlyPlanToBlocks(plans: MonthlyPlan[]): ExportBlock[] {
+function filterProgramsByMonth(programs: ProgramInfo[], month: number): ProgramInfo[] {
+  return programs.filter((p) => {
+    if (p.executionMonth) {
+      return p.executionMonth === month;
+    }
+    if (p.startDate) {
+      const dateMatch = p.startDate.match(/\d{4}-(\d{2})/);
+      if (dateMatch) {
+        return parseInt(dateMatch[1], 10) === month;
+      }
+    }
+    return false;
+  });
+}
+
+function sortProgramsByCategory(programs: ProgramInfo[]): ProgramInfo[] {
+  const categoryOrder = ["보호", "교육", "문화", "정서지원", "지역연계"];
+  return [...programs].sort((a, b) => {
+    const catA = categoryOrder.indexOf(a.category);
+    const catB = categoryOrder.indexOf(b.category);
+    if (catA !== catB) return catA - catB;
+    if (a.subCategory !== b.subCategory) {
+      return a.subCategory.localeCompare(b.subCategory, "ko");
+    }
+    return a.programName.localeCompare(b.programName, "ko");
+  });
+}
+
+function monthlyPlanToBlocks(
+  plans: MonthlyPlan[],
+  allPrograms: ProgramInfo[]
+): ExportBlock[] {
   const blocks: ExportBlock[] = [];
 
   for (const plan of plans) {
     blocks.push({ type: "h2", text: `${plan.month}월 사업계획서` });
+
+    // 사업내용 및 수행인력 테이블 (최우선)
+    const monthPrograms = sortProgramsByCategory(
+      filterProgramsByMonth(allPrograms, plan.month)
+    );
+    blocks.push({ type: "h4", text: "사업내용 및 수행인력" });
+    blocks.push({
+      type: "programTable",
+      programs: monthPrograms.map((p) => ({
+        category: p.category,
+        subCategory: p.subCategory,
+        programName: p.programName,
+        target: p.targetChildren,
+        executionDate: p.executionDate || p.startDate || "",
+        personnel: p.personnel || "",
+        content: p.serviceContent || p.plan || "",
+      })),
+    });
 
     const overviewData = parseObjectivesJson(plan.objectives || "");
     const overview: { label: string; value: string }[] = [
@@ -296,7 +404,10 @@ function monthlyPlanToBlocks(plans: MonthlyPlan[]): ExportBlock[] {
   return blocks;
 }
 
-export async function exportFirstHalfMonthlyDocx(monthlyPlans: MonthlyPlan[]) {
+export async function exportFirstHalfMonthlyDocx(
+  monthlyPlans: MonthlyPlan[],
+  programs: ProgramInfo[]
+) {
   const firstHalf = monthlyPlans
     .filter((p) => p.month >= 1 && p.month <= 6)
     .sort((a, b) => a.month - b.month);
@@ -305,7 +416,7 @@ export async function exportFirstHalfMonthlyDocx(monthlyPlans: MonthlyPlan[]) {
     throw new Error("상반기 월간계획 데이터가 없습니다.");
   }
 
-  const blocks = monthlyPlanToBlocks(firstHalf);
+  const blocks = monthlyPlanToBlocks(firstHalf, programs);
   await exportDocx(
     "월간계획서_상반기.docx",
     "월간사업계획서 (상반기 1~6월)",
@@ -313,7 +424,10 @@ export async function exportFirstHalfMonthlyDocx(monthlyPlans: MonthlyPlan[]) {
   );
 }
 
-export async function exportSecondHalfMonthlyDocx(monthlyPlans: MonthlyPlan[]) {
+export async function exportSecondHalfMonthlyDocx(
+  monthlyPlans: MonthlyPlan[],
+  programs: ProgramInfo[]
+) {
   const secondHalf = monthlyPlans
     .filter((p) => p.month >= 7 && p.month <= 12)
     .sort((a, b) => a.month - b.month);
@@ -322,7 +436,7 @@ export async function exportSecondHalfMonthlyDocx(monthlyPlans: MonthlyPlan[]) {
     throw new Error("하반기 월간계획 데이터가 없습니다.");
   }
 
-  const blocks = monthlyPlanToBlocks(secondHalf);
+  const blocks = monthlyPlanToBlocks(secondHalf, programs);
   await exportDocx(
     "월간계획서_하반기.docx",
     "월간사업계획서 (하반기 7~12월)",

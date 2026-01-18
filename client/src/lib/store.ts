@@ -167,14 +167,17 @@ export function createInitialMonthlyPlan(
   month: number,
   programs: ProgramInfo[],
 ): MonthlyPlan {
-  const items = programs.map((p) => ({
+  // 해당 월에 해당하는 프로그램만 필터링
+  const monthPrograms = filterProgramsByMonth(programs, month);
+
+  const items = monthPrograms.map((p) => ({
     id: `monthly-item-${p.id}`,
     category: p.category,
     subCategory: p.subCategory,
     programName: p.programName,
     participants: p.targetChildren,
-    staff: "",
-    content: p.plan || "",
+    staff: p.personnel || "",
+    content: p.serviceContent || p.plan || "",
   }));
 
   return {
@@ -193,4 +196,53 @@ export function createInitialMonthlyPlan(
     budget: { income: [], expense: [] },
     createdAt: new Date().toISOString(),
   };
+}
+
+/* =========================
+   프로그램 월별 필터링 및 정렬
+========================= */
+
+/**
+ * 실행월 기준으로 프로그램 필터링
+ */
+export function filterProgramsByMonth(
+  programs: ProgramInfo[],
+  month: number,
+): ProgramInfo[] {
+  return programs.filter((p) => {
+    // executionMonth가 있으면 그것으로 판단
+    if (p.executionMonth) {
+      return p.executionMonth === month;
+    }
+    // 없으면 startDate에서 월 추출
+    if (p.startDate) {
+      const dateMatch = p.startDate.match(/\d{4}-(\d{2})/);
+      if (dateMatch) {
+        return parseInt(dateMatch[1], 10) === month;
+      }
+    }
+    return false;
+  });
+}
+
+/**
+ * 프로그램을 대분류 > 중분류 > 프로그램명 순으로 정렬
+ */
+export function sortProgramsByCategory(programs: ProgramInfo[]): ProgramInfo[] {
+  const categoryOrder = ["보호", "교육", "문화", "정서지원", "지역연계"];
+  
+  return [...programs].sort((a, b) => {
+    // 1. 대분류 순서
+    const catA = categoryOrder.indexOf(a.category);
+    const catB = categoryOrder.indexOf(b.category);
+    if (catA !== catB) return catA - catB;
+    
+    // 2. 중분류 이름순
+    if (a.subCategory !== b.subCategory) {
+      return a.subCategory.localeCompare(b.subCategory, "ko");
+    }
+    
+    // 3. 프로그램명 이름순
+    return a.programName.localeCompare(b.programName, "ko");
+  });
 }

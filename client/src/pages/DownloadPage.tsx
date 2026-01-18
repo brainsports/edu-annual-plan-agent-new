@@ -23,7 +23,7 @@ interface DownloadItem {
 export function DownloadPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { annualPlan, monthlyPlans, setCurrentStep } = useAppStore();
+  const { annualPlan, monthlyPlans, extractedPrograms, setCurrentStep } = useAppStore();
 
   const hasP1 = useMemo(() => {
     if (!annualPlan?.part1) return false;
@@ -91,7 +91,7 @@ export function DownloadPage() {
 
   const handleExportFirstHalf = async () => {
     try {
-      await exportFirstHalfMonthlyDocx(monthlyPlans);
+      await exportFirstHalfMonthlyDocx(monthlyPlans, extractedPrograms);
       toast({
         title: "다운로드 완료",
         description: "상반기 월간계획서가 다운로드되었습니다.",
@@ -107,7 +107,7 @@ export function DownloadPage() {
 
   const handleExportSecondHalf = async () => {
     try {
-      await exportSecondHalfMonthlyDocx(monthlyPlans);
+      await exportSecondHalfMonthlyDocx(monthlyPlans, extractedPrograms);
       toast({
         title: "다운로드 완료",
         description: "하반기 월간계획서가 다운로드되었습니다.",

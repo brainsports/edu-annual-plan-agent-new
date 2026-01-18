@@ -166,21 +166,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       }
 
       const prompt = `다음은 지역아동센터 프로그램 평가서 PDF에서 추출한 텍스트입니다.
-이 텍스트에서 프로그램 정보를 추출하여 "JSON 배열"로만 반환해주세요.
+이 텍스트에서 "사업내용 및 수행인력" 표를 최우선으로 분석하고, 프로그램 정보를 추출하여 "JSON 배열"로 반환해주세요.
 
 각 프로그램 객체는 다음 필드를 포함합니다:
 - programName: 프로그램명
 - category: 대분류 (보호, 교육, 문화, 정서지원, 지역연계 중 하나)
-- subCategory: 중분류 (보호>생활/안전, 교육>성장과권리/학습/특기적성, 문화>체험활동, 정서지원>상담, 지역연계>연계)
+- subCategory: 중분류 (보호>생활/안전, 교육>학습/특기적성, 문화>체험/활동, 정서지원>상담/프로그램, 지역연계>연계/협력)
+- targetChildren: 대상 (아동 대상 설명)
+- executionDate: 실행일자 (YYYY-MM-DD 형식, 또는 "매주 화요일" 등 텍스트)
+- executionMonth: 실행월 (1~12 숫자, 실행일자에서 월을 추출)
+- personnel: 수행인력 (담당자명)
+- serviceContent: 사업내용/서비스활동 (상세 내용)
 - startDate: 시작날짜 (YYYY-MM-DD 형식)
 - endDate: 종료날짜 (YYYY-MM-DD 형식)
-- targetChildren: 대상아동 설명
 - participantCount: 참여 인원수 (숫자)
 - sessions: 회기수 (숫자)
 - plan: 계획 내용
 - goal: 목표
-- purpose: 목적 (있는 경우)
-- expectedEffect: 기대효과 (있는 경우)
+- purpose: 목적 (사업내용을 바탕으로 자동 생성)
+- expectedEffect: 기대효과
+
+분류 규칙:
+1) 대분류 > 중분류 계층 구조를 유지 (보호>생활, 교육>학습 등)
+2) 실행일자에서 월(executionMonth)을 자동 추출
+3) "사업내용 및 수행인력" 표의 각 행을 독립된 프로그램으로 인식
+4) purpose는 serviceContent를 바탕으로 목적 문장 자동 생성
 
 반드시 아래 규칙을 지켜주세요:
 1) 설명 문장 금지
@@ -200,21 +210,48 @@ ${file.extractedText.substring(0, 15000)}
 
       try {
         const arr = Array.isArray(parsed) ? parsed : [];
-        programs = arr.map((p: any, index: number) => ({
-          id: `program-${randomUUID()}`,
-          programName: p?.programName || `프로그램 ${index + 1}`,
-          category: validateCategory(String(p?.category || "")),
-          subCategory: String(p?.subCategory || "기타"),
-          startDate: String(p?.startDate || new Date().toISOString().split("T")[0]),
-          endDate: String(p?.endDate || new Date().toISOString().split("T")[0]),
-          targetChildren: String(p?.targetChildren || "아동"),
-          participantCount: parseInt(p?.participantCount, 10) || 10,
-          sessions: parseInt(p?.sessions, 10) || 1,
-          plan: String(p?.plan || ""),
-          goal: String(p?.goal || ""),
-          purpose: String(p?.purpose || ""),
-          expectedEffect: String(p?.expectedEffect || ""),
-        }));
+        programs = arr.map((p: any, index: number) => {
+          // 실행월 추출: executionMonth가 있으면 사용, 없으면 executionDate나 startDate에서 추출
+          let executionMonth = parseInt(p?.executionMonth, 10) || 0;
+          if (!executionMonth && p?.executionDate) {
+            const dateMatch = String(p.executionDate).match(/(\d{1,2})월/);
+            if (dateMatch) {
+              executionMonth = parseInt(dateMatch[1], 10);
+            } else {
+              const isoMatch = String(p.executionDate).match(/\d{4}-(\d{2})/);
+              if (isoMatch) {
+                executionMonth = parseInt(isoMatch[1], 10);
+              }
+            }
+          }
+          if (!executionMonth && p?.startDate) {
+            const isoMatch = String(p.startDate).match(/\d{4}-(\d{2})/);
+            if (isoMatch) {
+              executionMonth = parseInt(isoMatch[1], 10);
+            }
+          }
+
+          return {
+            id: `program-${randomUUID()}`,
+            programName: p?.programName || `프로그램 ${index + 1}`,
+            category: validateCategory(String(p?.category || "")),
+            subCategory: String(p?.subCategory || "기타"),
+            startDate: String(p?.startDate || new Date().toISOString().split("T")[0]),
+            endDate: String(p?.endDate || new Date().toISOString().split("T")[0]),
+            targetChildren: String(p?.targetChildren || "아동"),
+            participantCount: parseInt(p?.participantCount, 10) || 10,
+            sessions: parseInt(p?.sessions, 10) || 1,
+            plan: String(p?.plan || ""),
+            goal: String(p?.goal || ""),
+            purpose: String(p?.purpose || ""),
+            expectedEffect: String(p?.expectedEffect || ""),
+            // 새로운 사업내용 및 수행인력 필드
+            executionDate: String(p?.executionDate || ""),
+            executionMonth: executionMonth || undefined,
+            personnel: String(p?.personnel || ""),
+            serviceContent: String(p?.serviceContent || p?.plan || ""),
+          };
+        });
       } catch (parseError) {
         console.error("Program mapping error:", parseError);
         programs = [];

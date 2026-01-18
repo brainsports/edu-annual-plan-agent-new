@@ -15,7 +15,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { useAppStore, createInitialMonthlyPlan } from "@/lib/store";
+import {
+  useAppStore,
+  createInitialMonthlyPlan,
+  filterProgramsByMonth,
+  sortProgramsByCategory,
+} from "@/lib/store";
 import { apiRequest } from "@/lib/queryClient";
 import {
   ArrowLeft,
@@ -28,7 +33,7 @@ import {
   Save,
   X,
 } from "lucide-react";
-import type { MonthlyPlan } from "@shared/schema";
+import type { MonthlyPlan, ProgramInfo } from "@shared/schema";
 
 const SECOND_HALF_MONTHS = [7, 8, 9, 10, 11, 12];
 
@@ -114,10 +119,63 @@ function getMonthDataFromPlan(plan: MonthlyPlan | undefined): MonthData {
   };
 }
 
+function ProgramTable({
+  programs,
+  month,
+}: {
+  programs: ProgramInfo[];
+  month: number;
+}) {
+  const sortedPrograms = useMemo(
+    () => sortProgramsByCategory(programs),
+    [programs]
+  );
+
+  if (sortedPrograms.length === 0) {
+    return (
+      <div className="text-muted-foreground text-sm py-2">
+        {month}월에 배정된 프로그램이 없습니다.
+      </div>
+    );
+  }
+
+  return (
+    <Table data-testid={`table-programs-${month}`}>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[80px] font-semibold">대분류</TableHead>
+          <TableHead className="w-[80px] font-semibold">중분류</TableHead>
+          <TableHead className="w-[120px] font-semibold">프로그램명</TableHead>
+          <TableHead className="w-[80px] font-semibold">대상</TableHead>
+          <TableHead className="w-[100px] font-semibold">실행일자</TableHead>
+          <TableHead className="w-[80px] font-semibold">수행인력</TableHead>
+          <TableHead className="font-semibold">사업내용</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sortedPrograms.map((p) => (
+          <TableRow key={p.id} data-testid={`row-program-${p.id}`}>
+            <TableCell className="font-medium">{p.category}</TableCell>
+            <TableCell>{p.subCategory}</TableCell>
+            <TableCell>{p.programName}</TableCell>
+            <TableCell>{p.targetChildren}</TableCell>
+            <TableCell>{p.executionDate || p.startDate || "-"}</TableCell>
+            <TableCell>{p.personnel || "-"}</TableCell>
+            <TableCell className="whitespace-pre-wrap">
+              {p.serviceContent || p.plan || "-"}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
 function MonthCard({
   month,
   year,
   data,
+  programs,
   onUpdate,
   onGenerateAI,
   isGenerating,
@@ -125,6 +183,7 @@ function MonthCard({
   month: number;
   year: number;
   data: MonthData;
+  programs: ProgramInfo[];
   onUpdate: (data: MonthData) => void;
   onGenerateAI: () => void;
   isGenerating: boolean;
@@ -230,6 +289,15 @@ function MonthCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold text-primary">
+            사업내용 및 수행인력
+          </h4>
+          <div className="overflow-x-auto">
+            <ProgramTable programs={programs} month={month} />
+          </div>
+        </div>
+
         <div className="space-y-2">
           <h4 className="text-sm font-semibold text-muted-foreground">
             월간 사업 개요
@@ -505,6 +573,14 @@ export default function MonthlyPlanSecondHalfPage() {
     return map;
   }, [secondHalfPlans]);
 
+  const monthProgramsMap = useMemo(() => {
+    const map: Record<number, ProgramInfo[]> = {};
+    SECOND_HALF_MONTHS.forEach((m) => {
+      map[m] = filterProgramsByMonth(extractedPrograms, m);
+    });
+    return map;
+  }, [extractedPrograms]);
+
   const handleUpdateMonthData = (month: number, data: MonthData) => {
     const existingPlan = secondHalfPlans.find((p) => p.month === month);
     if (!existingPlan) return;
@@ -632,6 +708,7 @@ export default function MonthlyPlanSecondHalfPage() {
                     month={m}
                     year={year}
                     data={monthDataMap[m]}
+                    programs={monthProgramsMap[m]}
                     onUpdate={(data) => handleUpdateMonthData(m, data)}
                     onGenerateAI={() => handleGenerateAI(m)}
                     isGenerating={generatingMonth === m}

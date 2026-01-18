@@ -12,6 +12,15 @@ export const programCategorySchema = z.enum([
   "지역연계",
 ]);
 
+/* 중분류 체계 (대분류별 하위 분류) */
+export const subCategoryMap: Record<string, string[]> = {
+  보호: ["생활", "안전"],
+  교육: ["학습", "특기적성"],
+  문화: ["체험", "활동"],
+  정서지원: ["상담", "프로그램"],
+  지역연계: ["연계", "협력"],
+};
+
 export const programInfoSchema = z.object({
   id: z.string(),
   programName: z.string(),
@@ -24,6 +33,12 @@ export const programInfoSchema = z.object({
   sessions: z.number(),
   plan: z.string(),
   goal: z.string(),
+
+  // 사업내용 및 수행인력 필드 (마스터 데이터)
+  executionDate: z.string().optional(),     // 실행일자
+  executionMonth: z.number().optional(),    // 자동 분류된 월 (1-12)
+  personnel: z.string().optional(),         // 수행인력
+  serviceContent: z.string().optional(),    // 사업내용(서비스활동)
 
   // 선택(있어도 되고 없어도 됨)
   purpose: z.string().optional(),
