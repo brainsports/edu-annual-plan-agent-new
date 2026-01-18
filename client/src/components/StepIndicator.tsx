@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +16,6 @@ type StepDef = {
   path: string;
 };
 
-/** ✅ 7단계(업로드/자동분류 포함) = 라우트 1:1 단일 소스 */
 const STEP_FLOW: StepDef[] = [
   { key: "upload", number: 1, label: "PDF 업로드", path: "/" },
   { key: "classify", number: 2, label: "자동 분류", path: "/classify" },
@@ -49,8 +48,6 @@ const STEP_FLOW: StepDef[] = [
 
 function getStepIndexByPath(pathname: string): number {
   if (!pathname) return 0;
-
-  // "/"는 특별 처리(다른 경로도 "/"로 시작하므로)
   if (pathname === "/") return 0;
 
   const exactIdx = STEP_FLOW.findIndex((s) => s.path === pathname);
@@ -65,12 +62,8 @@ function getStepIndexByPath(pathname: string): number {
 }
 
 interface StepIndicatorProps {
-  /** ✅ 권장: useLocation()의 location을 그대로 전달 */
   pathname?: string;
-
-  /** 기존 호환: 숫자 step */
   currentStep?: number;
-
   onStepClick?: (step: number) => void;
 }
 
@@ -93,64 +86,68 @@ export function StepIndicator({
   const activeNumber = STEP_FLOW[currentIndex]?.number ?? 1;
 
   return (
-    <div className="w-full py-3">
-      {/* ✅ 7단계는 가로가 길어지므로 overflow-x-auto로 안전하게 */}
-      <div className="flex items-center justify-between max-w-7xl mx-auto px-4 overflow-x-auto">
-        {STEP_FLOW.map((step, index) => {
-          const isCompleted = activeNumber > step.number;
-          const isCurrent = activeNumber === step.number;
+    <nav className="flex flex-col gap-1 py-4 px-3">
+      {STEP_FLOW.map((step, index) => {
+        const isCompleted = activeNumber > step.number;
+        const isCurrent = activeNumber === step.number;
+        const isClickable = !!onStepClick && step.number <= activeNumber;
 
-          // 기존 정책 유지: 현재 단계 이하만 클릭 가능
-          const isClickable = !!onStepClick && step.number <= activeNumber;
-
-          return (
-            <div
-              key={step.key}
-              className="flex items-center flex-1 min-w-[110px]"
+        return (
+          <div key={step.key} className="flex flex-col">
+            <button
+              onClick={() => isClickable && onStepClick?.(step.number)}
+              disabled={!isClickable}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-left w-full",
+                isCurrent && "bg-primary text-primary-foreground",
+                isCompleted && !isCurrent && "text-foreground hover-elevate",
+                !isCompleted && !isCurrent && "text-muted-foreground",
+                isClickable && !isCurrent && "cursor-pointer",
+                !isClickable && "cursor-default"
+              )}
+              data-testid={`step-${step.number}`}
             >
-              <div className="flex flex-col items-center">
-                <button
-                  onClick={() => isClickable && onStepClick?.(step.number)}
-                  disabled={!isClickable}
-                  className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-200",
-                    isCompleted && "bg-primary text-primary-foreground",
-                    isCurrent &&
-                      "bg-primary text-primary-foreground ring-4 ring-primary/20",
-                    !isCompleted &&
-                      !isCurrent &&
-                      "bg-muted text-muted-foreground",
-                    isClickable && "cursor-pointer hover-elevate",
-                  )}
-                  data-testid={`step-${step.number}`}
-                >
-                  {isCompleted ? <Check className="w-5 h-5" /> : step.number}
-                </button>
-
-                <span
-                  className={cn(
-                    "mt-2 text-xs font-medium whitespace-nowrap text-center",
-                    isCompleted || isCurrent
-                      ? "text-foreground"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {step.label}
-                </span>
+              <div
+                className={cn(
+                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 border-2",
+                  isCurrent && "bg-white text-primary border-white",
+                  isCompleted && !isCurrent && "bg-primary/15 text-primary border-primary/30",
+                  !isCompleted && !isCurrent && "bg-muted text-muted-foreground border-muted"
+                )}
+              >
+                {isCompleted ? <Check className="w-3.5 h-3.5" /> : step.number}
               </div>
 
-              {index < STEP_FLOW.length - 1 && (
+              <span
+                className={cn(
+                  "text-sm font-medium",
+                  isCurrent && "text-primary-foreground",
+                  isCompleted && !isCurrent && "text-foreground",
+                  !isCompleted && !isCurrent && "text-muted-foreground"
+                )}
+              >
+                {step.label}
+              </span>
+            </button>
+
+            {index < STEP_FLOW.length - 1 && (
+              <div className="ml-[22px] pl-px py-1">
                 <div
                   className={cn(
-                    "flex-1 h-0.5 mx-2",
-                    activeNumber > step.number ? "bg-primary" : "bg-muted",
+                    "w-0.5 h-4",
+                    activeNumber > step.number ? "bg-primary/40" : "bg-muted"
                   )}
                 />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </nav>
   );
+}
+
+export function getStepLabel(step: number): string {
+  const stepDef = STEP_FLOW.find((s) => s.number === step);
+  return stepDef?.label || "";
 }
