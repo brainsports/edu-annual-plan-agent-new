@@ -99,3 +99,28 @@ Preferred communication style: Simple, everyday language.
 - `react-day-picker` - Date selection
 - `recharts` - Data visualization
 - `vaul` - Drawer component
+- `docx` - Word document generation
+
+## Recent Changes (2026-01-18)
+
+### Monthly Plan Implementation
+- Added MonthlyPlanFirstHalfPage (1-6월) and MonthlyPlanSecondHalfPage (7-12월)
+- Each month includes:
+  - Table 1: 월간 사업 개요 (사업목표, 중점사항, 비고)
+  - Table 2: 주요 업무 계획 (주차별 tasks)
+- Tab-based month selection with edit/save/cancel/AI generate functionality
+- Monthly overview data serialized as JSON in the `objectives` field
+
+### Export Implementation
+- Individual Word document exports for:
+  - 연간계획서 PART 1 (exportPart1Docx)
+  - 연간계획서 PART 2 (exportPart2Docx)
+  - 상반기 월간계획 (exportFirstHalfMonthlyDocx)
+  - 하반기 월간계획 (exportSecondHalfMonthlyDocx)
+- All exports generate proper Word tables using docx library
+- Download page shows status indicators for each document
+
+### Data Model Pattern
+- Monthly overview (objectives/focus/notes) serialized as JSON in existing objectives field
+- Parse/serialize functions: parseOverviewFromObjectives, serializeOverviewToObjectives
+- Weekly tasks stored as string arrays, normalized with Array.isArray checks
