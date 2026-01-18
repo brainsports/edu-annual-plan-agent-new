@@ -5,7 +5,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { CategoryBadge } from "./CategoryBadge";
 import { Edit2, Save, X, Loader2, Sparkles } from "lucide-react";
-import type { AnnualPlanSection as AnnualPlanSectionType } from "@shared/schema";
+import type { ProgramCategory } from "@shared/schema";
+
+interface AnnualPlanSectionType {
+  id: string;
+  category: ProgramCategory;
+  subCategory: string;
+  problems: string;
+  improvements: string;
+}
 
 interface AnnualPlanSectionProps {
   section: AnnualPlanSectionType;

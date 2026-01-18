@@ -1,18 +1,54 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 
-import type { AnnualPlan } from "../../../shared/schema";
+import type { DraftField } from "@shared/schema";
 
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/lib/store";
 import { apiRequest } from "@/lib/queryClient";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, ChevronRight, Edit2, Save, X } from "lucide-react";
 
-// ✅ 예시 데이터 생성 함수(파트1 전체를 한 번에 채움)
-function buildExamplePart1(extractedPrograms: any[]) {
+interface SectionDef {
+  key: string;
+  title: string;
+  description: string;
+}
+
+const PART1_SECTIONS: SectionDef[] = [
+  {
+    key: "necessity",
+    title: "1. 사업의 필요성",
+    description: "이용아동의 욕구 및 문제점, 지역 환경적 특성",
+  },
+  {
+    key: "evaluationAndFeedback",
+    title: "2. 전년도 사업평가 및 환류계획",
+    description: "차년도 사업 환류 계획, 총평",
+  },
+  {
+    key: "satisfaction",
+    title: "3. 만족도조사",
+    description: "만족도 조사 결과 및 개선점",
+  },
+  {
+    key: "purpose",
+    title: "4. 사업목적",
+    description: "사업의 궁극적인 목적",
+  },
+  {
+    key: "goals",
+    title: "5. 사업목표",
+    description: "구체적이고 측정 가능한 목표",
+  },
+];
+
+function buildExamplePart1(extractedPrograms: any[]): Record<string, DraftField> {
   const programNames =
     extractedPrograms?.map((p) => p.programName).filter(Boolean) ?? [];
 
@@ -58,34 +94,195 @@ function buildExamplePart1(extractedPrograms: any[]) {
   };
 }
 
+interface Part1SectionCardProps {
+  sectionDef: SectionDef;
+  field: DraftField | undefined;
+  onUpdate: (key: string, field: DraftField) => void;
+  onGenerateAI: (key: string) => void;
+  isGenerating: boolean;
+}
+
+function Part1SectionCard({
+  sectionDef,
+  field,
+  onUpdate,
+  onGenerateAI,
+  isGenerating,
+}: Part1SectionCardProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [localKeyword, setLocalKeyword] = useState(field?.keyword ?? "");
+  const [localRequest, setLocalRequest] = useState(field?.request ?? "");
+  const [localContent, setLocalContent] = useState(field?.content ?? "");
+
+  useEffect(() => {
+    if (!isEditing) {
+      setLocalKeyword(field?.keyword ?? "");
+      setLocalRequest(field?.request ?? "");
+      setLocalContent(field?.content ?? "");
+    }
+  }, [field, isEditing]);
+
+  const handleStartEdit = () => {
+    setLocalKeyword(field?.keyword ?? "");
+    setLocalRequest(field?.request ?? "");
+    setLocalContent(field?.content ?? "");
+    setIsEditing(true);
+  };
+
+  const handleSave = () => {
+    onUpdate(sectionDef.key, {
+      keyword: localKeyword,
+      request: localRequest,
+      content: localContent,
+    });
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+  };
+
+  return (
+    <Card data-testid={`card-section-${sectionDef.key}`}>
+      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-3">
+        <div>
+          <CardTitle className="text-base">{sectionDef.title}</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            {sectionDef.description}
+          </p>
+        </div>
+        <div className="flex items-center gap-1">
+          {isEditing ? (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancel}
+                data-testid={`button-cancel-${sectionDef.key}`}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSave}
+                data-testid={`button-save-${sectionDef.key}`}
+              >
+                <Save className="w-4 h-4" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onGenerateAI(sectionDef.key)}
+                disabled={isGenerating}
+                className="h-8 text-xs gap-1"
+                data-testid={`button-ai-${sectionDef.key}`}
+              >
+                {isGenerating ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3 h-3" />
+                )}
+                AI 생성
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleStartEdit}
+                data-testid={`button-edit-${sectionDef.key}`}
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isEditing ? (
+          <>
+            <div className="space-y-2">
+              <Label>키워드</Label>
+              <Input
+                value={localKeyword}
+                onChange={(e) => setLocalKeyword(e.target.value)}
+                placeholder="핵심 키워드를 입력하세요"
+                data-testid={`input-keyword-${sectionDef.key}`}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>AI 요청사항 (선택)</Label>
+              <Input
+                value={localRequest}
+                onChange={(e) => setLocalRequest(e.target.value)}
+                placeholder="AI에게 특별히 요청할 내용이 있다면 입력하세요"
+                data-testid={`input-request-${sectionDef.key}`}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>내용</Label>
+              <Textarea
+                value={localContent}
+                onChange={(e) => setLocalContent(e.target.value)}
+                rows={6}
+                placeholder="섹션 내용을 입력하세요"
+                data-testid={`textarea-content-${sectionDef.key}`}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            {field?.keyword && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  키워드:
+                </span>
+                <span className="text-sm bg-primary/10 px-2 py-0.5 rounded">
+                  {field.keyword}
+                </span>
+              </div>
+            )}
+            <div className="bg-muted p-3 rounded-md min-h-[100px]">
+              <p className="text-sm whitespace-pre-wrap">
+                {field?.content || "아직 내용이 없습니다. 편집 또는 AI 생성을 사용하세요."}
+              </p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AnnualPlanPart1Page() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  const { extractedPrograms, annualPlan, setAnnualPlan, setCurrentStep } =
-    useAppStore();
+  const {
+    extractedPrograms,
+    annualPlan,
+    setAnnualPlan,
+    updateAnnualPartField,
+    setCurrentStep,
+  } = useAppStore();
 
-  // ✅ 스위치: false=예시 작성 / true=자동 작성
   const [autoWrite, setAutoWrite] = useState(false);
+  const [generatingSection, setGeneratingSection] = useState<string | null>(null);
+
+  const part1Data = annualPlan?.part1 ?? {};
 
   const isReadyForAuto = useMemo(() => {
-    // 최소 조건: 분류 프로그램이 있어야 함 (PDF 기반까지 붙이면 pdfText/fileId 조건도 추가)
     return Array.isArray(extractedPrograms) && extractedPrograms.length > 0;
   }, [extractedPrograms]);
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      // ⚠️ 여기서 “업로드 파일 기반(PDF)”을 쓰려면
-      // server가 fileId 또는 pdfText를 받을 수 있어야 합니다.
-      // 현재는 annualPlan + programs만 보내는 구조일 가능성이 큽니다.
       const res = await apiRequest("POST", "/api/generate-annual-part1", {
         annualPlan,
         programs: extractedPrograms,
-        // TODO(권장): fileId 또는 pdfText를 함께 전달
-        // fileId,
-        // pdfText,
       });
-
       const data = res instanceof Response ? await res.json() : res;
       return data;
     },
@@ -106,11 +303,9 @@ export function AnnualPlanPart1Page() {
   });
 
   const handleWrite = async (nextAuto: boolean) => {
-    // 스위치 상태 변경
     setAutoWrite(nextAuto);
 
     if (!nextAuto) {
-      // ✅ 예시 작성
       const part1 = buildExamplePart1(extractedPrograms);
       const base = annualPlan ?? {
         id: `annual-${Date.now()}`,
@@ -129,7 +324,6 @@ export function AnnualPlanPart1Page() {
       return;
     }
 
-    // ✅ 자동 작성
     if (!isReadyForAuto) {
       toast({
         title: "자동 작성 불가",
@@ -143,6 +337,53 @@ export function AnnualPlanPart1Page() {
     await generateMutation.mutateAsync();
   };
 
+  const handleUpdateSection = (key: string, field: DraftField) => {
+    if (!annualPlan) {
+      const base = {
+        id: `annual-${Date.now()}`,
+        title: `${new Date().getFullYear()}년 연간사업계획`,
+        createdAt: new Date().toISOString(),
+        part1: { [key]: field },
+      };
+      setAnnualPlan(base);
+    } else {
+      updateAnnualPartField("part1", key, field);
+    }
+  };
+
+  const handleGenerateAISection = async (key: string) => {
+    setGeneratingSection(key);
+    try {
+      const res = await apiRequest("POST", "/api/generate", {
+        sectionId: key,
+        field: "content",
+        context: `섹션: ${PART1_SECTIONS.find((s) => s.key === key)?.title}`,
+        programs: extractedPrograms,
+      });
+      const data = res instanceof Response ? await res.json() : res;
+
+      if (data?.content) {
+        const currentField = part1Data[key] ?? { keyword: "", request: "", content: "" };
+        handleUpdateSection(key, {
+          ...currentField,
+          content: data.content,
+        });
+        toast({
+          title: "AI 생성 완료",
+          description: `${PART1_SECTIONS.find((s) => s.key === key)?.title} 섹션이 생성되었습니다.`,
+        });
+      }
+    } catch {
+      toast({
+        title: "AI 생성 실패",
+        description: "섹션 생성에 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingSection(null);
+    }
+  };
+
   const goNext = () => {
     setCurrentStep(4);
     navigate("/annual/part2");
@@ -150,57 +391,90 @@ export function AnnualPlanPart1Page() {
 
   return (
     <div className="min-h-[calc(100vh-12rem)] flex flex-col">
-      <div className="max-w-6xl mx-auto w-full px-4 py-8 flex-1">
+      <div className="max-w-7xl mx-auto w-full px-4 py-8 flex-1">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">연간 PART 1</h1>
             <p className="text-muted-foreground mt-1">
-              PDF/분류 정보를 바탕으로 Part1 초안을 만들고, 섹션별로 수정할 수
-              있습니다.
+              PDF/분류 정보를 바탕으로 Part1 초안을 만들고, 섹션별로 수정할 수 있습니다.
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               추출된 프로그램 정보: {extractedPrograms?.length ?? 0}개
             </p>
           </div>
 
-          {/* ✅ 스위치 영역 */}
-          <div className="flex items-center gap-3">
-            <span
-              className={!autoWrite ? "font-semibold" : "text-muted-foreground"}
+          <div className="flex items-center gap-2">
+            <Button
+              variant={!autoWrite ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleWrite(false)}
+              disabled={generateMutation.isPending}
+              data-testid="button-example-write"
             >
               예시 작성
-            </span>
-
-            <Switch
-              checked={autoWrite}
-              onCheckedChange={(v) => handleWrite(v)}
+            </Button>
+            <Button
+              variant={autoWrite ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleWrite(true)}
               disabled={generateMutation.isPending}
-            />
-
-            <span
-              className={autoWrite ? "font-semibold" : "text-muted-foreground"}
+              className="gap-1"
+              data-testid="button-auto-write"
             >
-              자동 작성
-            </span>
-
-            {generateMutation.isPending && (
-              <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              {generateMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
-                생성 중
-              </span>
-            )}
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              자동 작성
+            </Button>
           </div>
         </div>
 
-        {/* (여기 아래는 기존 섹션 UI 그대로 유지) */}
-        {/* ... AnnualPlanSection 들 ... */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">입력 / 편집</h2>
+            {PART1_SECTIONS.map((sec) => (
+              <Part1SectionCard
+                key={sec.key}
+                sectionDef={sec}
+                field={part1Data[sec.key]}
+                onUpdate={handleUpdateSection}
+                onGenerateAI={handleGenerateAISection}
+                isGenerating={generatingSection === sec.key}
+              />
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">미리보기</h2>
+            <Card className="sticky top-4">
+              <CardHeader>
+                <CardTitle className="text-base">연간사업계획서 PART 1</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {PART1_SECTIONS.map((sec) => {
+                  const field = part1Data[sec.key];
+                  return (
+                    <div key={sec.key} className="space-y-2">
+                      <h3 className="font-semibold text-sm">{sec.title}</h3>
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap pl-4 border-l-2 border-muted">
+                        {field?.content || "(내용 없음)"}
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
 
       <div className="sticky bottom-0 bg-background border-t p-4">
-        <div className="max-w-6xl mx-auto flex justify-end">
-          <Button onClick={goNext} className="gap-2">
-            다음 단계(연간 Part2)
-            <Sparkles className="w-4 h-4" />
+        <div className="max-w-7xl mx-auto flex justify-end">
+          <Button onClick={goNext} className="gap-2" data-testid="button-next-part2">
+            다음 단계 (연간 Part2)
+            <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
