@@ -124,3 +124,12 @@ Preferred communication style: Simple, everyday language.
 - Monthly overview (objectives/focus/notes) serialized as JSON in existing objectives field
 - Parse/serialize functions: parseOverviewFromObjectives, serializeOverviewToObjectives
 - Weekly tasks stored as string arrays, normalized with Array.isArray checks
+
+### Program Table Export (사업내용 및 수행인력)
+- ProgramInfo schema extended with executionDate, executionMonth, personnel, serviceContent fields
+- Monthly plan exports include 7-column program table as first section:
+  - 대분류, 중분류, 프로그램명, 대상, 실행일자, 수행인력, 사업내용
+- Programs automatically filtered by executionMonth or parsed from startDate
+- Sorted by category hierarchy: 대분류 → 중분류 → 프로그램명 (Korean locale)
+- Export functions: exportFirstHalfMonthlyDocx, exportSecondHalfMonthlyDocx now accept programs parameter
+- DownloadPage passes extractedPrograms from store to export functions
