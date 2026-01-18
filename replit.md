@@ -4,12 +4,14 @@
 
 This is an AI-powered annual program generation assistant for Korean after-school care centers (다함께돌봄센터). The application helps administrators create annual and monthly business plans by uploading PDF evaluation documents, which are then processed by AI to automatically extract, classify, and generate structured program plans.
 
-The workflow follows a 5-step process:
-1. PDF Upload - Upload evaluation documents
-2. Auto Classification - AI extracts and categorizes program information
-3. Annual Plan - Generate annual business plan with AI assistance
-4. Monthly Plan - Create detailed monthly schedules
-5. Complete - Export finished documents
+The workflow follows a 7-step process (displayed in vertical sidebar):
+1. PDF 업로드 - Upload evaluation documents
+2. 자동 분류 - AI extracts and categorizes program information  
+3. 연간 Part 1 - Annual plan overview and business goals
+4. 연간 Part 2 - Detailed program content and evaluation plans
+5. 상반기 (1-6월) - First half monthly schedules
+6. 하반기 (7-12월) - Second half monthly schedules
+7. 다운로드 - Export finished Word documents
 
 ## User Preferences
 
@@ -30,9 +32,13 @@ Preferred communication style: Simple, everyday language.
 **Data Fetching**: TanStack Query (React Query) for server state management and API calls
 
 **Design System**: 
-- Custom theme with light/dark mode support via CSS variables
+- B2B SaaS professional style - clean, work-focused interface
+- Brand color: #7CB342 (green) for primary actions and highlights
+- Two-column layout: Left sidebar (264px) + Main content area
+- Vertical step indicator with 7 steps in sidebar
+- Light/dark mode support via CSS variables
 - Pretendard font optimized for Korean typography
-- Responsive layout with mobile-first approach
+- PC-only optimized layout (no mobile responsiveness required)
 - Component styling follows design guidelines in `design_guidelines.md`
 
 ### Backend Architecture
@@ -102,6 +108,18 @@ Preferred communication style: Simple, everyday language.
 - `docx` - Word document generation
 
 ## Recent Changes (2026-01-18)
+
+### UI/UX Redesign - B2B SaaS Layout
+- Changed from horizontal step indicator to vertical sidebar-based navigation
+- Two-column layout: Left sidebar (264px sticky) + Main content area
+- Sidebar contains:
+  - Branding: "참참 4.3" with subtitle "연간프로그램 AI 도우미"
+  - Vertical step indicator (7 steps)
+  - Theme toggle at bottom
+- Main content header shows step title and progress ("단계 X / 7")
+- Brand color updated to #7CB342 (green) across light/dark modes
+- All pages updated to use new layout pattern (flex h-full, space-y-6)
+- CompletePage fixed to use current schema (part1/part2 instead of deprecated sections)
 
 ### Monthly Plan Implementation
 - Added MonthlyPlanFirstHalfPage (1-6월) and MonthlyPlanSecondHalfPage (7-12월)
