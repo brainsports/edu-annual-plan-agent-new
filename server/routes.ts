@@ -6,7 +6,6 @@ import { createRequire } from "module";
 import { randomUUID } from "crypto";
 import { GoogleGenAI } from "@google/genai";
 
-
 import {
   type UploadedFile,
   type ProgramInfo,
@@ -24,21 +23,36 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
 });
 
-/** Gemini 클라이언트 */
+/* =========================================================
+   Gemini helpers (한 번만 정의)
+========================================================= */
+function getGeminiApiKey() {
+  return process.env.GEMINI_API_KEY || "";
+}
+
 function getGeminiClient() {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = getGeminiApiKey();
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is missing in server env");
   }
   return new GoogleGenAI({ apiKey });
 }
 
-/** 모델명은 환경변수로 바꿀 수 있게 (기본값 제공) */
 function getGeminiModel() {
+  // 필요하면 서버 env에서 바꿔 쓸 수 있게
   return process.env.GEMINI_MODEL || "gemini-1.5-flash";
 }
 
-/** Gemini 호출: 텍스트 반환 */
+function safeExtractTextFromGemini(result: any): string {
+  const text =
+    result?.text ??
+    result?.candidates?.[0]?.content?.parts
+      ?.map((p: any) => p?.text || "")
+      .join("") ??
+    "";
+  return String(text || "");
+}
+
 async function geminiText(prompt: string, system?: string) {
   const ai = getGeminiClient();
   const model = getGeminiModel();
@@ -53,24 +67,16 @@ async function geminiText(prompt: string, system?: string) {
   const result = await ai.models.generateContent({
     model,
     contents,
-    // 응답을 길게 받도록 여유 있게 설정
     config: {
       temperature: 0.4,
       maxOutputTokens: 4096,
     },
   });
 
-  // SDK 응답에서 텍스트 안전하게 추출
-  const text =
-    (result as any)?.text ??
-    (result as any)?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || "").join("") ??
-    "";
-
-  return String(text || "");
+  return safeExtractTextFromGemini(result);
 }
 
-/** Gemini 호출: JSON(배열/객체) 파싱 */
-async function geminiJson(prompt: string, system?: string) {
+async function geminiJson(prompt: string, system?: string): Promise<any> {
   const ai = getGeminiClient();
   const model = getGeminiModel();
 
@@ -87,27 +93,18 @@ async function geminiJson(prompt: string, system?: string) {
     config: {
       temperature: 0.2,
       maxOutputTokens: 4096,
-      // JSON만 오도록 힌트 (모델이 지원하면 더 잘 지킵니다)
       responseMimeType: "application/json",
     },
   });
 
-  const text =
-    (result as any)?.text ??
-    (result as any)?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text || "").join("") ??
-    "";
+  const raw = safeExtractTextFromGemini(result).trim();
 
-  const raw = String(text || "").trim();
-
-  // 1) 바로 JSON 파싱 시도
+  // 1) 바로 JSON 시도
   try {
     return JSON.parse(raw);
   } catch {
-    // 2) 코드펜스/설명 섞인 경우 JSON 부분만 추출
-    const jsonMatch =
-      raw.match(/\[[\s\S]*\]/) || // 배열 우선
-      raw.match(/\{[\s\S]*\}/);   // 객체
-
+    // 2) 코드펜스/설명 섞이면 JSON 덩어리만 추출
+    const jsonMatch = raw.match(/\[[\s\S]*\]/) || raw.match(/\{[\s\S]*\}/);
     if (jsonMatch?.[0]) {
       try {
         return JSON.parse(jsonMatch[0]);
@@ -117,35 +114,270 @@ async function geminiJson(prompt: string, system?: string) {
     }
   }
 
-  // 실패하면 빈 배열
-  return [];
+  return null;
 }
 
-export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+/* =========================================================
+   Utility: PDF text + keyword fallback
+========================================================= */
+function normalizeTextForKeywords(text: string) {
+  return (text || "")
+    .replace(/[^\u3131-\u318E\uAC00-\uD7A3a-zA-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractKeywordsSimple(text: string, topN: number = 6) {
+  const stop = new Set([
+    "그리고",
+    "또한",
+    "따라서",
+    "하지만",
+    "있다",
+    "없다",
+    "한다",
+    "된다",
+    "대한",
+    "위해",
+    "사업",
+    "프로그램",
+    "지역",
+    "아동",
+    "센터",
+    "운영",
+    "지원",
+    "필요",
+    "목적",
+    "계획",
+    "연간",
+    "월간",
+    "평가",
+    "활동",
+    "실시",
+    "진행",
+  ]);
+
+  const words = normalizeTextForKeywords(text)
+    .split(" ")
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 2)
+    .filter((w) => !stop.has(w));
+
+  const freq = new Map<string, number>();
+  for (const w of words) {
+    freq.set(w, (freq.get(w) || 0) + 1);
+  }
+
+  return Array.from(freq.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, topN)
+    .map(([w]) => w);
+}
+
+function defaultNeedsKeywords() {
+  return ["돌봄공백", "정서불안", "학습결손"];
+}
+function defaultRegionKeywords() {
+  return ["자원부족", "접근성", "방과후공백"];
+}
+
+/* =========================================================
+   Routes
+========================================================= */
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express,
+): Promise<Server> {
   /** 1) 업로드 */
-  app.post("/api/upload", upload.single("file"), async (req: Request, res: Response) => {
-    try {
-      const file = req.file;
-      if (!file) return res.status(400).json({ error: "No file uploaded" });
+  app.post(
+    "/api/upload",
+    upload.single("file"),
+    async (req: Request, res: Response) => {
+      try {
+        const file = req.file;
+        if (!file) return res.status(400).json({ error: "No file uploaded" });
 
-      const pdfData = await pdfParse(file.buffer);
-      const extractedText = pdfData.text;
+        const pdfData = await pdfParse(file.buffer);
+        const extractedText = String(pdfData?.text || "");
 
-      const uploadedFile: UploadedFile = {
-        id: randomUUID(),
-        name: file.originalname,
-        type: "evaluation",
-        extractedText,
-        uploadedAt: new Date().toISOString(),
-      };
+        const uploadedFile: UploadedFile = {
+          id: randomUUID(),
+          name: file.originalname,
+          type: "evaluation",
+          extractedText,
+          uploadedAt: new Date().toISOString(),
+        };
 
-      await storage.addUploadedFile(uploadedFile);
-      res.json(uploadedFile);
-    } catch (error) {
-      console.error("Upload error:", error);
-      res.status(500).json({ error: "Failed to process file" });
-    }
-  });
+        await storage.addUploadedFile(uploadedFile);
+        return res.json(uploadedFile);
+      } catch (error) {
+        console.error("Upload error:", error);
+        return res.status(500).json({ error: "Failed to process file" });
+      }
+    },
+  );
+
+  /**
+   * ✅ 1-1) 연간 Part1 - 사업의 필요성 자동채움
+   * - PDF 텍스트가 충분하면: Gemini로 '이용아동 욕구/문제점' + '지역 환경적 특성'을 생성 + 키워드(각 3개)
+   * - 텍스트가 너무 짧거나 API 키가 없으면: 안전한 기본 키워드 + 빈 내용 반환(Stub fallback)
+   */
+  app.post(
+    "/api/annual/part1/necessity/autofill",
+    upload.single("file"),
+    async (req: Request, res: Response) => {
+      const hasFile = !!req.file;
+      const fileName = req.file?.originalname || null;
+
+      try {
+        // 1) PDF 텍스트 추출
+        let extractedText = "";
+        if (req.file?.buffer) {
+          try {
+            const pdfData = await pdfParse(req.file.buffer);
+            extractedText = String(pdfData?.text || "");
+          } catch (e) {
+            console.warn("pdfParse failed, continue with empty text:", e);
+          }
+        }
+
+        // 2) 최소 텍스트 기준(너무 짧으면 Gemini 호출해도 품질이 떨어짐)
+        const baseText = (extractedText || "").trim();
+        const baseTextShort = baseText.length < 500;
+
+        // 3) 키워드 기본(텍스트 기반 간단 추출 + fallback)
+        const baseKw = baseText ? extractKeywordsSimple(baseText, 6) : [];
+        const needsKeywords =
+          baseKw.length >= 3 ? baseKw.slice(0, 3) : defaultNeedsKeywords();
+        const regionKeywords =
+          baseKw.length >= 6 ? baseKw.slice(3, 6) : defaultRegionKeywords();
+
+        // 4) API 키가 없으면: 안전 stub
+        const apiKey = getGeminiApiKey();
+        if (!apiKey || baseTextShort) {
+          return res.json({
+            ok: true,
+            source: !apiKey ? "stub-no-key" : "stub-short-text",
+            received: { hasFile, fileName },
+            content: !apiKey
+              ? "현재 서버에 GEMINI_API_KEY가 없어 자동작성은 키워드만 제공한다."
+              : "PDF에서 추출된 텍스트가 너무 짧아 자동작성은 키워드만 제공한다.",
+            keywords: { needs: needsKeywords, region: regionKeywords },
+            fields: {
+              needsProblem: { content: "", keywords: needsKeywords },
+              regionSummary: { content: "", keywords: regionKeywords },
+            },
+          });
+        }
+
+        // 5) Gemini로 실제 내용 생성 (JSON 강제)
+        const prompt = `다음은 지역아동센터 관련 PDF에서 추출한 텍스트이다.
+이 텍스트를 근거로, 연간사업계획서 Part1의 '사업의 필요성'을 자동 작성하기 위한 JSON만 반환하라.
+
+[작성 대상]
+1) 이용아동의 욕구 및 문제점(needsProblem)
+2) 지역 환경적 특성(regionSummary)
+
+[출력 JSON 스키마]
+{
+  "keywords": {
+    "needs": ["키워드", "키워드", "키워드"],
+    "region": ["키워드", "키워드", "키워드"]
+  },
+  "fields": {
+    "needsProblem": { "content": "2~4문장", "keywords": ["", "", ""] },
+    "regionSummary": { "content": "2~4문장", "keywords": ["", "", ""] }
+  }
+}
+
+[규칙]
+- 반드시 JSON만 출력한다(설명/문장/코드펜스 금지).
+- keywords.needs / keywords.region은 각각 3개.
+- content는 초등학생도 이해할 만큼 쉬운 문장으로 쓰되, 사업계획서 톤을 유지한다.
+- 텍스트에서 근거를 찾기 어려우면, 일반적으로 타당한 내용으로 작성하되 과장하지 않는다.
+
+[텍스트]
+${baseText.substring(0, 15000)}
+`;
+
+        const parsed = await geminiJson(
+          prompt,
+          "당신은 지역아동센터 사업계획서(연간) 작성 전문가이다. 출력은 JSON만 반환한다.",
+        );
+
+        // 6) 파싱 실패 시 fallback (키워드만)
+        if (!parsed || typeof parsed !== "object") {
+          return res.json({
+            ok: true,
+            source: "stub-parse-failed",
+            received: { hasFile, fileName },
+            content: "Gemini 응답을 JSON으로 해석하지 못해 키워드만 제공한다.",
+            keywords: { needs: needsKeywords, region: regionKeywords },
+            fields: {
+              needsProblem: { content: "", keywords: needsKeywords },
+              regionSummary: { content: "", keywords: regionKeywords },
+            },
+          });
+        }
+
+        // 7) 값 정리/보정(누락 대비)
+        const pNeedsKw: string[] = Array.isArray(
+          (parsed as any)?.keywords?.needs,
+        )
+          ? (parsed as any).keywords.needs
+          : [];
+        const pRegionKw: string[] = Array.isArray(
+          (parsed as any)?.keywords?.region,
+        )
+          ? (parsed as any).keywords.region
+          : [];
+
+        const finalNeedsKw =
+          pNeedsKw.filter(Boolean).slice(0, 3).length === 3
+            ? pNeedsKw.filter(Boolean).slice(0, 3)
+            : needsKeywords;
+
+        const finalRegionKw =
+          pRegionKw.filter(Boolean).slice(0, 3).length === 3
+            ? pRegionKw.filter(Boolean).slice(0, 3)
+            : regionKeywords;
+
+        const needsContent = String(
+          (parsed as any)?.fields?.needsProblem?.content || "",
+        ).trim();
+
+        const regionContent = String(
+          (parsed as any)?.fields?.regionSummary?.content || "",
+        ).trim();
+
+        return res.json({
+          ok: true,
+          source: "gemini",
+          received: { hasFile, fileName },
+          content:
+            "업로드 PDF를 기준으로 '이용아동의 욕구 및 문제점'과 '지역 환경적 특성' 초안을 생성한다.",
+          keywords: { needs: finalNeedsKw, region: finalRegionKw },
+          fields: {
+            needsProblem: { content: needsContent, keywords: finalNeedsKw },
+            regionSummary: { content: regionContent, keywords: finalRegionKw },
+          },
+        });
+      } catch (error: any) {
+        console.error("necessity autofill error:", error);
+
+        // 키가 없을 때 메시지 명확히
+        if (String(error?.message || "").includes("GEMINI_API_KEY")) {
+          return res.status(500).json({
+            ok: false,
+            error: "Server config error",
+            message: error.message,
+          });
+        }
+
+        return res.status(500).json({ ok: false, error: "autofill_failed" });
+      }
+    },
+  );
 
   /** 2) 자동 분류 (Gemini) */
   app.post("/api/classify", async (req: Request, res: Response) => {
@@ -162,7 +394,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const file = await storage.getUploadedFile(fileId);
 
       if (!file || !file.extractedText) {
-        return res.status(404).json({ error: "File not found or no text extracted" });
+        return res
+          .status(404)
+          .json({ error: "File not found or no text extracted" });
       }
 
       const prompt = `다음은 지역아동센터 프로그램 평가서 PDF에서 추출한 텍스트입니다.
@@ -203,7 +437,7 @@ ${file.extractedText.substring(0, 15000)}
 
       const parsed = await geminiJson(
         prompt,
-        "당신은 지역아동센터 프로그램 평가서에서 정보를 추출하는 전문가입니다. 출력은 JSON만 반환합니다."
+        "당신은 지역아동센터 프로그램 평가서에서 정보를 추출하는 전문가입니다. 출력은 JSON만 반환합니다.",
       );
 
       let programs: ProgramInfo[] = [];
@@ -211,24 +445,20 @@ ${file.extractedText.substring(0, 15000)}
       try {
         const arr = Array.isArray(parsed) ? parsed : [];
         programs = arr.map((p: any, index: number) => {
-          // 실행월 추출: executionMonth가 있으면 사용, 없으면 executionDate나 startDate에서 추출
           let executionMonth = parseInt(p?.executionMonth, 10) || 0;
+
           if (!executionMonth && p?.executionDate) {
             const dateMatch = String(p.executionDate).match(/(\d{1,2})월/);
             if (dateMatch) {
               executionMonth = parseInt(dateMatch[1], 10);
             } else {
               const isoMatch = String(p.executionDate).match(/\d{4}-(\d{2})/);
-              if (isoMatch) {
-                executionMonth = parseInt(isoMatch[1], 10);
-              }
+              if (isoMatch) executionMonth = parseInt(isoMatch[1], 10);
             }
           }
           if (!executionMonth && p?.startDate) {
             const isoMatch = String(p.startDate).match(/\d{4}-(\d{2})/);
-            if (isoMatch) {
-              executionMonth = parseInt(isoMatch[1], 10);
-            }
+            if (isoMatch) executionMonth = parseInt(isoMatch[1], 10);
           }
 
           return {
@@ -236,8 +466,12 @@ ${file.extractedText.substring(0, 15000)}
             programName: p?.programName || `프로그램 ${index + 1}`,
             category: validateCategory(String(p?.category || "")),
             subCategory: String(p?.subCategory || "기타"),
-            startDate: String(p?.startDate || new Date().toISOString().split("T")[0]),
-            endDate: String(p?.endDate || new Date().toISOString().split("T")[0]),
+            startDate: String(
+              p?.startDate || new Date().toISOString().split("T")[0],
+            ),
+            endDate: String(
+              p?.endDate || new Date().toISOString().split("T")[0],
+            ),
             targetChildren: String(p?.targetChildren || "아동"),
             participantCount: parseInt(p?.participantCount, 10) || 10,
             sessions: parseInt(p?.sessions, 10) || 1,
@@ -245,7 +479,6 @@ ${file.extractedText.substring(0, 15000)}
             goal: String(p?.goal || ""),
             purpose: String(p?.purpose || ""),
             expectedEffect: String(p?.expectedEffect || ""),
-            // 새로운 사업내용 및 수행인력 필드
             executionDate: String(p?.executionDate || ""),
             executionMonth: executionMonth || undefined,
             personnel: String(p?.personnel || ""),
@@ -261,14 +494,15 @@ ${file.extractedText.substring(0, 15000)}
         programs = [createDefaultProgram()];
       }
 
-      res.json(programs);
+      return res.json(programs);
     } catch (error: any) {
       console.error("Classification error:", error);
-      // 키가 없을 때 메시지 명확히
       if (String(error?.message || "").includes("GEMINI_API_KEY")) {
-        return res.status(500).json({ error: "Server config error", message: error.message });
+        return res
+          .status(500)
+          .json({ error: "Server config error", message: error.message });
       }
-      res.status(500).json({ error: "Failed to classify content" });
+      return res.status(500).json({ error: "Failed to classify content" });
     }
   });
 
@@ -280,20 +514,17 @@ ${file.extractedText.substring(0, 15000)}
         return res.status(400).json({
           error: "Invalid request",
           details: validation.error.flatten(),
-          hint:
-            "programs가 비어 있으면 생성이 불가합니다. 먼저 /api/classify로 programs를 확보한 뒤 전달해주세요.",
+          hint: "programs가 비어 있으면 생성이 불가합니다. 먼저 /api/classify로 programs를 확보한 뒤 전달해주세요.",
         });
       }
 
       const { sectionId, field, context, programs } = validation.data;
 
-      // ✅ 방어: programs가 없거나 비어있는 경우
       if (!Array.isArray(programs) || programs.length === 0) {
         return res.status(400).json({
           error: "Invalid request",
           details: { programs: ["Required"] },
-          hint:
-            "programs가 비어 있습니다. 분류 단계에서 programs를 확보한 뒤 /api/generate에 전달하세요.",
+          hint: "programs가 비어 있습니다. 분류 단계에서 programs를 확보한 뒤 /api/generate에 전달하세요.",
         });
       }
 
@@ -339,21 +570,25 @@ ${JSON.stringify(programs, null, 2)}
 - 개선계획(환류)을 2~3개 문장으로 구체적으로 작성한다.
 - 실행 가능하고 구체적인 개선 방안을 제시한다.`;
       } else {
-        return res.status(400).json({ error: "Invalid request", message: "Unknown field" });
+        return res
+          .status(400)
+          .json({ error: "Invalid request", message: "Unknown field" });
       }
 
       const content = await geminiText(
         prompt,
-        "당신은 지역아동센터 사업계획서 작성 전문가입니다. 전문적이고 구체적인 내용으로 작성합니다."
+        "당신은 지역아동센터 사업계획서 작성 전문가입니다. 전문적이고 구체적인 내용으로 작성합니다.",
       );
 
-      res.json({ content });
+      return res.json({ content });
     } catch (error: any) {
       console.error("Generate error:", error);
       if (String(error?.message || "").includes("GEMINI_API_KEY")) {
-        return res.status(500).json({ error: "Server config error", message: error.message });
+        return res
+          .status(500)
+          .json({ error: "Server config error", message: error.message });
       }
-      res.status(500).json({ error: "Failed to generate content" });
+      return res.status(500).json({ error: "Failed to generate content" });
     }
   });
 
@@ -390,24 +625,38 @@ ${JSON.stringify(programs, null, 2)}
 - 지역아동센터 5대사업을 성실히 수행하며 이용아동에게 질 높은 서비스를 제공한다.
 - 아동 안전교육을 통해 긴급한 상황 발생시 아동의 안전을 향상시킨다.`;
 
-      const objectives = await geminiText(prompt, "당신은 지역아동센터 월간사업계획서 작성 전문가입니다.");
+      const objectives = await geminiText(
+        prompt,
+        "당신은 지역아동센터 월간사업계획서 작성 전문가입니다.",
+      );
 
       const updatedPlan = { ...plan, objectives };
-      res.json(updatedPlan);
+      return res.json(updatedPlan);
     } catch (error: any) {
       console.error("Generate monthly error:", error);
       if (String(error?.message || "").includes("GEMINI_API_KEY")) {
-        return res.status(500).json({ error: "Server config error", message: error.message });
+        return res
+          .status(500)
+          .json({ error: "Server config error", message: error.message });
       }
-      res.status(500).json({ error: "Failed to generate monthly plan" });
+      return res.status(500).json({ error: "Failed to generate monthly plan" });
     }
   });
 
   return httpServer;
 }
 
+/* =========================================================
+   Helpers
+========================================================= */
 function validateCategory(category: string): ProgramCategory {
-  const validCategories: ProgramCategory[] = ["보호", "교육", "문화", "정서지원", "지역연계"];
+  const validCategories: ProgramCategory[] = [
+    "보호",
+    "교육",
+    "문화",
+    "정서지원",
+    "지역연계",
+  ];
   if (validCategories.includes(category as ProgramCategory)) {
     return category as ProgramCategory;
   }
