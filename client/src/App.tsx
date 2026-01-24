@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { StepIndicator, getStepLabel } from "@/components/StepIndicator";
-import { RightPanel } from "@/components/RightPanel";
+import { RightPanel, shouldShowRightPanel } from "@/components/RightPanel";
 import { MobileStepDrawer } from "@/components/MobileStepDrawer";
 import { MobileRightPanelSheet } from "@/components/MobileRightPanelSheet";
 
@@ -67,24 +67,31 @@ function Router() {
   );
 }
 
-function LeftSidebar({ location, onStepClick }: { location: string; onStepClick: (step: number) => void }) {
+function LeftSidebar({
+  location,
+  onStepClick,
+}: {
+  location: string;
+  onStepClick: (step: number) => void;
+}) {
   return (
-    <aside className="hidden md:flex w-[200px] xl:w-[260px] flex-shrink-0 min-h-screen bg-sidebar border-r border-sidebar-border flex-col sticky top-0 h-screen">
+    <aside className="hidden md:flex w-[200px] xl:w-[20%] xl:min-w-[240px] xl:max-w-[320px] flex-shrink-0 min-h-screen bg-sidebar border-r border-sidebar-border flex-col sticky top-0 h-screen">
       <div className="flex items-center gap-2 xl:gap-2.5 px-3 xl:px-4 py-4 xl:py-5 border-b border-sidebar-border">
         <div className="w-8 h-8 xl:w-9 xl:h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
           <Sparkles className="w-4 h-4 xl:w-5 xl:h-5 text-primary-foreground" />
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="font-semibold text-sm text-sidebar-foreground truncate">참참 4.3</span>
-          <span className="text-xs text-muted-foreground truncate hidden xl:block">연간프로그램 AI 도우미</span>
+          <span className="font-semibold text-sm text-sidebar-foreground truncate">
+            참참 4.3
+          </span>
+          <span className="text-xs text-muted-foreground truncate hidden xl:block">
+            연간프로그램 AI 도우미
+          </span>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <StepIndicator
-          pathname={location}
-          onStepClick={onStepClick}
-        />
+        <StepIndicator pathname={location} onStepClick={onStepClick} />
       </div>
 
       <div className="p-3 xl:p-4 border-t border-sidebar-border">
@@ -94,19 +101,29 @@ function LeftSidebar({ location, onStepClick }: { location: string; onStepClick:
   );
 }
 
-function MainContent({ location, onStepClick }: { location: string; onStepClick: (step: number) => void }) {
+function MainContent({
+  location,
+  onStepClick,
+}: {
+  location: string;
+  onStepClick: (step: number) => void;
+}) {
   const currentStep = useMemo(() => getStepFromPath(location), [location]);
   const stepLabel = getStepLabel(currentStep);
 
   return (
     <div className="flex-1 flex flex-col min-h-screen min-w-0">
       <MobileStepDrawer currentStep={currentStep} onStepClick={onStepClick} />
-      
+
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 md:px-6 xl:px-8 py-3 md:py-4">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg md:text-xl font-semibold text-foreground truncate">{stepLabel}</h1>
-            <p className="text-xs md:text-sm text-muted-foreground hidden md:block">단계 {currentStep} / 7</p>
+            <h1 className="text-lg md:text-xl font-semibold text-foreground truncate">
+              {stepLabel}
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground hidden md:block">
+              단계 {currentStep} / 7
+            </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <MobileRightPanelSheet currentStep={currentStep} />
@@ -118,7 +135,8 @@ function MainContent({ location, onStepClick }: { location: string; onStepClick:
       </header>
 
       <main className="flex-1 p-4 md:p-6 xl:p-8 overflow-y-auto">
-        <div className="w-full xl:max-w-4xl xl:mx-auto">
+        {/* ✅ max-width 고정 해제: 페이지 내부 2열(입력/미리보기)이 더 넓게 쓸 수 있게 */}
+        <div className="w-full">
           <Router />
         </div>
       </main>
@@ -128,6 +146,9 @@ function MainContent({ location, onStepClick }: { location: string; onStepClick:
 
 function RightSidebar({ location }: { location: string }) {
   const currentStep = useMemo(() => getStepFromPath(location), [location]);
+
+  // ✅ 3~6단계는 오른쪽 사이드바 자체를 제거해야 “빈 여백”이 안 남습니다.
+  if (!shouldShowRightPanel(currentStep)) return null;
 
   return (
     <aside className="hidden xl:block w-[340px] flex-shrink-0 min-h-screen bg-muted/30 border-l border-border sticky top-0 h-screen overflow-y-auto">

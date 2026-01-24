@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
 
 import type { DraftField } from "@shared/schema";
 
@@ -10,22 +9,28 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/lib/store";
-import { apiRequest } from "@/lib/queryClient";
-import { Loader2, ChevronRight, Edit2, Save, X } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 
-// ✅ 사업의 필요성 전용 아코디언 입력 UI
-import {
-  NecessityEditor,
+// ✅ NecessityEditor는 default export인 경우가 많아 안전하게 default import 사용
+import NecessityEditor, {
   type NecessityData,
 } from "@/components/part1/NecessityEditor";
 
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PreviousPdfUploader } from "@/components/part1/PreviousPdfUploader";
 
 interface SectionDef {
-  key: string;
+  key: Part1Key;
   title: string;
   description: string;
 }
+
+type Part1Key =
+  | "necessity"
+  | "evaluationAndFeedback"
+  | "satisfaction"
+  | "purpose"
+  | "goals";
 
 const PART1_SECTIONS: SectionDef[] = [
   {
@@ -55,66 +60,6 @@ const PART1_SECTIONS: SectionDef[] = [
   },
 ];
 
-function buildExamplePart1(
-  extractedPrograms: any[],
-): Record<string, DraftField> {
-  const programNames =
-    extractedPrograms?.map((p) => p.programName).filter(Boolean) ?? [];
-
-  return {
-    necessity: {
-      keyword: "지역의 한계",
-      request: "",
-      content:
-        "1) 이용아동의 욕구 및 문제점\n" +
-        "이 사업은 아동의 일상 돌봄과 정서 지원이 동시에 필요하다는 현장 요구를 반영한다.\n" +
-        "특히 참여 아동은 생활 환경의 제약으로 인해 안정적인 학습·관계 경험이 부족할 수 있어, 센터의 체계적인 지원이 필요하다.\n\n" +
-        "2) 지역 환경적 특성\n" +
-        "지역 여건상 돌봄·학습 지원 자원이 제한되어 아동의 성장 지원에 공백이 발생할 수 있다.\n\n" +
-        "(1) 지역적 특성\n" +
-        "지역의 생활 구조와 접근성 제약으로 인해 아동이 균형 있는 성장 경험을 누리기 어렵다.\n\n" +
-        "(2) 주변환경\n" +
-        "방과 후 생활 반경에서 안전·문화·학습 공간이 충분하지 않아 보호·지도 공백이 생길 수 있다.\n\n" +
-        "(3) 교육적 특성\n" +
-        "기초학습 보완과 개별지도가 필요한 아동이 있으나 이를 충분히 지원받기 어려운 상황이 존재한다.\n\n" +
-        `본 연간계획은 다음과 같은 프로그램 운영 흐름을 기반으로 구성한다: ${
-          programNames.join(", ") || "프로그램 A, 프로그램 B"
-        }`,
-    },
-    evaluationAndFeedback: {
-      keyword: "정서지원, 참여율, 환류",
-      request: "",
-      content:
-        "전년도 운영 결과를 바탕으로 참여율·만족도·목표 달성 수준을 점검한다.\n" +
-        "주요 개선점은 프로그램 난이도 조절, 참여 동기 강화, 보호자/기관 연계 강화로 정리한다.\n" +
-        "환류 계획은 (1) 중간 점검 회의 (2) 아동 피드백 반영 (3) 운영 매뉴얼 보완 순으로 진행한다.",
-    },
-    satisfaction: {
-      keyword: "만족도, 개선점",
-      request: "",
-      content:
-        "만족도 조사는 아동·보호자·담당자 관점에서 실시한다.\n" +
-        "문항은 흥미도/유익성/진행 적절성/재참여 의향 중심으로 구성하고, 자유응답으로 개선점을 수집한다.",
-    },
-    purpose: {
-      keyword: "정서·사회성, 학습지원",
-      request: "",
-      content:
-        "아동의 건강한 성장과 일상 안정에 필요한 정서·사회성 지원을 강화한다.\n" +
-        "학습·관계 경험을 보완하여 학교생활 및 또래관계 적응을 돕는다.",
-    },
-    goals: {
-      keyword: "구체화, 측정가능",
-      request: "",
-      content:
-        "1) 정서 안정감 향상을 위한 정기 활동을 운영한다.\n" +
-        "2) 또래 협력 활동을 통해 사회성 기술을 강화한다.\n" +
-        "3) 참여 지속률과 만족도를 개선하여 운영의 질을 높인다.",
-    },
-  };
-}
-
-// ✅ necessity 편집용 초기값
 const EMPTY_NECESSITY: NecessityData = {
   keywords: {
     childNeeds: ["", "", ""],
@@ -200,68 +145,325 @@ function parseNecessityFromContent(content?: string): NecessityData {
   };
 }
 
+/**
+ * ✅ necessity 상태(keywords/text)를 DraftField.request에 JSON으로 저장
+ */
+function encodeNecessityToRequest(n: NecessityData) {
+  try {
+    return JSON.stringify({
+      v: 1,
+      keywords: n.keywords,
+      text: n.text,
+    });
+  } catch {
+    return "";
+  }
+}
+
+function decodeNecessityFromRequest(request?: string): NecessityData | null {
+  if (!request) return null;
+  try {
+    const obj = JSON.parse(request);
+    if (!obj) return null;
+    return {
+      ...EMPTY_NECESSITY,
+      keywords: {
+        ...EMPTY_NECESSITY.keywords,
+        ...(obj.keywords ?? {}),
+      },
+      text: {
+        ...EMPTY_NECESSITY.text,
+        ...(obj.text ?? {}),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+type MaybeKeywordBlock =
+  | string[]
+  | { keywords?: string[]; content?: string }
+  | null
+  | undefined;
+
+type AutofillResponse = {
+  content?: string;
+  text?: Partial<NecessityData["text"]>;
+  keywords?: {
+    needs?: MaybeKeywordBlock;
+    region?: MaybeKeywordBlock;
+    regionSummary?: MaybeKeywordBlock;
+  };
+  fields?: Record<
+    string,
+    {
+      content?: string;
+      keywords?: string[];
+    }
+  >;
+};
+
+// ✅ 다양한 형태의 키워드 응답을 "string[]"로 안전 변환
+function extractKeywords(x: MaybeKeywordBlock): string[] {
+  if (!x) return [];
+  if (Array.isArray(x)) return x;
+  if (typeof x === "object" && Array.isArray((x as any).keywords))
+    return (x as any).keywords;
+  return [];
+}
+
+// ✅ 항상 3칸을 보장(빈칸 포함)
+function fill3(arr?: string[]) {
+  const cleaned = (arr ?? []).filter(Boolean).slice(0, 3);
+  while (cleaned.length < 3) cleaned.push("");
+  return cleaned;
+}
+
+// ✅ 서버 응답을 NecessityData로 최대한 안정적으로 변환
+function mergeNecessityFromAutofill(data: AutofillResponse): NecessityData {
+  const base: NecessityData = JSON.parse(JSON.stringify(EMPTY_NECESSITY));
+
+  // 1) content가 있으면 텍스트 파싱
+  let fromContent: NecessityData | null = null;
+  if (data?.content) {
+    fromContent = parseNecessityFromContent(String(data.content));
+  }
+
+  // 2) fields.*.content도 text로 흡수 (서버가 이렇게 줄 때가 많음)
+  const fieldsText: Partial<NecessityData["text"]> = {
+    childNeeds: data?.fields?.needsProblem?.content ?? "",
+    regionSummary: data?.fields?.regionSummary?.content ?? "",
+    regionLocal: data?.fields?.regionLocal?.content ?? "",
+    regionAround: data?.fields?.regionAround?.content ?? "",
+    regionEdu: data?.fields?.regionEdu?.content ?? "",
+  };
+
+  // 3) text 우선순위: base < fromContent < data.text < fieldsText
+  const textMerged: NecessityData["text"] = {
+    ...base.text,
+    ...(fromContent?.text ?? {}),
+    ...(data?.text ?? {}),
+    ...fieldsText,
+  };
+
+  // 4) keywords 매핑
+  const kNeeds = fill3(
+    data?.fields?.needsProblem?.keywords ??
+      extractKeywords(data?.keywords?.needs) ??
+      fromContent?.keywords?.childNeeds ??
+      [],
+  );
+
+  const kRegionSummaryRaw =
+    data?.fields?.regionSummary?.keywords ??
+    extractKeywords(data?.keywords?.regionSummary) ??
+    extractKeywords(data?.keywords?.region) ??
+    fromContent?.keywords?.regionSummary ??
+    [];
+
+  const summary3 = fill3(kRegionSummaryRaw);
+
+  const local3 = fill3(
+    data?.fields?.regionLocal?.keywords ??
+      fromContent?.keywords?.regionLocal ??
+      [],
+  );
+  const around3 = fill3(
+    data?.fields?.regionAround?.keywords ??
+      fromContent?.keywords?.regionAround ??
+      [],
+  );
+  const edu3 = fill3(
+    data?.fields?.regionEdu?.keywords ?? fromContent?.keywords?.regionEdu ?? [],
+  );
+
+  // 5) ✅ text가 비면 "키워드로 임시 요약"을 만들어서 미리보기에 최소한 보이게 함
+  const ensureText = (val: string, keys: string[], label: string) => {
+    const trimmed = (val || "").trim();
+    if (trimmed) return trimmed;
+    const joined = keys.filter(Boolean).join(", ");
+    return joined ? `키워드 기반 요약: ${joined}` : `(내용 없음)`;
+  };
+
+  const merged: NecessityData = {
+    ...base,
+    text: {
+      childNeeds: ensureText(
+        textMerged.childNeeds || "",
+        kNeeds,
+        "욕구/문제점",
+      ),
+      regionSummary: ensureText(
+        textMerged.regionSummary || "",
+        summary3,
+        "지역요약",
+      ),
+      regionLocal: ensureText(
+        textMerged.regionLocal || "",
+        local3.some(Boolean) ? local3 : summary3,
+        "지역적 특성",
+      ),
+      regionAround: ensureText(
+        textMerged.regionAround || "",
+        around3.some(Boolean) ? around3 : summary3,
+        "주변환경",
+      ),
+      regionEdu: ensureText(
+        textMerged.regionEdu || "",
+        edu3.some(Boolean) ? edu3 : summary3,
+        "교육적 특성",
+      ),
+    },
+    keywords: {
+      ...base.keywords,
+      childNeeds: kNeeds,
+      regionSummary: summary3,
+      regionLocal: local3.some(Boolean) ? local3 : summary3,
+      regionAround: around3.some(Boolean) ? around3 : summary3,
+      regionEdu: edu3.some(Boolean) ? edu3 : summary3,
+    },
+  };
+
+  return merged;
+}
+
+/** ✅ 미리보기 제목/내용 헬퍼 */
+function getSectionDef(key: Part1Key) {
+  return PART1_SECTIONS.find((s) => s.key === key);
+}
+
+function getPreviewContent(params: {
+  key: Part1Key;
+  part1Data: any;
+  necessityPreviewEnabled: boolean;
+}) {
+  const { key, part1Data, necessityPreviewEnabled } = params;
+
+  // ✅ 1. 필요성은 문서생성하기 전까지 “절대” 내용 안 보이게
+  if (key === "necessity") {
+    if (!necessityPreviewEnabled) return null;
+    return part1Data?.necessity?.content || "";
+  }
+
+  return part1Data?.[key]?.content || "";
+}
+
 interface Part1SectionCardProps {
   sectionDef: SectionDef;
   field: DraftField | undefined;
-  onUpdate: (key: string, field: DraftField) => void;
+  onUpdate: (key: Part1Key, field: DraftField) => void;
+  onAfterBuildNecessity?: () => void; // ✅ 문서생성 이후 추가 동작(탭 이동 등)
+  isPreviewEnabled?: boolean;
 }
 
 function Part1SectionCard({
   sectionDef,
   field,
   onUpdate,
+  onAfterBuildNecessity,
+  isPreviewEnabled,
 }: Part1SectionCardProps) {
   const { toast } = useToast();
   const isNecessity = sectionDef.key === "necessity";
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [localContent, setLocalContent] = useState(field?.content ?? "");
-
-  // ✅ PDF 업로드 파일
   const [previousPdf, setPreviousPdf] = useState<File | null>(null);
-
-  // ✅ 자동 채움 로딩(이 카드 내부에서만 관리)
   const [autoFillLoading, setAutoFillLoading] = useState(false);
 
-  // ✅ necessity 로컬 구조
-  const [localNecessity, setLocalNecessity] = useState<NecessityData>(() =>
-    parseNecessityFromContent(field?.content),
-  );
+  const [localContent, setLocalContent] = useState(field?.content ?? "");
+
+  const [localNecessity, setLocalNecessity] = useState<NecessityData>(() => {
+    const fromReq = decodeNecessityFromRequest(field?.request);
+    if (fromReq) return fromReq;
+    return parseNecessityFromContent(field?.content);
+  });
 
   useEffect(() => {
-    if (!isEditing) {
-      setLocalContent(field?.content ?? "");
-      if (isNecessity) {
-        setLocalNecessity(parseNecessityFromContent(field?.content));
-      }
+    setLocalContent(field?.content ?? "");
+    if (isNecessity) {
+      const fromReq = decodeNecessityFromRequest(field?.request);
+      setLocalNecessity(fromReq ?? parseNecessityFromContent(field?.content));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field, isEditing]);
+  }, [field?.content, field?.request, isNecessity]);
 
-  const handleStartEdit = () => {
-    setLocalContent(field?.content ?? "");
-    if (isNecessity)
-      setLocalNecessity(parseNecessityFromContent(field?.content));
-    setIsEditing(true);
-  };
-
-  const handleSave = () => {
-    const nextContent = isNecessity
-      ? buildNecessityContent(localNecessity)
-      : localContent;
-
+  const commitText = (next: string) => {
+    setLocalContent(next);
     onUpdate(sectionDef.key, {
       keyword: field?.keyword ?? "",
       request: field?.request ?? "",
-      content: nextContent,
+      content: next,
     });
-
-    setIsEditing(false);
   };
 
-  const handleCancel = () => setIsEditing(false);
+  // ✅ necessity는 입력 변경 시 로컬로만 저장
+  const stageNecessity = (nextNecessity: NecessityData) => {
+    setLocalNecessity(nextNecessity);
+  };
 
-  // ✅ (핵심) PDF 자동 채움: “사업의 필요성” 카드에서만 사용
+  // ✅ 문서생성하기: 서버에서 5개 항목(각 300~500자) 생성 → store 반영 → 미리보기 ON
+  const handleBuildDocument = async () => {
+    try {
+      setAutoFillLoading(true);
+
+      const payload = {
+        keywords: {
+          childNeeds: localNecessity.keywords.childNeeds,
+          regionSummary: localNecessity.keywords.regionSummary,
+          regionLocal: localNecessity.keywords.regionLocal,
+          regionAround: localNecessity.keywords.regionAround,
+          regionEdu: localNecessity.keywords.regionEdu,
+        },
+        // baseText가 있다면 같이 보냄(없으면 제거해도 됨)
+        // baseText: localNecessity.baseText ?? "",
+      };
+
+      const res = await fetch("/api/annual/part1/necessity/generate5", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(async () => {
+        const t = await res.text();
+        throw new Error(t || "서버 응답 파싱 실패");
+      });
+
+      // ✅ HTTP 실패 or ok:false 모두 잡기
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "문서 생성 실패(generate5)");
+      }
+
+      const fields = data.fields || {};
+
+      // ✅ 핵심: textarea가 바라보는 state에 직접 주입
+      const nextNecessity = {
+        ...localNecessity,
+        text: {
+          ...localNecessity.text,
+          childNeeds: fields.childNeeds ?? fields.needsProblem ?? "",
+          regionSummary: fields.regionSummary ?? "",
+          regionLocal: fields.regionLocal ?? "",
+          regionAround: fields.regionAround ?? "",
+          regionEdu: fields.regionEdu ?? "",
+        },
+      };
+
+      setLocalNecessity(nextNecessity);
+
+      // store에도 반영하는 코드가 있다면 여기서 같이 호출(프로젝트에 이미 있을 가능성 큼)
+      // setAnnualPart1Necessity(nextNecessity);
+      // setIsPreviewEnabled(true);
+    } catch (e: any) {
+      console.error("handleBuildDocument failed:", e);
+      // toast 처리 로직이 있으면 그대로 사용
+      // toast({ title: "생성 실패", description: e?.message ?? "generate_failed" });
+    } finally {
+      setAutoFillLoading(false);
+    }
+  };
+
+  // ✅ PDF 자동 채움: 서버 키워드를 localNecessity.keywords까지 주입
   const handleAutoFillFromPdf = async () => {
     if (!isNecessity) return;
     if (!previousPdf) {
@@ -289,59 +491,24 @@ function Part1SectionCard({
         throw new Error(msg || "자동 채움 실패");
       }
 
-      const data = await res.json();
+      const data = (await res.json()) as AutofillResponse;
+      const nextNecessity = mergeNecessityFromAutofill(data);
 
-      // ✅ 1) { content: "..." } 형태
-      if (data?.content) {
-        const next = String(data.content);
+      // ✅ 화면에 키워드 즉시 표시
+      setLocalNecessity(nextNecessity);
 
-        // 편집 UI에도 바로 보이게
-        setLocalContent(next);
-        setLocalNecessity(parseNecessityFromContent(next));
+      // ✅ 자동채움 결과를 request에 저장(미리보기는 아직 OFF)
+      onUpdate("necessity", {
+        keyword: field?.keyword ?? "",
+        request: encodeNecessityToRequest(nextNecessity),
+        content: field?.content ?? "",
+      });
 
-        // 저장 데이터(미리보기)에도 즉시 반영
-        onUpdate("necessity", {
-          keyword: field?.keyword ?? "",
-          request: field?.request ?? "",
-          content: next,
-        });
-
-        toast({
-          title: "자동 채움 완료",
-          description: "PDF 내용을 바탕으로 ‘사업의 필요성’을 채웠습니다.",
-        });
-        return;
-      }
-
-      // ✅ 2) { text: { childNeeds, ... } } 형태 → content로 합쳐 저장
-      if (data?.text) {
-        const nextNecessity: NecessityData = {
-          ...EMPTY_NECESSITY,
-          text: {
-            ...EMPTY_NECESSITY.text,
-            ...(data.text ?? {}),
-          },
-        };
-
-        const nextContent = buildNecessityContent(nextNecessity);
-
-        setLocalNecessity(nextNecessity);
-        setLocalContent(nextContent);
-
-        onUpdate("necessity", {
-          keyword: field?.keyword ?? "",
-          request: field?.request ?? "",
-          content: nextContent,
-        });
-
-        toast({
-          title: "자동 채움 완료",
-          description: "PDF 내용을 바탕으로 ‘사업의 필요성’을 채웠습니다.",
-        });
-        return;
-      }
-
-      throw new Error("서버 응답 형식이 예상과 다릅니다.");
+      toast({
+        title: "키워드 자동 채움 완료",
+        description:
+          "키워드를 채웠습니다. 아래에서 ‘문서생성하기’를 눌러 미리보기에 반영하세요.",
+      });
     } catch (e: any) {
       console.error(e);
       toast({
@@ -356,89 +523,64 @@ function Part1SectionCard({
 
   return (
     <Card data-testid={`card-section-${sectionDef.key}`}>
-      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-3">
+      <CardHeader className="pb-3">
         <div>
           <CardTitle className="text-base">{sectionDef.title}</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             {sectionDef.description}
           </p>
         </div>
-
-        <div className="flex items-center gap-1">
-          {isEditing ? (
-            <>
-              <Button variant="ghost" size="icon" onClick={handleCancel}>
-                <X className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={handleSave}>
-                <Save className="w-4 h-4" />
-              </Button>
-            </>
-          ) : (
-            <Button variant="ghost" size="icon" onClick={handleStartEdit}>
-              <Edit2 className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {isEditing ? (
-          <>
-            {/* ✅ 전년도 PDF 업로드 + 자동 채움 (사업 필요성에서만 의미 있음) */}
-            {isNecessity && (
-              <PreviousPdfUploader
-                file={previousPdf}
-                onChange={setPreviousPdf}
-                onAutoFill={handleAutoFillFromPdf}
-                autoFillLoading={autoFillLoading}
-                autoFillLabel="PDF 내용 자동 채움"
-              />
-            )}
+        {isNecessity && (
+          <PreviousPdfUploader
+            file={previousPdf}
+            onChange={setPreviousPdf}
+            onAutoFill={handleAutoFillFromPdf}
+            autoFillLoading={autoFillLoading}
+            autoFillLabel="PDF 키워드 자동 채움"
+          />
+        )}
 
-            {isNecessity ? (
-              <div className="space-y-2">
-                <Label>내용</Label>
-                <NecessityEditor
-                  value={localNecessity}
-                  onChange={setLocalNecessity}
-                />
-                <p className="text-xs text-muted-foreground">
-                  저장을 누르면 위 입력 내용이 한 번에 정리되어 ‘내용’으로
-                  저장됩니다.
+        {isNecessity ? (
+          <div className="space-y-2">
+            <Label>내용</Label>
+
+            <NecessityEditor value={localNecessity} onChange={stageNecessity} />
+
+            <div className="pt-2">
+              <Button
+                className="w-full"
+                onClick={handleBuildDocument}
+                disabled={autoFillLoading}
+              >
+                {autoFillLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    처리 중
+                  </>
+                ) : (
+                  "문서생성하기"
+                )}
+              </Button>
+
+              {!isPreviewEnabled && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  ‘문서생성하기’를 누르면 오른쪽에 미리보기가 표시됩니다.
                 </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>내용</Label>
-                <Textarea
-                  value={localContent}
-                  onChange={(e) => setLocalContent(e.target.value)}
-                  rows={6}
-                  placeholder="섹션 내용을 입력하세요"
-                />
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="space-y-3">
-            {field?.keyword && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  키워드:
-                </span>
-                <span className="text-sm bg-primary/10 px-2 py-0.5 rounded">
-                  {field.keyword}
-                </span>
-              </div>
-            )}
-
-            <div className="bg-muted p-3 rounded-md min-h-[100px]">
-              <p className="text-sm whitespace-pre-wrap">
-                {field?.content ||
-                  "아직 내용이 없습니다. 편집 버튼(연필)을 눌러 작성하세요."}
-              </p>
+              )}
             </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label>내용</Label>
+            <Textarea
+              value={localContent}
+              onChange={(e) => commitText(e.target.value)}
+              rows={6}
+              placeholder="섹션 내용을 입력하세요"
+            />
           </div>
         )}
       </CardContent>
@@ -448,82 +590,25 @@ function Part1SectionCard({
 
 export function AnnualPlanPart1Page() {
   const [, navigate] = useLocation();
-  const { toast } = useToast();
 
-  const {
-    extractedPrograms,
-    annualPlan,
-    setAnnualPlan,
-    updateAnnualPartField,
-    setCurrentStep,
-  } = useAppStore();
+  const { annualPlan, setAnnualPlan, updateAnnualPartField, setCurrentStep } =
+    useAppStore();
 
   const part1Data = annualPlan?.part1 ?? {};
 
-  const isReadyForAuto = useMemo(() => {
-    return Array.isArray(extractedPrograms) && extractedPrograms.length > 0;
-  }, [extractedPrograms]);
+  // ✅ necessity 미리보기 표시 여부(문서생성하기 버튼으로 켬)
+  const [necessityPreviewEnabled, setNecessityPreviewEnabled] = useState(false);
 
-  const generateMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/generate-annual-part1", {
-        annualPlan,
-        programs: extractedPrograms,
-      });
-      const data = res instanceof Response ? await res.json() : res;
-      return data;
-    },
-    onSuccess: (data: any) => {
-      setAnnualPlan(data);
-      toast({
-        title: "자동 작성 완료",
-        description: "PART 1 초안을 생성했습니다.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "자동 작성 실패",
-        description: "생성에 실패했습니다. 연결 상태를 확인해주세요.",
-        variant: "destructive",
-      });
-    },
-  });
+  // ✅ 미리보기 탭 상태(기본: 1. 필요성)
+  const [previewTab, setPreviewTab] = useState<Part1Key>("necessity");
 
-  const [autoWrite, setAutoWrite] = useState(false);
+  // ✅ part1Data가 바뀌어도 탭 유지 (특별 처리 없음)
+  const previewSectionDef = useMemo(
+    () => getSectionDef(previewTab),
+    [previewTab],
+  );
 
-  const handleWrite = async (nextAuto: boolean) => {
-    setAutoWrite(nextAuto);
-
-    if (!nextAuto) {
-      const part1 = buildExamplePart1(extractedPrograms);
-      const base = annualPlan ?? {
-        id: `annual-${Date.now()}`,
-        title: `${new Date().getFullYear()}년 연간사업계획`,
-        createdAt: new Date().toISOString(),
-      };
-      setAnnualPlan({ ...base, part1 });
-
-      toast({
-        title: "예시 작성 완료",
-        description: "PART 1 전체를 예시 데이터로 채웠습니다.",
-      });
-      return;
-    }
-
-    if (!isReadyForAuto) {
-      toast({
-        title: "자동 작성 불가",
-        description: "먼저 2단계에서 프로그램 자동 분류가 되어야 합니다.",
-        variant: "destructive",
-      });
-      setAutoWrite(false);
-      return;
-    }
-
-    await generateMutation.mutateAsync();
-  };
-
-  const handleUpdateSection = (key: string, field: DraftField) => {
+  const handleUpdateSection = (key: Part1Key, field: DraftField) => {
     if (!annualPlan) {
       const base = {
         id: `annual-${Date.now()}`,
@@ -542,93 +627,99 @@ export function AnnualPlanPart1Page() {
     navigate("/annual/part2");
   };
 
+  // ✅ 미리보기 내용
+  const previewContent = useMemo(() => {
+    return getPreviewContent({
+      key: previewTab,
+      part1Data,
+      necessityPreviewEnabled,
+    });
+  }, [previewTab, part1Data, necessityPreviewEnabled]);
+
   return (
     <div className="flex flex-col h-full">
-      {/* ✅ 상단 안내 + 버튼 */}
-      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur border-b">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              PDF/분류 정보를 바탕으로 초안을 만들고, 섹션별로 수정할 수
-              있습니다.
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              추출된 프로그램 정보: {extractedPrograms?.length ?? 0}개
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant={!autoWrite ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleWrite(false)}
-              disabled={generateMutation.isPending}
-            >
-              예시 작성
-            </Button>
-
-            <Button
-              variant={autoWrite ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleWrite(true)}
-              disabled={generateMutation.isPending}
-              className="gap-1"
-            >
-              {generateMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <span className="text-xs">AI</span>
-              )}
-              자동 작성
-            </Button>
-          </div>
-        </div>
-      </div>
-
       <div className="flex-1 space-y-6 pt-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 좌측: 입력/편집 */}
-          <div className="space-y-4">
+        <div className="grid grid-cols-1 xl:grid-cols-[3fr_5fr] gap-6">
+          {/* ✅ 좌측: 작성 */}
+          <div className="space-y-4 min-w-0">
             {PART1_SECTIONS.map((sec) => (
               <Part1SectionCard
                 key={sec.key}
                 sectionDef={sec}
                 field={(part1Data as any)[sec.key]}
                 onUpdate={handleUpdateSection}
+                isPreviewEnabled={
+                  sec.key === "necessity" ? necessityPreviewEnabled : true
+                }
+                onAfterBuildNecessity={() => {
+                  // ✅ 1~5단계 중 “할 수 있는 것”까지 한 번에:
+                  // 1) 필요성 미리보기 ON
+                  setNecessityPreviewEnabled(true);
+                  // 2) 미리보기 탭을 1. 필요성으로 자동 이동
+                  setPreviewTab("necessity");
+                }}
               />
             ))}
           </div>
 
-          {/* 우측: 미리보기 */}
-          <div className="space-y-4">
-            <Card className="sticky top-24">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  연간사업계획서 PART 1
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {PART1_SECTIONS.map((sec) => {
-                  const field = (part1Data as any)[sec.key] as
-                    | DraftField
-                    | undefined;
-                  return (
-                    <div key={sec.key} className="space-y-2">
-                      <h3 className="font-semibold text-sm">{sec.title}</h3>
+          {/* ✅ 우측: 미리보기 */}
+          <div className="space-y-4 min-w-0">
+            <div className="w-full">
+              <Card className="sticky top-24 w-full">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">
+                    연간사업계획서 PART 1
+                  </CardTitle>
+
+                  {/* ✅ 미리보기 탭 UI */}
+                  <div className="mt-3">
+                    <Tabs
+                      value={previewTab}
+                      onValueChange={(v) => setPreviewTab(v as Part1Key)}
+                    >
+                      <TabsList className="grid w-full grid-cols-5">
+                        <TabsTrigger value="necessity">1. 필요성</TabsTrigger>
+                        <TabsTrigger value="evaluationAndFeedback">
+                          2. 평가/환류
+                        </TabsTrigger>
+                        <TabsTrigger value="satisfaction">
+                          3. 만족도
+                        </TabsTrigger>
+                        <TabsTrigger value="purpose">4. 목적</TabsTrigger>
+                        <TabsTrigger value="goals">5. 목표</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
+                </CardHeader>
+
+                {/* ✅ 선택한 탭 1개만 미리보기 표시 */}
+                <CardContent className="px-10 py-10">
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-sm">
+                      {previewSectionDef?.title || "미리보기"}
+                    </h3>
+
+                    {/* ✅ 1. 필요성: 문서생성하기 전엔 안내문만 */}
+                    {previewTab === "necessity" && !necessityPreviewEnabled ? (
                       <div className="text-sm text-muted-foreground whitespace-pre-wrap pl-4 border-l-2 border-muted">
-                        {field?.content || "(내용 없음)"}
+                        (왼쪽에서 키워드를 확인한 뒤 ‘문서생성하기’를 누르면
+                        표시됩니다.)
                       </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
+                    ) : (
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap pl-4 border-l-2 border-muted">
+                        {previewContent || "(내용 없음)"}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="sticky bottom-0 bg-background border-t p-4">
-        <div className="max-w-7xl mx-auto flex justify-end">
+        <div className="w-full flex justify-end">
           <Button onClick={goNext} className="gap-2">
             다음 단계 (연간 Part2)
             <ChevronRight className="w-4 h-4" />

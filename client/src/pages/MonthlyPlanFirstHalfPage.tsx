@@ -106,16 +106,15 @@ function getMonthDataFromPlan(plan: MonthlyPlan | undefined): MonthData {
 
   return {
     overview: parseOverviewFromObjectives(plan.objectives || ""),
-    weeklyTasks:
-      plan.weeklyTasks?.map((w) => ({
-        week: w.week,
-        tasks: Array.isArray(w.tasks) ? w.tasks.join("\n") : "",
-      })) || [
-        { week: 1, tasks: "" },
-        { week: 2, tasks: "" },
-        { week: 3, tasks: "" },
-        { week: 4, tasks: "" },
-      ],
+    weeklyTasks: plan.weeklyTasks?.map((w) => ({
+      week: w.week,
+      tasks: Array.isArray(w.tasks) ? w.tasks.join("\n") : "",
+    })) || [
+      { week: 1, tasks: "" },
+      { week: 2, tasks: "" },
+      { week: 3, tasks: "" },
+      { week: 4, tasks: "" },
+    ],
   };
 }
 
@@ -128,7 +127,7 @@ function ProgramTable({
 }) {
   const sortedPrograms = useMemo(
     () => sortProgramsByCategory(programs),
-    [programs]
+    [programs],
   );
 
   if (sortedPrograms.length === 0) {
@@ -223,12 +222,15 @@ function MonthCard({
 
   const handleWeekChange = (weekIndex: number, tasks: string) => {
     const updated = localData.weeklyTasks.map((w, i) =>
-      i === weekIndex ? { ...w, tasks } : w
+      i === weekIndex ? { ...w, tasks } : w,
     );
     setLocalData({ ...localData, weeklyTasks: updated });
   };
 
-  const handleOverviewChange = (field: keyof MonthlyOverview, value: string) => {
+  const handleOverviewChange = (
+    field: keyof MonthlyOverview,
+    value: string,
+  ) => {
     setLocalData({
       ...localData,
       overview: { ...localData.overview, [field]: value },
@@ -394,9 +396,7 @@ function MonthCard({
               <TableRow>
                 <TableHead className="w-[80px] font-semibold">구분</TableHead>
                 <TableHead>주요 업무</TableHead>
-                {isEditing && (
-                  <TableHead className="w-[50px]"></TableHead>
-                )}
+                {isEditing && <TableHead className="w-[50px]"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -517,7 +517,7 @@ function PreviewPanel({
                           <li key={wt.week}>
                             {wt.week}주: {wt.tasks}
                           </li>
-                        ) : null
+                        ) : null,
                       )}
                     </ul>
                   </div>
@@ -659,7 +659,8 @@ export default function MonthlyPlanFirstHalfPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 space-y-6">
+      {/* ✅ 연간 Part1처럼: 폭 제한 없이 바로 본문 */}
+      <div className="flex-1 space-y-6 pt-4 px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <p className="text-muted-foreground" data-testid="heading-first-half">
             1월~6월 월별 사업계획을 작성합니다.
@@ -675,8 +676,10 @@ export default function MonthlyPlanFirstHalfPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <div className="lg:col-span-3">
+        {/* ✅ 연간 Part1과 동일한 방식: xl에서 3fr : 5fr */}
+        <div className="grid grid-cols-1 xl:grid-cols-[3fr_5fr] gap-6 items-start">
+          {/* 왼쪽 영역 */}
+          <div className="space-y-4 min-w-0">
             <Tabs
               value={selectedMonth}
               onValueChange={setSelectedMonth}
@@ -710,16 +713,22 @@ export default function MonthlyPlanFirstHalfPage() {
             </Tabs>
           </div>
 
-          <div className="lg:col-span-2 hidden lg:block">
-            <PreviewPanel
-              months={FIRST_HALF_MONTHS}
-              monthDataMap={monthDataMap}
-              year={year}
-            />
+          {/* 오른쪽 영역 */}
+          <div className="space-y-4 min-w-0">
+            <div className="w-full">
+              <div className="hidden xl:block sticky top-24 self-start">
+                <PreviewPanel
+                  months={FIRST_HALF_MONTHS}
+                  monthDataMap={monthDataMap}
+                  year={year}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* 하단 버튼바 */}
       <div className="sticky bottom-0 bg-background border-t p-4">
         <div className="max-w-7xl mx-auto flex justify-between">
           <Button

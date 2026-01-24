@@ -106,16 +106,15 @@ function getMonthDataFromPlan(plan: MonthlyPlan | undefined): MonthData {
 
   return {
     overview: parseOverviewFromObjectives(plan.objectives || ""),
-    weeklyTasks:
-      plan.weeklyTasks?.map((w) => ({
-        week: w.week,
-        tasks: Array.isArray(w.tasks) ? w.tasks.join("\n") : "",
-      })) || [
-        { week: 1, tasks: "" },
-        { week: 2, tasks: "" },
-        { week: 3, tasks: "" },
-        { week: 4, tasks: "" },
-      ],
+    weeklyTasks: plan.weeklyTasks?.map((w) => ({
+      week: w.week,
+      tasks: Array.isArray(w.tasks) ? w.tasks.join("\n") : "",
+    })) || [
+      { week: 1, tasks: "" },
+      { week: 2, tasks: "" },
+      { week: 3, tasks: "" },
+      { week: 4, tasks: "" },
+    ],
   };
 }
 
@@ -128,7 +127,7 @@ function ProgramTable({
 }) {
   const sortedPrograms = useMemo(
     () => sortProgramsByCategory(programs),
-    [programs]
+    [programs],
   );
 
   if (sortedPrograms.length === 0) {
@@ -223,12 +222,15 @@ function MonthCard({
 
   const handleWeekChange = (weekIndex: number, tasks: string) => {
     const updated = localData.weeklyTasks.map((w, i) =>
-      i === weekIndex ? { ...w, tasks } : w
+      i === weekIndex ? { ...w, tasks } : w,
     );
     setLocalData({ ...localData, weeklyTasks: updated });
   };
 
-  const handleOverviewChange = (field: keyof MonthlyOverview, value: string) => {
+  const handleOverviewChange = (
+    field: keyof MonthlyOverview,
+    value: string,
+  ) => {
     setLocalData({
       ...localData,
       overview: { ...localData.overview, [field]: value },
@@ -394,9 +396,7 @@ function MonthCard({
               <TableRow>
                 <TableHead className="w-[80px] font-semibold">구분</TableHead>
                 <TableHead>주요 업무</TableHead>
-                {isEditing && (
-                  <TableHead className="w-[50px]"></TableHead>
-                )}
+                {isEditing && <TableHead className="w-[50px]"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -517,7 +517,7 @@ function PreviewPanel({
                           <li key={wt.week}>
                             {wt.week}주: {wt.tasks}
                           </li>
-                        ) : null
+                        ) : null,
                       )}
                     </ul>
                   </div>
@@ -659,9 +659,13 @@ export default function MonthlyPlanSecondHalfPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 space-y-6">
+      {/* ✅ 상반기와 동일: 폭 제한 없이 본문 + 패딩/여백 통일 */}
+      <div className="flex-1 space-y-6 pt-4 px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <p className="text-muted-foreground" data-testid="heading-second-half">
+          <p
+            className="text-muted-foreground"
+            data-testid="heading-second-half"
+          >
             7월~12월 월별 사업계획을 작성합니다.
           </p>
           <div className="flex items-center gap-2">
@@ -675,8 +679,10 @@ export default function MonthlyPlanSecondHalfPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <div className="lg:col-span-3">
+        {/* ✅ 상반기와 동일 비율: xl에서 3fr : 5fr */}
+        <div className="grid grid-cols-1 xl:grid-cols-[3fr_5fr] gap-6 items-start">
+          {/* 왼쪽 영역 */}
+          <div className="space-y-4 min-w-0">
             <Tabs
               value={selectedMonth}
               onValueChange={setSelectedMonth}
@@ -710,12 +716,17 @@ export default function MonthlyPlanSecondHalfPage() {
             </Tabs>
           </div>
 
-          <div className="lg:col-span-2 hidden lg:block">
-            <PreviewPanel
-              months={SECOND_HALF_MONTHS}
-              monthDataMap={monthDataMap}
-              year={year}
-            />
+          {/* 오른쪽 영역 */}
+          <div className="space-y-4 min-w-0">
+            <div className="w-full">
+              <div className="hidden xl:block sticky top-24 self-start">
+                <PreviewPanel
+                  months={SECOND_HALF_MONTHS}
+                  monthDataMap={monthDataMap}
+                  year={year}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

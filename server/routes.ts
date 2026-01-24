@@ -39,8 +39,13 @@ function getGeminiClient() {
 }
 
 function getGeminiModel() {
-  // 필요하면 서버 env에서 바꿔 쓸 수 있게
-  return process.env.GEMINI_MODEL || "gemini-1.5-flash";
+  const envModel = process.env.GEMINI_MODEL?.trim();
+  if (!envModel) return "gemini-1.5-flash-latest";
+
+  let m = envModel.replace(/^models\//, "");
+  if (m === "gemini-1.5-flash") m = "gemini-1.5-flash-latest";
+
+  return m;
 }
 
 function safeExtractTextFromGemini(result: any): string {
@@ -56,7 +61,7 @@ function safeExtractTextFromGemini(result: any): string {
 async function geminiText(prompt: string, system?: string) {
   const ai = getGeminiClient();
   const model = getGeminiModel();
-
+  console.log("[Gemini] using model:", model);
   const contents = [
     ...(system
       ? [{ role: "user" as const, parts: [{ text: `SYSTEM:\n${system}` }] }]
@@ -78,7 +83,13 @@ async function geminiText(prompt: string, system?: string) {
 
 async function geminiJson(prompt: string, system?: string): Promise<any> {
   const ai = getGeminiClient();
-  const model = getGeminiModel();
+  const model = "gemini-1.5-flash-latest";
+  console.log(
+    "[GeminiJson] FORCE model:",
+    model,
+    "ENV:",
+    process.env.GEMINI_MODEL,
+  );
 
   const contents = [
     ...(system
@@ -99,11 +110,9 @@ async function geminiJson(prompt: string, system?: string): Promise<any> {
 
   const raw = safeExtractTextFromGemini(result).trim();
 
-  // 1) 바로 JSON 시도
   try {
     return JSON.parse(raw);
   } catch {
-    // 2) 코드펜스/설명 섞이면 JSON 덩어리만 추출
     const jsonMatch = raw.match(/\[[\s\S]*\]/) || raw.match(/\{[\s\S]*\}/);
     if (jsonMatch?.[0]) {
       try {
@@ -181,6 +190,13 @@ function defaultRegionKeywords() {
   return ["자원부족", "접근성", "방과후공백"];
 }
 
+/** ✅ 키워드 3개 보장 유틸 */
+function ensure3(arr: any, fallback: string[]) {
+  const a = Array.isArray(arr) ? arr.filter(Boolean).slice(0, 3) : [];
+  while (a.length < 3) a.push("");
+  return a.some(Boolean) ? a : fallback;
+}
+
 /* =========================================================
    Routes
 ========================================================= */
@@ -218,9 +234,131 @@ export async function registerRoutes(
   );
 
   /**
-   * ✅ 1-1) 연간 Part1 - 사업의 필요성 자동채움
-   * - PDF 텍스트가 충분하면: Gemini로 '이용아동 욕구/문제점' + '지역 환경적 특성'을 생성 + 키워드(각 3개)
-   * - 텍스트가 너무 짧거나 API 키가 없으면: 안전한 기본 키워드 + 빈 내용 반환(Stub fallback)
+   * ✅ 1-2) 연간 Part1 - 사업의 필요성(5개 항목) 생성 (fields 형태)
+   * - 키워드 기반으로 각 항목 300~500자 생성
+   * - 반드시 JSON으로 반환
+   */
+  app.post(
+    "/api/annual/part1/necessity/generate5",
+    async (req: Request, res: Response) => {
+      try {
+        const apiKey = getGeminiApiKey();
+        if (!apiKey) {
+          return res.status(500).json({
+            ok: false,
+            error: "generate_failed",
+            message: "GEMINI_API_KEY is missing in server env",
+          });
+        }
+
+        const body = (req.body || {}) as any;
+        const keywords = body.keywords || {};
+        const text = body.text || {};
+
+        const baseText = String(text.baseText || "").slice(0, 15000);
+
+        const childNeeds = ensure3(keywords.childNeeds, defaultNeedsKeywords());
+        const regionSummary = ensure3(
+          keywords.regionSummary,
+          defaultRegionKeywords(),
+        );
+        const regionLocal = ensure3(keywords.regionLocal, regionSummary);
+        const regionAround = ensure3(keywords.regionAround, regionSummary);
+        const regionEdu = ensure3(keywords.regionEdu, regionSummary);
+
+        const prompt = `너는 지역아동센터 연간사업계획서 작성 전문가이다.
+아래 5개 항목을 각각 300~500자로 작성하라. 너무 짧게 쓰지 말고 500자를 넘기지 말라.
+과장하지 말고 사업계획서 톤을 유지한다.
+각 항목에는 제공된 키워드 3개를 자연스럽게 반드시 반영한다.
+
+[키워드]
+1) 이용아동의 욕구 및 문제점: ${childNeeds.join(", ")}
+2) 지역 환경적 특성(요약): ${regionSummary.join(", ")}
+3) (1) 지역적 특성: ${regionLocal.join(", ")}
+4) (2) 주변환경: ${regionAround.join(", ")}
+5) (3) 교육적 특성: ${regionEdu.join(", ")}
+
+[출력 JSON 스키마]
+{
+  "needsProblem": "300~500자",
+  "regionSummary": "300~500자",
+  "regionLocal": "300~500자",
+  "regionAround": "300~500자",
+  "regionEdu": "300~500자"
+}
+
+[규칙]
+- 반드시 JSON만 출력한다(설명/코드/문장 추가 금지).
+- 각 값은 300~500자 범위로 작성한다.
+- 근거가 부족하면 일반적으로 타당한 수준에서 작성하되 과장하지 않는다.
+
+[텍스트]
+${baseText}
+`;
+
+        const out = await geminiJson(
+          prompt,
+          "당신은 지역아동센터 연간사업계획서 작성 전문가이다. 출력은 JSON만 반환한다.",
+        );
+
+        if (!out || typeof out !== "object") {
+          return res.status(500).json({
+            ok: false,
+            error: "generate_failed",
+            message: "Gemini JSON parse failed",
+          });
+        }
+        // 🔽 [추가 시작] — 299행
+        const requiredKeys = [
+          "needsProblem",
+          "regionSummary",
+          "regionLocal",
+          "regionAround",
+          "regionEdu",
+        ];
+
+        const hasAllKeys = requiredKeys.every(
+          (k) =>
+            typeof (out as any)[k] === "string" &&
+            String((out as any)[k]).trim().length > 0,
+        );
+
+        if (!hasAllKeys) {
+          return res.status(500).json({
+            ok: false,
+            error: "generate_failed",
+            message: "Gemini JSON shape invalid or empty fields",
+            debugKeys: Object.keys(out as any),
+          });
+        }
+        // 🔼 [추가 끝]
+
+        return res.json({
+          ok: true,
+          source: "gemini",
+          fields: {
+            needsProblem: String((out as any).needsProblem || "").trim(),
+            regionSummary: String((out as any).regionSummary || "").trim(),
+            regionLocal: String((out as any).regionLocal || "").trim(),
+            regionAround: String((out as any).regionAround || "").trim(),
+            regionEdu: String((out as any).regionEdu || "").trim(),
+          },
+        });
+      } catch (e: any) {
+        console.error("necessity generate5 error:", e);
+        return res.status(500).json({
+          ok: false,
+          error: "generate5_failed",
+          message: e?.message || "unknown error",
+        });
+      }
+    },
+  );
+
+  /**
+   * ✅ 1-2) 연간 Part1 - 필요성 자동작성(2개 항목) + 키워드 (PDF 업로드)
+   * - 클라에서 PDF를 업로드하면, 텍스트 기반으로 needsProblem/regionSummary 초안 생성
+   * - 서버에 키가 없거나 텍스트가 짧으면 키워드만 반환
    */
   app.post(
     "/api/annual/part1/necessity/autofill",
@@ -230,7 +368,6 @@ export async function registerRoutes(
       const fileName = req.file?.originalname || null;
 
       try {
-        // 1) PDF 텍스트 추출
         let extractedText = "";
         if (req.file?.buffer) {
           try {
@@ -241,18 +378,15 @@ export async function registerRoutes(
           }
         }
 
-        // 2) 최소 텍스트 기준(너무 짧으면 Gemini 호출해도 품질이 떨어짐)
         const baseText = (extractedText || "").trim();
         const baseTextShort = baseText.length < 500;
 
-        // 3) 키워드 기본(텍스트 기반 간단 추출 + fallback)
         const baseKw = baseText ? extractKeywordsSimple(baseText, 6) : [];
         const needsKeywords =
           baseKw.length >= 3 ? baseKw.slice(0, 3) : defaultNeedsKeywords();
         const regionKeywords =
           baseKw.length >= 6 ? baseKw.slice(3, 6) : defaultRegionKeywords();
 
-        // 4) API 키가 없으면: 안전 stub
         const apiKey = getGeminiApiKey();
         if (!apiKey || baseTextShort) {
           return res.json({
@@ -270,7 +404,6 @@ export async function registerRoutes(
           });
         }
 
-        // 5) Gemini로 실제 내용 생성 (JSON 강제)
         const prompt = `다음은 지역아동센터 관련 PDF에서 추출한 텍스트이다.
 이 텍스트를 근거로, 연간사업계획서 Part1의 '사업의 필요성'을 자동 작성하기 위한 JSON만 반환하라.
 
@@ -293,8 +426,8 @@ export async function registerRoutes(
 [규칙]
 - 반드시 JSON만 출력한다(설명/문장/코드펜스 금지).
 - keywords.needs / keywords.region은 각각 3개.
-- content는 초등학생도 이해할 만큼 쉬운 문장으로 쓰되, 사업계획서 톤을 유지한다.
-- 텍스트에서 근거를 찾기 어려우면, 일반적으로 타당한 내용으로 작성하되 과장하지 않는다.
+- content는 쉬운 문장으로 쓰되, 사업계획서 톤을 유지한다.
+- 과장하지 않는다.
 
 [텍스트]
 ${baseText.substring(0, 15000)}
@@ -305,7 +438,6 @@ ${baseText.substring(0, 15000)}
           "당신은 지역아동센터 사업계획서(연간) 작성 전문가이다. 출력은 JSON만 반환한다.",
         );
 
-        // 6) 파싱 실패 시 fallback (키워드만)
         if (!parsed || typeof parsed !== "object") {
           return res.json({
             ok: true,
@@ -320,7 +452,6 @@ ${baseText.substring(0, 15000)}
           });
         }
 
-        // 7) 값 정리/보정(누락 대비)
         const pNeedsKw: string[] = Array.isArray(
           (parsed as any)?.keywords?.needs,
         )
@@ -354,6 +485,7 @@ ${baseText.substring(0, 15000)}
           ok: true,
           source: "gemini",
           received: { hasFile, fileName },
+          baseText: baseText.substring(0, 15000),
           content:
             "업로드 PDF를 기준으로 '이용아동의 욕구 및 문제점'과 '지역 환경적 특성' 초안을 생성한다.",
           keywords: { needs: finalNeedsKw, region: finalRegionKw },
@@ -365,7 +497,6 @@ ${baseText.substring(0, 15000)}
       } catch (error: any) {
         console.error("necessity autofill error:", error);
 
-        // 키가 없을 때 메시지 명확히
         if (String(error?.message || "").includes("GEMINI_API_KEY")) {
           return res.status(500).json({
             ok: false,
@@ -375,6 +506,105 @@ ${baseText.substring(0, 15000)}
         }
 
         return res.status(500).json({ ok: false, error: "autofill_failed" });
+      }
+    },
+  );
+
+  /**
+   * ✅ 1-2) 연간 Part1 - 사업의 필요성 "5개 항목"을 한 번에 300~500자로 생성 (text 형태)
+   */
+  app.post(
+    "/api/annual/part1/necessity/generate",
+    async (req: Request, res: Response) => {
+      try {
+        const apiKey = getGeminiApiKey();
+        if (!apiKey) {
+          return res.status(500).json({
+            ok: false,
+            error: "Server config error",
+            message: "GEMINI_API_KEY is missing in server env",
+          });
+        }
+
+        const body = req.body || {};
+        const keywords = (body as any).keywords || {};
+        const baseText = String((body as any).baseText || "").slice(0, 15000);
+
+        const childNeeds = ensure3(keywords.childNeeds, defaultNeedsKeywords());
+        const regionSummary = ensure3(
+          keywords.regionSummary,
+          defaultRegionKeywords(),
+        );
+        const regionLocal = ensure3(keywords.regionLocal, regionSummary);
+        const regionAround = ensure3(keywords.regionAround, regionSummary);
+        const regionEdu = ensure3(keywords.regionEdu, regionSummary);
+
+        const prompt = `너는 지역아동센터 연간사업계획서 작성 전문가이다.
+아래 5개 항목을 각각 300~500자로 작성하라. 너무 짧게 쓰지 말고 500자를 넘기지 말라.
+사업계획서 톤을 유지하되 과장하지 않는다.
+각 항목에는 제공된 키워드 3개를 자연스럽게 반드시 반영한다.
+
+[반환 형식]
+반드시 JSON만 반환한다(설명/문장/코드펜스 금지).
+{
+  "text": {
+    "childNeeds": "...",
+    "regionSummary": "...",
+    "regionLocal": "...",
+    "regionAround": "...",
+    "regionEdu": "..."
+  }
+}
+
+[항목 정의]
+1) childNeeds = 이용아동의 욕구 및 문제점
+2) regionSummary = 지역 환경적 특성(요약)
+3) regionLocal = (1) 지역적 특성
+4) regionAround = (2) 주변환경
+5) regionEdu = (3) 교육적 특성
+
+[키워드]
+- childNeeds: ${JSON.stringify(childNeeds)}
+- regionSummary: ${JSON.stringify(regionSummary)}
+- regionLocal: ${JSON.stringify(regionLocal)}
+- regionAround: ${JSON.stringify(regionAround)}
+- regionEdu: ${JSON.stringify(regionEdu)}
+
+[참고 텍스트(있으면 근거로 활용, 없으면 일반적으로 타당하게)]
+${baseText}
+`;
+
+        const parsed = await geminiJson(
+          prompt,
+          "출력은 JSON만 반환한다. 각 항목은 300~500자 분량으로 작성한다.",
+        );
+
+        const text = (parsed as any)?.text;
+        if (!text) {
+          return res.status(500).json({ ok: false, error: "generate_failed" });
+        }
+
+        return res.json({
+          ok: true,
+          source: "gemini",
+          text: {
+            childNeeds: String(text.childNeeds || "").trim(),
+            regionSummary: String(text.regionSummary || "").trim(),
+            regionLocal: String(text.regionLocal || "").trim(),
+            regionAround: String(text.regionAround || "").trim(),
+            regionEdu: String(text.regionEdu || "").trim(),
+          },
+        });
+      } catch (error: any) {
+        console.error("necessity generate error:", error);
+        if (String(error?.message || "").includes("GEMINI_API_KEY")) {
+          return res.status(500).json({
+            ok: false,
+            error: "Server config error",
+            message: error.message,
+          });
+        }
+        return res.status(500).json({ ok: false, error: "generate_failed" });
       }
     },
   );
