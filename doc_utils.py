@@ -257,6 +257,21 @@ def df_to_word_table(document, df: pd.DataFrame, title: str = None, table_type: 
             row.cells[1].width = Inches(3.0)
             row.cells[2].width = Inches(1.7)
             row.cells[3].width = Inches(1.0)
+    elif table_type == 'part2_detail' and len(df.columns) == 7:
+        for row in table.rows:
+            row.cells[0].width = Inches(0.7)
+            row.cells[1].width = Inches(0.8)
+            row.cells[2].width = Inches(1.2)
+            row.cells[3].width = Inches(0.6)
+            row.cells[4].width = Inches(0.5)
+            row.cells[5].width = Inches(0.5)
+            row.cells[6].width = Inches(2.2)
+    elif table_type == 'part2_eval' and len(df.columns) == 4:
+        for row in table.rows:
+            row.cells[0].width = Inches(1.0)
+            row.cells[1].width = Inches(1.5)
+            row.cells[2].width = Inches(2.5)
+            row.cells[3].width = Inches(1.5)
     
     for row_idx, row in enumerate(table.rows):
         for cell in row.cells:
@@ -399,13 +414,17 @@ def generate_part2_report(programs_dict: dict) -> io.BytesIO:
                 column_mapping = {
                     'sub_area': '세부영역',
                     'program_name': '프로그램명',
+                    'expected_effect': '기대효과',
                     'target': '대상',
                     'count': '인원',
                     'cycle': '주기',
                     'content': '계획내용'
                 }
                 df = df.rename(columns=column_mapping)
-                df_to_word_table(document, df, '세부사업내용')
+                expected_cols = ['세부영역', '프로그램명', '기대효과', '대상', '인원', '주기', '계획내용']
+                existing_cols = [c for c in expected_cols if c in df.columns]
+                df = df[existing_cols]
+                df_to_word_table(document, df, '세부사업내용', table_type='part2_detail')
             
             if 'eval_table' in category_data and category_data['eval_table']:
                 df = pd.DataFrame(category_data['eval_table'])
@@ -416,7 +435,7 @@ def generate_part2_report(programs_dict: dict) -> io.BytesIO:
                     'eval_timing': '평가시기'
                 }
                 df = df.rename(columns=column_mapping)
-                df_to_word_table(document, df, '평가계획')
+                df_to_word_table(document, df, '평가계획', table_type='part2_eval')
     
     buffer = io.BytesIO()
     document.save(buffer)
@@ -556,13 +575,17 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
                 column_mapping = {
                     'sub_area': '세부영역',
                     'program_name': '프로그램명',
+                    'expected_effect': '기대효과',
                     'target': '대상',
                     'count': '인원',
                     'cycle': '주기',
                     'content': '계획내용'
                 }
                 df = df.rename(columns=column_mapping)
-                df_to_word_table(document, df, '세부사업내용')
+                expected_cols = ['세부영역', '프로그램명', '기대효과', '대상', '인원', '주기', '계획내용']
+                existing_cols = [c for c in expected_cols if c in df.columns]
+                df = df[existing_cols]
+                df_to_word_table(document, df, '세부사업내용', table_type='part2_detail')
             
             if 'eval_table' in category_data and category_data['eval_table']:
                 df = pd.DataFrame(category_data['eval_table'])
@@ -573,7 +596,7 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
                     'eval_timing': '평가시기'
                 }
                 df = df.rename(columns=column_mapping)
-                df_to_word_table(document, df, '평가계획')
+                df_to_word_table(document, df, '평가계획', table_type='part2_eval')
     
     document.add_page_break()
     

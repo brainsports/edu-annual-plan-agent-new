@@ -158,26 +158,31 @@ def get_gemini_analysis(text: str) -> dict:
   },
   "part2_programs": {
     "보호": {
+      "subcategories": ["생활", "안전", "가족기능강화"],
       "detail_table": [
-        {"sub_area": "세부영역", "program_name": "프로그램명", "target": "대상", "count": "인원", "cycle": "주기", "content": "계획내용"}
+        {"sub_area": "생활/안전/가족기능강화 중 택일", "program_name": "프로그램명", "expected_effect": "기대효과 (100자 이상)", "target": "대상아동", "count": "계획인원", "cycle": "주기", "content": "● **세부내용1**: 상세 설명...\\n● **세부내용2**: 상세 설명..."}
       ],
       "eval_table": [
         {"program_name": "프로그램명", "eval_tool": "평가도구", "eval_method": "평가방법", "eval_timing": "평가시기"}
       ]
     },
     "교육": {
+      "subcategories": ["성장과권리", "학습", "특기적성"],
       "detail_table": [],
       "eval_table": []
     },
     "문화": {
+      "subcategories": ["체험활동"],
       "detail_table": [],
       "eval_table": []
     },
     "정서지원": {
+      "subcategories": ["상담"],
       "detail_table": [],
       "eval_table": []
     },
     "지역사회연계": {
+      "subcategories": ["연계"],
       "detail_table": [],
       "eval_table": []
     }
@@ -254,7 +259,19 @@ def get_gemini_analysis(text: str) -> dict:
     5. **지속 가능한 운영과 지역사회 연계 강화**: 자원봉사자/후원자 관리, 투명한 운영, 지역사회 네트워크 구축 내용 포함
   - 각 bullet point 사이에 빈 줄(\\n\\n)을 삽입하세요.
   - 이모지 사용 금지. ● 기호만 사용하세요.
-- part2_programs는 5개 카테고리(보호, 교육, 문화, 정서지원, 지역사회연계)별로 구분하여 작성하세요.
+- **part2_programs 작성 규칙 (고정 세부영역 분류 필수):**
+  - 5개 주요 카테고리(보호, 교육, 문화, 정서지원, 지역사회연계)별로 프로그램을 분류하세요.
+  - 각 카테고리에는 고정된 세부영역(sub_area)이 있으며, 프로그램을 반드시 해당 세부영역에 배치하세요:
+    ● **보호**: 생활(위생/급식/일상지도), 안전(야간보호/귀가지도/안전교육), 가족기능강화(부모교육/가족캠프)
+    ● **교육**: 성장과권리(아동권리교육/자치회의), 학습(기초학력지도/독서/영어), 특기적성(음악/미술/스포츠)
+    ● **문화**: 체험활동(캠프/현장학습/공연관람)
+    ● **정서지원**: 상담(개별상담/집단상담/보호자상담)
+    ● **지역사회연계**: 연계(자원봉사관리/후원연계/기관협력)
+  - detail_table 필수 필드: sub_area, program_name, expected_effect, target, count, cycle, content
+  - **expected_effect**: 100자 이상의 상세한 기대효과 작성
+  - **content (계획내용)**: ● 불릿 포인트 사용, 각 내용은 상세히 작성 (예: "● **급식 관리**: 균형 잡힌 영양 식단을 주간 단위로 계획하여...")
+  - 문서에서 프로그램이 추출되지 않은 세부영역의 경우, 지역아동센터 표준 프로그램을 현실적으로 생성하세요.
+  - 이모지 사용 금지, ● 기호만 사용하세요.
 - **월별 계획(part3_monthly_1h, part4_monthly_2h) 작성 규칙:**
   - part3_monthly_1h는 상반기(1월~6월), part4_monthly_2h는 하반기(7월~12월) 계획입니다.
   - 각 월별로 반드시 다음 4개 필드를 포함하세요: month, activity, safety, note
@@ -331,55 +348,78 @@ def get_default_data() -> dict:
         },
         "part2_programs": {
             "보호": {
+                "subcategories": ["생활", "안전", "가족기능강화"],
                 "detail_table": [
-                    {"sub_area": "기본돌봄", "program_name": "방과후 돌봄", "target": "초등학생", "count": "30명", "cycle": "주 5회", "content": "숙제지도, 간식 제공, 안전한 돌봄 환경 제공"},
-                    {"sub_area": "급식지원", "program_name": "건강 급식", "target": "전체 아동", "count": "50명", "cycle": "주 5회", "content": "균형 잡힌 영양 급식 제공"}
+                    {"sub_area": "생활", "program_name": "위생관리 지도", "expected_effect": "아동들이 올바른 위생 습관을 형성하고 청결한 생활 환경을 유지하여 건강한 일상생활을 영위할 수 있습니다.", "target": "전체 아동", "count": "50명", "cycle": "매일", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도 및 점검표 관리\n● **환경위생 관리**: 시설 내 청소 및 정리정돈 습관 형성 지도"},
+                    {"sub_area": "생활", "program_name": "영양 급식", "expected_effect": "균형 잡힌 영양 섭취를 통해 성장기 아동의 신체 발달을 촉진하고 건강한 식습관을 형성합니다.", "target": "전체 아동", "count": "50명", "cycle": "주 5회", "content": "● **급식 운영**: 영양사 검수 식단에 따른 급식 및 간식 제공\n● **식습관 교육**: 올바른 식사 예절 및 편식 교정 지도"},
+                    {"sub_area": "안전", "program_name": "야간 보호", "expected_effect": "맞벌이 가정 아동의 돌봄 공백을 해소하고 안전한 귀가를 보장하여 부모의 양육 부담을 경감합니다.", "target": "야간돌봄 아동", "count": "20명", "cycle": "주 5회", "content": "● **석식 제공**: 야간 돌봄 아동 대상 영양 석식 제공\n● **안전 귀가 지원**: 차량 운행 및 보호자 인수인계 확인"},
+                    {"sub_area": "안전", "program_name": "안전 교육", "expected_effect": "다양한 위기 상황에 대한 대처 능력을 함양하여 아동의 안전 의식을 고취하고 사고를 예방합니다.", "target": "전체 아동", "count": "50명", "cycle": "월 1회", "content": "● **소방 대피 훈련**: 월 1회 관할 소방서 연계 화재 대피 훈련 실시\n● **교통 안전 교육**: 등하교 시 교통 안전 수칙 교육"},
+                    {"sub_area": "가족기능강화", "program_name": "부모 교육", "expected_effect": "보호자의 양육 역량을 강화하여 가정 내 건강한 양육 환경을 조성하고 부모-자녀 관계를 개선합니다.", "target": "보호자", "count": "40명", "cycle": "분기 1회", "content": "● **전문가 초빙 강의**: 아동 발달 단계에 따른 양육 방법 교육\n● **양육 스트레스 관리**: 부모 자조 모임 및 상담 연계"}
                 ],
                 "eval_table": [
-                    {"program_name": "방과후 돌봄", "eval_tool": "출석부/만족도 조사", "eval_method": "월별 출석률 및 분기별 설문조사", "eval_timing": "월말/분기말"},
-                    {"program_name": "건강 급식", "eval_tool": "급식일지/만족도 조사", "eval_method": "일일 급식 기록 및 분기별 설문", "eval_timing": "매일/분기말"}
+                    {"program_name": "위생관리 지도", "eval_tool": "점검표", "eval_method": "월별 위생 점검 결과 분석", "eval_timing": "월말"},
+                    {"program_name": "영양 급식", "eval_tool": "급식일지/만족도", "eval_method": "일일 급식 기록 및 분기별 설문", "eval_timing": "매일/분기말"},
+                    {"program_name": "야간 보호", "eval_tool": "출석부/인수인계장", "eval_method": "출석률 및 안전 귀가 현황 분석", "eval_timing": "월말"},
+                    {"program_name": "안전 교육", "eval_tool": "훈련일지", "eval_method": "훈련 참여율 및 대피 시간 측정", "eval_timing": "훈련 후"},
+                    {"program_name": "부모 교육", "eval_tool": "참석명단/설문지", "eval_method": "참석률 및 만족도 조사", "eval_timing": "교육 후"}
                 ]
             },
             "교육": {
+                "subcategories": ["성장과권리", "학습", "특기적성"],
                 "detail_table": [
-                    {"sub_area": "학습지원", "program_name": "기초학력 향상", "target": "초등 3-6학년", "count": "20명", "cycle": "주 3회", "content": "국어, 수학 기초학력 보충 지도"},
-                    {"sub_area": "특기적성", "program_name": "코딩 교실", "target": "초등 4-6학년", "count": "15명", "cycle": "주 1회", "content": "스크래치, 엔트리를 활용한 코딩 교육"},
-                    {"sub_area": "독서교육", "program_name": "독서클럽", "target": "전체 아동", "count": "25명", "cycle": "주 1회", "content": "함께 읽기, 독후감 작성, 토론 활동"}
+                    {"sub_area": "성장과권리", "program_name": "아동권리 교육", "expected_effect": "아동이 자신의 권리를 이해하고 존중받는 환경에서 성장하여 자존감과 시민 의식을 함양합니다.", "target": "전체 아동", "count": "50명", "cycle": "분기 1회", "content": "● **권리 교육**: UN 아동권리협약 기반 권리 교육 실시\n● **권리 캠페인**: 아동 권리 포스터 제작 및 전시"},
+                    {"sub_area": "성장과권리", "program_name": "아동자치회의", "expected_effect": "민주적 의사결정 과정을 경험하고 자기 표현 능력을 향상시켜 참여권을 보장합니다.", "target": "대표 아동", "count": "10명", "cycle": "월 1회", "content": "● **자치회의 운영**: 월 1회 아동 대표 회의 진행\n● **의견 반영**: 아동 의견 시설 운영에 적극 반영"},
+                    {"sub_area": "학습", "program_name": "기초학력 향상", "expected_effect": "기초 학력 보충을 통해 학습 격차를 해소하고 학업 성취도를 향상시킵니다.", "target": "초등학생", "count": "30명", "cycle": "주 3회", "content": "● **교과 학습 지도**: 국어, 수학 기초학력 보충 지도\n● **개별 맞춤 지도**: 학습 수준별 소그룹 지도"},
+                    {"sub_area": "학습", "program_name": "독서 지도", "expected_effect": "독서 습관 형성을 통해 문해력과 사고력을 향상시키고 평생 학습의 기초를 마련합니다.", "target": "전체 아동", "count": "40명", "cycle": "주 1회", "content": "● **함께 읽기**: 연령별 도서 선정 및 독서 활동\n● **독후 활동**: 독서토론, 독후감 작성, 독서퀴즈"},
+                    {"sub_area": "특기적성", "program_name": "피아노 교실", "expected_effect": "음악적 감수성과 표현력을 키우고 집중력 향상을 통해 정서적 안정에 기여합니다.", "target": "희망 아동", "count": "15명", "cycle": "주 2회", "content": "● **기초 이론 교육**: 악보 읽기 및 기본 이론 학습\n● **실기 지도**: 개인별 수준에 맞는 연주 지도"},
+                    {"sub_area": "특기적성", "program_name": "축구 교실", "expected_effect": "신체 활동을 통해 건강한 체력을 기르고 팀 활동을 통해 협동심과 사회성을 함양합니다.", "target": "희망 아동", "count": "20명", "cycle": "주 1회", "content": "● **기초 체력 훈련**: 준비운동 및 기초 체력 강화\n● **축구 기술 지도**: 패스, 슛, 드리블 등 기술 훈련"}
                 ],
                 "eval_table": [
-                    {"program_name": "기초학력 향상", "eval_tool": "학력평가지", "eval_method": "사전/사후 학력 평가 비교", "eval_timing": "학기초/학기말"},
-                    {"program_name": "코딩 교실", "eval_tool": "포트폴리오", "eval_method": "작품 발표회 및 완성도 평가", "eval_timing": "학기말"},
-                    {"program_name": "독서클럽", "eval_tool": "독서기록장", "eval_method": "독서량 및 독후활동 참여율", "eval_timing": "월말"}
+                    {"program_name": "아동권리 교육", "eval_tool": "사전사후 설문", "eval_method": "권리 인식 변화 측정", "eval_timing": "교육 전후"},
+                    {"program_name": "아동자치회의", "eval_tool": "회의록", "eval_method": "의견 반영률 분석", "eval_timing": "분기말"},
+                    {"program_name": "기초학력 향상", "eval_tool": "학력평가지", "eval_method": "사전/사후 학력 비교", "eval_timing": "학기초/말"},
+                    {"program_name": "독서 지도", "eval_tool": "독서기록장", "eval_method": "독서량 및 참여율 분석", "eval_timing": "월말"},
+                    {"program_name": "피아노 교실", "eval_tool": "연주 평가표", "eval_method": "실기 평가 및 발표회", "eval_timing": "학기말"},
+                    {"program_name": "축구 교실", "eval_tool": "체력측정표", "eval_method": "체력 향상도 측정", "eval_timing": "분기말"}
                 ]
             },
             "문화": {
+                "subcategories": ["체험활동"],
                 "detail_table": [
-                    {"sub_area": "문화체험", "program_name": "박물관 탐방", "target": "전체 아동", "count": "40명", "cycle": "분기 1회", "content": "지역 박물관 및 미술관 견학"},
-                    {"sub_area": "예술활동", "program_name": "미술 교실", "target": "초등학생", "count": "20명", "cycle": "주 1회", "content": "다양한 미술 기법 체험 및 작품 활동"}
+                    {"sub_area": "체험활동", "program_name": "박물관 탐방", "expected_effect": "역사와 문화에 대한 이해를 넓히고 다양한 체험을 통해 학습 동기와 호기심을 자극합니다.", "target": "전체 아동", "count": "50명", "cycle": "분기 1회", "content": "● **현장 학습**: 지역 박물관 및 역사 유적지 견학\n● **체험 활동**: 전통 문화 체험 및 만들기 활동"},
+                    {"sub_area": "체험활동", "program_name": "여름/겨울 캠프", "expected_effect": "일상을 벗어난 단체 생활 경험을 통해 자립심과 사회성을 키우고 추억을 형성합니다.", "target": "전체 아동", "count": "40명", "cycle": "연 2회", "content": "● **캠프 활동**: 1박 2일 캠프 운영(자연체험, 레크리에이션)\n● **공동 생활**: 협동 미션 및 단체 활동"},
+                    {"sub_area": "체험활동", "program_name": "공연 관람", "expected_effect": "문화 예술을 직접 체험하여 감수성과 심미적 안목을 키우고 정서적 풍요를 경험합니다.", "target": "전체 아동", "count": "50명", "cycle": "분기 1회", "content": "● **공연 관람**: 연극, 뮤지컬, 영화 등 문화 공연 관람\n● **사후 활동**: 감상문 작성 및 토론"}
                 ],
                 "eval_table": [
-                    {"program_name": "박물관 탐방", "eval_tool": "체험보고서", "eval_method": "참여 소감문 및 만족도 조사", "eval_timing": "체험 후"},
-                    {"program_name": "미술 교실", "eval_tool": "작품집", "eval_method": "작품 전시회 및 평가", "eval_timing": "학기말"}
+                    {"program_name": "박물관 탐방", "eval_tool": "체험보고서", "eval_method": "소감문 및 만족도 조사", "eval_timing": "체험 후"},
+                    {"program_name": "여름/겨울 캠프", "eval_tool": "만족도 설문", "eval_method": "참여율 및 만족도 분석", "eval_timing": "캠프 후"},
+                    {"program_name": "공연 관람", "eval_tool": "감상문", "eval_method": "참여율 및 감상문 평가", "eval_timing": "관람 후"}
                 ]
             },
             "정서지원": {
+                "subcategories": ["상담"],
                 "detail_table": [
-                    {"sub_area": "개별상담", "program_name": "마음 톡톡", "target": "전체 아동", "count": "50명", "cycle": "수시", "content": "개별 심리상담 및 정서지원"},
-                    {"sub_area": "집단활동", "program_name": "사회성 향상", "target": "초등학생", "count": "20명", "cycle": "주 1회", "content": "또래관계 향상 집단 프로그램"}
+                    {"sub_area": "상담", "program_name": "개별 심리상담", "expected_effect": "아동 개인의 심리적 어려움을 파악하고 전문적인 상담을 통해 정서적 안정을 도모합니다.", "target": "전체 아동", "count": "50명", "cycle": "수시", "content": "● **정기 상담**: 전문 상담사와 월 1회 이상 개별 상담\n● **위기 개입**: 위기 상황 발생 시 즉시 상담 지원"},
+                    {"sub_area": "상담", "program_name": "집단 상담", "expected_effect": "또래 관계 속에서 사회성을 향상시키고 공감 능력과 의사소통 기술을 발달시킵니다.", "target": "희망 아동", "count": "20명", "cycle": "주 1회", "content": "● **사회성 프로그램**: 8주 과정 사회성 향상 집단 프로그램\n● **또래 활동**: 협동 게임 및 역할극 활동"},
+                    {"sub_area": "상담", "program_name": "보호자 상담", "expected_effect": "보호자와의 소통을 강화하여 가정-시설 간 연계를 촉진하고 양육 환경을 개선합니다.", "target": "보호자", "count": "40명", "cycle": "분기 1회", "content": "● **정기 상담**: 분기별 보호자 상담 실시\n● **가정 연계**: 가정 내 아동 지원 방안 협의"}
                 ],
                 "eval_table": [
-                    {"program_name": "마음 톡톡", "eval_tool": "상담일지", "eval_method": "상담 횟수 및 변화 관찰", "eval_timing": "월말"},
-                    {"program_name": "사회성 향상", "eval_tool": "사회성 검사", "eval_method": "사전/사후 검사 비교", "eval_timing": "프로그램 전후"}
+                    {"program_name": "개별 심리상담", "eval_tool": "상담일지", "eval_method": "상담 횟수 및 정서 변화 관찰", "eval_timing": "월말"},
+                    {"program_name": "집단 상담", "eval_tool": "사회성 검사", "eval_method": "사전/사후 검사 비교", "eval_timing": "프로그램 전후"},
+                    {"program_name": "보호자 상담", "eval_tool": "상담기록", "eval_method": "상담 실시율 및 만족도", "eval_timing": "분기말"}
                 ]
             },
             "지역사회연계": {
+                "subcategories": ["연계"],
                 "detail_table": [
-                    {"sub_area": "자원연계", "program_name": "멘토링", "target": "전체 아동", "count": "30명", "cycle": "월 2회", "content": "대학생 자원봉사자 1:1 멘토링"},
-                    {"sub_area": "지역참여", "program_name": "마을축제 참여", "target": "전체 아동", "count": "50명", "cycle": "연 2회", "content": "지역 축제 및 행사 참여"}
+                    {"sub_area": "연계", "program_name": "자원봉사 관리", "expected_effect": "지역사회 자원봉사 인력을 활용하여 다양한 프로그램을 운영하고 아동에게 긍정적 역할 모델을 제공합니다.", "target": "전체 아동", "count": "50명", "cycle": "상시", "content": "● **봉사자 모집**: 대학생, 지역 주민 자원봉사자 모집 관리\n● **활동 배치**: 학습지도, 급식보조, 프로그램 보조 배치"},
+                    {"sub_area": "연계", "program_name": "후원 연계", "expected_effect": "안정적인 후원 자원을 확보하여 시설 운영 및 프로그램 질 향상에 기여합니다.", "target": "시설", "count": "-", "cycle": "상시", "content": "● **후원자 관리**: 정기 후원자 감사 행사 및 소식지 발송\n● **기업 연계**: 지역 기업 CSR 연계 후원 확보"},
+                    {"sub_area": "연계", "program_name": "기관 협력", "expected_effect": "유관 기관과의 네트워크를 통해 아동에게 통합적 지원 서비스를 제공합니다.", "target": "시설", "count": "-", "cycle": "분기 1회", "content": "● **실무자 협의체**: 학교, 주민센터, 복지관 등 분기별 협의\n● **사례 공유**: 아동 지원 사례 공유 및 연계"}
                 ],
                 "eval_table": [
-                    {"program_name": "멘토링", "eval_tool": "활동일지", "eval_method": "멘토-멘티 만족도 조사", "eval_timing": "분기말"},
-                    {"program_name": "마을축제 참여", "eval_tool": "참여보고서", "eval_method": "참여율 및 만족도 조사", "eval_timing": "행사 후"}
+                    {"program_name": "자원봉사 관리", "eval_tool": "봉사일지", "eval_method": "봉사자 수 및 활동시간 분석", "eval_timing": "월말"},
+                    {"program_name": "후원 연계", "eval_tool": "후원현황표", "eval_method": "후원금액 및 후원자 수 분석", "eval_timing": "분기말"},
+                    {"program_name": "기관 협력", "eval_tool": "회의록", "eval_method": "협력 건수 및 연계 성과 분석", "eval_timing": "분기말"}
                 ]
             }
         },
