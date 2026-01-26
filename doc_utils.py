@@ -10,9 +10,48 @@ import numpy as np
 from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
+
+
+def create_approval_box(doc):
+    """
+    Creates a standard Korean approval box (결재란) at the top right.
+    Format:
+    | 결재 | 담 당 | 팀 장 | 센터장 |
+    |      | (Sign)| (Sign)| (Sign) |
+    """
+    table = doc.add_table(rows=2, cols=4)
+    table.alignment = WD_TABLE_ALIGNMENT.RIGHT
+    
+    for row in table.rows:
+        row.cells[0].width = Inches(0.4)
+        row.cells[1].width = Inches(0.7)
+        row.cells[2].width = Inches(0.7)
+        row.cells[3].width = Inches(0.7)
+    
+    hdr_cells = table.rows[0].cells
+    hdr_cells[0].text = "결재"
+    hdr_cells[1].text = "담 당"
+    hdr_cells[2].text = "팀 장"
+    hdr_cells[3].text = "센터장"
+    
+    for cell in hdr_cells:
+        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        shading_elm = parse_xml(r'<w:shd {} w:fill="E7E6E6"/>'.format(nsdecls('w')))
+        cell._tc.get_or_add_tcPr().append(shading_elm)
+    
+    table.rows[1].height = Inches(0.6)
+    
+    cell_top = table.cell(0, 0)
+    cell_bottom = table.cell(1, 0)
+    cell_top.merge(cell_bottom)
+    cell_top.text = "결재"
+    cell_top.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+    cell_top.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    doc.add_paragraph()
 
 
 def ensure_korean_font():
@@ -509,6 +548,8 @@ def generate_monthly_report(monthly_list: list, period: str) -> io.BytesIO:
 def generate_monthly_program_report(monthly_plan: dict, months: list = None) -> io.BytesIO:
     """Generate Word report for monthly program plans with 6-column structure.
     
+    Each month starts on a new page with an approval box (결재란).
+    
     Args:
         monthly_plan: Dictionary with month keys (1월~12월) and program lists as values
         months: Optional list of months to include (e.g., ["1월", "2월", ...])
@@ -519,9 +560,16 @@ def generate_monthly_program_report(monthly_plan: dict, months: list = None) -> 
     if months is None:
         months = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
     
+    first_month = True
     for month in months:
         programs = monthly_plan.get(month, [])
         if programs:
+            if not first_month:
+                document.add_page_break()
+            first_month = False
+            
+            create_approval_box(document)
+            
             add_left_aligned_heading(document, f'{month} 사업계획서', level=2)
             
             df = pd.DataFrame(programs)
@@ -741,9 +789,16 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
     
     if 'part3_monthly_plan' in data_dict and data_dict['part3_monthly_plan']:
         monthly_plan = data_dict['part3_monthly_plan']
+        first_month = True
         for month in ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]:
             programs = monthly_plan.get(month, [])
             if programs:
+                if not first_month:
+                    document.add_page_break()
+                first_month = False
+                
+                create_approval_box(document)
+                
                 add_left_aligned_heading(document, f'{month} 사업계획서', level=2)
                 
                 df = pd.DataFrame(programs)

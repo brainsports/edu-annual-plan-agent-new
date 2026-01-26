@@ -1,0 +1,65 @@
+# Visual & Layout Update: Monthly Page Breaks & Approval Box
+
+The user requires a strict administrative format for Part 3 (Monthly Plans):
+1.  **One Month = One Page**: Each monthly plan must start on a fresh page.
+2.  **Approval Box (결재란)**: Each page must feature a standard Korean signature box (Sanction Line) at the top.
+
+# 1. Update `doc_utils.py` - Add `create_approval_box` Helper
+
+Create a helper function to draw the "Sanction Line" table.
+
+```python
+def create_approval_box(doc):
+    """
+    Creates a standard Korean approval box at the top right.
+    Format:
+    | 결 | 담 당 | 팀 장 | 센터장 |
+    | 재 | (Sign)| (Sign)| (Sign)|
+    """
+    # Create a table with 2 rows and 4 columns
+    table = doc.add_table(rows=2, cols=4)
+    table.alignment = WD_ALIGN_PARAGRAPH.RIGHT # Align entire table to Right
+    
+    # Set Column Widths (Small for 'Sign', larger for names)
+    # Total width approx 2.5 inches
+    for row in table.rows:
+        row.cells[0].width = Inches(0.4) # Header '결재'
+        row.cells[1].width = Inches(0.7) # Staff
+        row.cells[2].width = Inches(0.7) # Team Lead
+        row.cells[3].width = Inches(0.7) # Director
+
+    # -- Row 0: Titles --
+    # Cell 0,0 and 1,0 should be merged for "결재" (Vertical) later, 
+    # but for simplicity in python-docx:
+    
+    # Simple Layout:
+    # Row 0: [결재, 담당, 팀장, 센터장]
+    # Row 1: [Empty for stamps]
+    
+    # Set Text
+    hdr_cells = table.rows[0].cells
+    hdr_cells[0].text = "결재"
+    hdr_cells[1].text = "담 당"
+    hdr_cells[2].text = "팀 장"
+    hdr_cells[3].text = "센터장"
+    
+    # Style: Center Align, Gray Background for Headers
+    for cell in hdr_cells:
+        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        shading_elm = parse_xml(r'<w:shd {} w:fill="E7E6E6"/>'.format(nsdecls('w')))
+        cell._tc.get_or_add_tcPr().append(shading_elm)
+
+    # -- Row 1: Signature Space --
+    # Increase height for stamping
+    table.rows[1].height = Inches(0.6) 
+    
+    # Merge "결재" cell vertically (Row 0, Col 0 + Row 1, Col 0) if possible,
+    # or just leave as is. (Merging is preferred if you can implement it).
+    cell_top = table.cell(0, 0)
+    cell_bottom = table.cell(1, 0)
+    cell_top.merge(cell_bottom)
+    cell_top.text = "결재"
+    cell_top.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+    cell_top.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    doc.add_paragraph() # Add a small spacer after the box
