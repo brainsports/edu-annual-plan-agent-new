@@ -2,7 +2,6 @@ import io
 import pandas as pd
 from docx import Document
 from docx.shared import Inches, Pt
-from docx.enum.table import Wd_Table_Alignment
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
@@ -30,7 +29,6 @@ def df_to_word_table(document, df: pd.DataFrame, title: str = None):
         document.add_heading(title, level=2)
     
     table = document.add_table(rows=1, cols=len(df.columns))
-    table.alignment = Wd_Table_Alignment.CENTER
     
     header_cells = table.rows[0].cells
     for i, column in enumerate(df.columns):

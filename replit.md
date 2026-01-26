@@ -1,17 +1,13 @@
-# 연간프로그램 AI 생성도우미
+# 2025 연간 사업 평가서 생성기 (Annual Program Evaluator)
 
 ## Overview
 
-This is an AI-powered annual program generation assistant for Korean after-school care centers (다함께돌봄센터). The application helps administrators create annual and monthly business plans by uploading PDF evaluation documents, which are then processed by AI to automatically extract, classify, and generate structured program plans.
+This is a Streamlit web application that uses Google Gemini 1.5 Pro AI to analyze uploaded program documents and generate structured Word (.docx) reports. The application is designed for Korean-language business evaluation reports, supporting document upload, AI-powered analysis, and automated report generation.
 
-The workflow follows a 7-step process (displayed in vertical sidebar):
-1. PDF 업로드 - Upload evaluation documents
-2. 자동 분류 - AI extracts and categorizes program information  
-3. 연간 Part 1 - Annual plan overview and business goals
-4. 연간 Part 2 - Detailed program content and evaluation plans
-5. 상반기 (1-6월) - First half monthly schedules
-6. 하반기 (7-12월) - Second half monthly schedules
-7. 다운로드 - Export finished Word documents
+The core workflow is:
+1. User uploads a document (TXT or CSV)
+2. Gemini AI analyzes the content and extracts structured data
+3. Application generates formatted Word reports with tables and charts
 
 ## User Preferences
 
@@ -20,143 +16,53 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-
-**Framework**: React 18 with TypeScript, using Vite as the build tool
-
-**State Management**: Zustand with persistence middleware for maintaining application state across sessions
-
-**Routing**: Wouter (lightweight React router) for client-side navigation
-
-**UI Component Library**: shadcn/ui components built on Radix UI primitives with Tailwind CSS
-
-**Data Fetching**: TanStack Query (React Query) for server state management and API calls
-
-**Design System**: 
-- B2B SaaS professional style - clean, work-focused interface
-- Brand color: #7CB342 (green) for primary actions and highlights
-- Responsive layout:
-  - Desktop (>=1280px): 3-column - Left sidebar (260px) + Main content + Right panel (340px)
-  - Tablet (>=768px): 2-column - Left sidebar (200px) + Main content
-  - Mobile (<768px): 1-column with mobile step drawer and sheet panels
-- Vertical step indicator with 7 steps (accordion on mobile)
-- Right panel shows step-specific content (upload queue, progress, guidance)
-- Light/dark mode support via CSS variables
-- Pretendard font optimized for Korean typography
-- Component styling follows design guidelines in `design_guidelines.md`
+- **Framework**: Streamlit for rapid web UI development
+- **Layout**: Wide layout with sidebar for file uploads and main area for results
+- **State Management**: Uses `st.session_state` for persisting analysis data between interactions
+- **Localization**: Korean language UI with appropriate font handling (NanumGothic, DejaVu Sans fallback)
 
 ### Backend Architecture
+- **Modular Design**: Separated into three main modules:
+  - `main.py`: Application entry point and UI logic
+  - `utils.py`: AI integration and API utilities
+  - `doc_utils.py`: Word document generation utilities
+- **AI Integration**: Google Gemini API for document analysis with structured JSON output
+- **Document Generation**: python-docx library for creating Word documents with formatted tables
 
-**Framework**: Express.js with TypeScript running on Node.js
+### Data Flow Pattern
+1. File upload → raw text extraction
+2. Text → Gemini API → structured JSON response
+3. JSON parsing with markdown code block removal
+4. JSON data → Word document with tables and formatting
 
-**API Design**: RESTful API endpoints under `/api` prefix
+### Error Handling Strategy
+- API key validation with user-friendly error messages
+- JSON parsing with try-except blocks and markdown cleanup
+- Graceful font fallback for cross-platform compatibility
 
-**File Processing**: 
-- Multer for multipart file uploads (50MB limit)
-- pdf-parse for extracting text from uploaded PDF documents
-
-**AI Integration**: 
-- OpenAI API via Replit AI Integrations
-- Used for program classification and content generation
-- Supports text, image, and audio modalities through integration modules
-
-**Server-Side Rendering**: Vite middleware in development, static file serving in production
-
-### Data Storage
-
-**Current Implementation**: In-memory storage using Maps for uploaded files and session data
-
-**Database Schema**: Drizzle ORM with PostgreSQL configured (schema in `shared/schema.ts`)
-- Zod schemas for validation
-- Tables for conversations and messages (chat functionality)
-- Type-safe schema definitions with TypeScript inference
-
-**Data Models**:
-- `UploadedFile` - Stores PDF metadata and extracted text
-- `ProgramInfo` - Individual program details with categories
-- `AnnualPlan` / `MonthlyPlan` - Generated plan structures
-- Program categories: 보호, 교육, 문화, 정서지원, 지역연계
-
-### Build System
-
-**Development**: TSX for running TypeScript directly, Vite for hot module replacement
-
-**Production Build**: 
-- esbuild bundles server code to CommonJS
-- Vite builds client assets to `dist/public`
-- Server dependencies selectively bundled to reduce cold start times
+### Chart Generation
+- Matplotlib with Korean font configuration
+- Unicode minus sign handling for proper character display
 
 ## External Dependencies
 
-### AI Services
-- **OpenAI API** via Replit AI Integrations (`AI_INTEGRATIONS_OPENAI_API_KEY`, `AI_INTEGRATIONS_OPENAI_BASE_URL`)
-- Models used: GPT for text processing, gpt-audio-mini for voice, gpt-image-1 for images
+### Third-Party Services
+- **Google Gemini API**: Primary AI service for document analysis
+  - Requires `GEMINI_API_KEY` environment variable (set in Replit Secrets)
+  - Uses structured JSON output format with specific schema enforcement
 
-### Database
-- **PostgreSQL** - Connection via `DATABASE_URL` environment variable
-- **Drizzle ORM** - Type-safe database operations with migrations in `/migrations`
+### Python Libraries
+- `streamlit`: Web application framework
+- `google-generativeai`: Gemini API client
+- `pandas`: Data manipulation for tables
+- `matplotlib`: Chart generation
+- `python-docx`: Word document creation
+- `openpyxl`: Excel file support (for pandas)
 
-### Key NPM Packages
-- `pdf-parse` - PDF text extraction
-- `drizzle-orm` / `drizzle-zod` - Database ORM and validation
-- `openai` - AI API client
-- `express-session` / `connect-pg-simple` - Session management
-- `multer` - File upload handling
+### Deployment Configuration
+- Target platform: Cloud Run (via Dockerfile)
+- Korean font support: `fonts-nanum` system package
+- Port: 8080 for containerized deployment
 
-### Frontend Libraries
-- Full Radix UI primitive set for accessible components
-- `embla-carousel-react` - Carousel functionality
-- `react-day-picker` - Date selection
-- `recharts` - Data visualization
-- `vaul` - Drawer component
-- `docx` - Word document generation
-
-## Recent Changes (2026-01-18)
-
-### UI/UX Redesign - B2B SaaS Responsive Layout
-- Changed from horizontal step indicator to vertical sidebar-based navigation
-- Responsive layout with Tailwind breakpoints:
-  - **Desktop (>=1280px/xl):** 3-column - Left sidebar (260px) + Main content (max-w-4xl) + Right panel (340px)
-  - **Tablet (>=768px, <1280px/md-xl):** 2-column - Left sidebar (200px) + Main content, right panel via Sheet toggle
-  - **Mobile (<768px):** 1-column - Mobile step drawer at top, right panel via Sheet
-- Right panel changes based on current step:
-  - Step 1: UploadQueuePanel - file list, stats, bulk actions
-  - Step 2: ClassificationProgressPanel - progress bar, failed files, category summary
-  - Step 3-7: GuidancePanel - writing tips and next actions
-- Mobile components:
-  - MobileStepDrawer: Accordion-style step navigation for mobile
-  - MobileRightPanelSheet: Sheet overlay for right panel content
-- Brand color: #7CB342 (green) across light/dark modes
-- Schema updates: uploadedFiles now has size/status fields, added classificationStatus
-- All pages updated with responsive padding (p-4 md:p-6 xl:p-8) and text sizes
-- CompletePage fixed to use current schema (part1/part2 instead of deprecated sections)
-
-### Monthly Plan Implementation
-- Added MonthlyPlanFirstHalfPage (1-6월) and MonthlyPlanSecondHalfPage (7-12월)
-- Each month includes:
-  - Table 1: 월간 사업 개요 (사업목표, 중점사항, 비고)
-  - Table 2: 주요 업무 계획 (주차별 tasks)
-- Tab-based month selection with edit/save/cancel/AI generate functionality
-- Monthly overview data serialized as JSON in the `objectives` field
-
-### Export Implementation
-- Individual Word document exports for:
-  - 연간계획서 PART 1 (exportPart1Docx)
-  - 연간계획서 PART 2 (exportPart2Docx)
-  - 상반기 월간계획 (exportFirstHalfMonthlyDocx)
-  - 하반기 월간계획 (exportSecondHalfMonthlyDocx)
-- All exports generate proper Word tables using docx library
-- Download page shows status indicators for each document
-
-### Data Model Pattern
-- Monthly overview (objectives/focus/notes) serialized as JSON in existing objectives field
-- Parse/serialize functions: parseOverviewFromObjectives, serializeOverviewToObjectives
-- Weekly tasks stored as string arrays, normalized with Array.isArray checks
-
-### Program Table Export (사업내용 및 수행인력)
-- ProgramInfo schema extended with executionDate, executionMonth, personnel, serviceContent fields
-- Monthly plan exports include 7-column program table as first section:
-  - 대분류, 중분류, 프로그램명, 대상, 실행일자, 수행인력, 사업내용
-- Programs automatically filtered by executionMonth or parsed from startDate
-- Sorted by category hierarchy: 대분류 → 중분류 → 프로그램명 (Korean locale)
-- Export functions: exportFirstHalfMonthlyDocx, exportSecondHalfMonthlyDocx now accept programs parameter
-- DownloadPage passes extractedPrograms from store to export functions
+### Environment Variables Required
+- `GEMINI_API_KEY`: Google Gemini API authentication key (required)
