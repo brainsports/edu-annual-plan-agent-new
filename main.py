@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
-from utils import get_gemini_analysis, get_default_data
+from utils import get_gemini_analysis, get_default_data, read_uploaded_file
 from doc_utils import (
     generate_part1_report,
     generate_part2_report,
@@ -34,21 +34,22 @@ with st.sidebar:
     st.header("문서 업로드")
     uploaded_file = st.file_uploader(
         "분석할 문서를 업로드하세요",
-        type=['txt', 'csv'],
-        help="텍스트(.txt) 또는 CSV(.csv) 파일을 업로드하세요"
+        type=['pdf', 'docx', 'hwp', 'txt', 'csv'],
+        help="PDF, Word(.docx), HWP, 텍스트(.txt) 또는 CSV(.csv) 파일을 업로드하세요"
     )
     
     if uploaded_file is not None:
-        file_content = uploaded_file.read().decode('utf-8')
-        st.text_area("업로드된 내용 미리보기", file_content[:500] + "..." if len(file_content) > 500 else file_content, height=150)
+        file_content = read_uploaded_file(uploaded_file)
+        if file_content:
+            st.text_area("업로드된 내용 미리보기", file_content[:500] + "..." if len(file_content) > 500 else file_content, height=150)
         
-        if st.button("AI 분석 시작", type="primary"):
-            with st.spinner("Gemini AI가 문서를 분석 중입니다..."):
-                result = get_gemini_analysis(file_content)
-                if result:
-                    st.session_state.analysis_data = result
-                    st.success("분석 완료!")
-                    st.rerun()
+            if st.button("AI 분석 시작", type="primary"):
+                with st.spinner("Gemini AI가 문서를 분석 중입니다..."):
+                    result = get_gemini_analysis(file_content)
+                    if result:
+                        st.session_state.analysis_data = result
+                        st.success("분석이 완료되었습니다!")
+                        st.rerun()
     
     st.markdown("---")
     
@@ -196,9 +197,9 @@ else:
         programs_df = pd.DataFrame(programs)
         
         if not programs_df.empty:
-            programs_df.columns = ['영역', '프로그램명', '효과', '대상', '인원', '주기', '내용']
+            programs_df.columns = ['세부영역', '프로그램명', '기대효과', '대상아동', '계획인원', '주기', '계획내용']
         else:
-            programs_df = pd.DataFrame(columns=['영역', '프로그램명', '효과', '대상', '인원', '주기', '내용'])
+            programs_df = pd.DataFrame(columns=['세부영역', '프로그램명', '기대효과', '대상아동', '계획인원', '주기', '계획내용'])
         
         edited_programs = st.data_editor(
             programs_df,
@@ -209,13 +210,13 @@ else:
         
         data['part2_programs'] = edited_programs.rename(
             columns={
-                '영역': 'area',
+                '세부영역': 'sub_area',
                 '프로그램명': 'program_name',
-                '효과': 'effect',
-                '대상': 'target',
-                '인원': 'count',
+                '기대효과': 'expected_effect',
+                '대상아동': 'target_children',
+                '계획인원': 'planned_count',
                 '주기': 'cycle',
-                '내용': 'content'
+                '계획내용': 'planned_content'
             }
         ).to_dict('records')
         
@@ -236,9 +237,9 @@ else:
         h1_df = pd.DataFrame(monthly_h1)
         
         if not h1_df.empty:
-            h1_df.columns = ['월', '활동', '안전', '비고']
+            h1_df.columns = ['월', '주요 행사 및 활동', '안전교육', '비고']
         else:
-            h1_df = pd.DataFrame(columns=['월', '활동', '안전', '비고'])
+            h1_df = pd.DataFrame(columns=['월', '주요 행사 및 활동', '안전교육', '비고'])
         
         edited_h1 = st.data_editor(
             h1_df,
@@ -248,7 +249,7 @@ else:
         )
         
         data['part3_monthly'] = edited_h1.rename(
-            columns={'월': 'month', '활동': 'activity', '안전': 'safety', '비고': 'note'}
+            columns={'월': 'month', '주요 행사 및 활동': 'main_events', '안전교육': 'safety_education', '비고': 'note'}
         ).to_dict('records')
         
         st.markdown("---")
@@ -268,9 +269,9 @@ else:
         h2_df = pd.DataFrame(monthly_h2)
         
         if not h2_df.empty:
-            h2_df.columns = ['월', '활동', '안전', '비고']
+            h2_df.columns = ['월', '주요 행사 및 활동', '안전교육', '비고']
         else:
-            h2_df = pd.DataFrame(columns=['월', '활동', '안전', '비고'])
+            h2_df = pd.DataFrame(columns=['월', '주요 행사 및 활동', '안전교육', '비고'])
         
         edited_h2 = st.data_editor(
             h2_df,
@@ -280,7 +281,7 @@ else:
         )
         
         data['part4_monthly'] = edited_h2.rename(
-            columns={'월': 'month', '활동': 'activity', '안전': 'safety', '비고': 'note'}
+            columns={'월': 'month', '주요 행사 및 활동': 'main_events', '안전교육': 'safety_education', '비고': 'note'}
         ).to_dict('records')
         
         st.markdown("---")

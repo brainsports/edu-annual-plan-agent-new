@@ -108,13 +108,13 @@ def generate_part2_report(programs_list: list) -> io.BytesIO:
     if programs_list:
         df = pd.DataFrame(programs_list)
         column_mapping = {
-            'area': '영역',
+            'sub_area': '세부영역',
             'program_name': '프로그램명',
-            'effect': '효과',
-            'target': '대상',
-            'count': '인원',
+            'expected_effect': '기대효과',
+            'target_children': '대상아동',
+            'planned_count': '계획인원',
             'cycle': '주기',
-            'content': '내용'
+            'planned_content': '계획내용'
         }
         df.columns = [column_mapping.get(col, col) for col in df.columns]
         df_to_word_table(document, df)
@@ -135,8 +135,8 @@ def generate_monthly_report(monthly_list: list, period: str) -> io.BytesIO:
         df = pd.DataFrame(monthly_list)
         column_mapping = {
             'month': '월',
-            'activity': '활동',
-            'safety': '안전',
+            'main_events': '주요 행사 및 활동',
+            'safety_education': '안전교육',
             'note': '비고'
         }
         df.columns = [column_mapping.get(col, col) for col in df.columns]
@@ -184,13 +184,13 @@ def generate_full_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
     if 'part2_programs' in data_dict and data_dict['part2_programs']:
         df = pd.DataFrame(data_dict['part2_programs'])
         column_mapping = {
-            'area': '영역',
+            'sub_area': '세부영역',
             'program_name': '프로그램명',
-            'effect': '효과',
-            'target': '대상',
-            'count': '인원',
+            'expected_effect': '기대효과',
+            'target_children': '대상아동',
+            'planned_count': '계획인원',
             'cycle': '주기',
-            'content': '내용'
+            'planned_content': '계획내용'
         }
         df.columns = [column_mapping.get(col, col) for col in df.columns]
         df_to_word_table(document, df)
@@ -202,8 +202,8 @@ def generate_full_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
         df = pd.DataFrame(data_dict['part3_monthly'])
         column_mapping = {
             'month': '월',
-            'activity': '활동',
-            'safety': '안전',
+            'main_events': '주요 행사 및 활동',
+            'safety_education': '안전교육',
             'note': '비고'
         }
         df.columns = [column_mapping.get(col, col) for col in df.columns]
@@ -216,8 +216,8 @@ def generate_full_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
         df = pd.DataFrame(data_dict['part4_monthly'])
         column_mapping = {
             'month': '월',
-            'activity': '활동',
-            'safety': '안전',
+            'main_events': '주요 행사 및 활동',
+            'safety_education': '안전교육',
             'note': '비고'
         }
         df.columns = [column_mapping.get(col, col) for col in df.columns]

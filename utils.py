@@ -1,8 +1,62 @@
 import os
 import json
 import re
+import io
 import streamlit as st
 import google.generativeai as genai
+
+
+def read_pdf(file) -> str:
+    """Extract text from PDF file using pdfplumber."""
+    try:
+        import pdfplumber
+        text_content = []
+        with pdfplumber.open(file) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text_content.append(page_text)
+        return "\n".join(text_content)
+    except Exception as e:
+        st.error(f"PDF 파일 읽기 오류: {str(e)}")
+        return ""
+
+
+def read_docx(file) -> str:
+    """Extract text from DOCX file."""
+    try:
+        from docx import Document
+        doc = Document(file)
+        text_content = []
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text_content.append(paragraph.text)
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = [cell.text.strip() for cell in row.cells]
+                text_content.append(" | ".join(row_text))
+        return "\n".join(text_content)
+    except Exception as e:
+        st.error(f"DOCX 파일 읽기 오류: {str(e)}")
+        return ""
+
+
+def read_uploaded_file(uploaded_file) -> str:
+    """Read content from various file types."""
+    file_type = uploaded_file.name.split('.')[-1].lower()
+    
+    if file_type == 'pdf':
+        return read_pdf(uploaded_file)
+    elif file_type == 'docx':
+        return read_docx(uploaded_file)
+    elif file_type in ['txt', 'csv']:
+        return uploaded_file.read().decode('utf-8')
+    elif file_type == 'hwp':
+        st.warning("HWP 파일은 현재 텍스트 추출이 제한됩니다. 가능하면 PDF나 DOCX로 변환해주세요.")
+        return ""
+    else:
+        st.error(f"지원하지 않는 파일 형식입니다: {file_type}")
+        return ""
 
 
 def get_api_key():
@@ -57,13 +111,13 @@ def get_gemini_analysis(text: str) -> dict:
     ]
   },
   "part2_programs": [
-    {"area": "영역 (한국어)", "program_name": "프로그램명 (한국어)", "effect": "효과 (한국어)", "target": "대상 (한국어)", "count": "인원 (한국어)", "cycle": "주기 (한국어)", "content": "내용 (한국어)"}
+    {"sub_area": "세부영역 (한국어)", "program_name": "프로그램명 (한국어)", "expected_effect": "기대효과 (한국어)", "target_children": "대상아동 (한국어)", "planned_count": "계획인원 (한국어)", "cycle": "주기 (한국어)", "planned_content": "계획내용 (한국어)"}
   ],
   "part3_monthly": [
-    {"month": "월 (한국어, 예: 1월)", "activity": "활동 (한국어)", "safety": "안전 (한국어)", "note": "비고 (한국어)"}
+    {"month": "월 (한국어, 예: 1월)", "main_events": "주요 행사 및 활동 (한국어)", "safety_education": "안전교육 (한국어)", "note": "비고 (한국어)"}
   ],
   "part4_monthly": [
-    {"month": "월 (한국어, 예: 7월)", "activity": "활동 (한국어)", "safety": "안전 (한국어)", "note": "비고 (한국어)"}
+    {"month": "월 (한국어, 예: 7월)", "main_events": "주요 행사 및 활동 (한국어)", "safety_education": "안전교육 (한국어)", "note": "비고 (한국어)"}
   ]
 }
 
@@ -114,24 +168,24 @@ def get_default_data() -> dict:
             ]
         },
         "part2_programs": [
-            {"area": "교육", "program_name": "디지털 리터러시", "effect": "디지털 역량 강화", "target": "성인", "count": "50명", "cycle": "주 1회", "content": "컴퓨터 기초 및 인터넷 활용"},
-            {"area": "복지", "program_name": "건강 증진", "effect": "건강 관리 능력 향상", "target": "노인", "count": "30명", "cycle": "월 2회", "content": "운동 및 건강 교육"},
-            {"area": "문화", "program_name": "문화 체험", "effect": "문화 향유 기회 확대", "target": "전 연령", "count": "100명", "cycle": "분기별", "content": "공연 관람 및 체험 활동"}
+            {"sub_area": "교육", "program_name": "디지털 리터러시", "expected_effect": "디지털 역량 강화", "target_children": "초등학생", "planned_count": "50명", "cycle": "주 1회", "planned_content": "컴퓨터 기초 및 인터넷 활용"},
+            {"sub_area": "복지", "program_name": "건강 증진", "expected_effect": "건강 관리 능력 향상", "target_children": "유아", "planned_count": "30명", "cycle": "월 2회", "planned_content": "운동 및 건강 교육"},
+            {"sub_area": "문화", "program_name": "문화 체험", "expected_effect": "문화 향유 기회 확대", "target_children": "전 연령", "planned_count": "100명", "cycle": "분기별", "planned_content": "공연 관람 및 체험 활동"}
         ],
         "part3_monthly": [
-            {"month": "1월", "activity": "신년 행사", "safety": "방역 수칙 준수", "note": "온라인 병행"},
-            {"month": "2월", "activity": "설날 프로그램", "safety": "화재 예방", "note": "전통 문화 체험"},
-            {"month": "3월", "activity": "봄맞이 행사", "safety": "야외 안전", "note": "환경 정화"},
-            {"month": "4월", "activity": "건강 캠페인", "safety": "응급 처치 교육", "note": "건강 검진 연계"},
-            {"month": "5월", "activity": "가정의 달 행사", "safety": "교통 안전", "note": "가족 프로그램"},
-            {"month": "6월", "activity": "상반기 평가", "safety": "시설 점검", "note": "성과 분석"}
+            {"month": "1월", "main_events": "신년 행사", "safety_education": "방역 수칙 준수", "note": "온라인 병행"},
+            {"month": "2월", "main_events": "설날 프로그램", "safety_education": "화재 예방", "note": "전통 문화 체험"},
+            {"month": "3월", "main_events": "봄맞이 행사", "safety_education": "야외 안전", "note": "환경 정화"},
+            {"month": "4월", "main_events": "건강 캠페인", "safety_education": "응급 처치 교육", "note": "건강 검진 연계"},
+            {"month": "5월", "main_events": "가정의 달 행사", "safety_education": "교통 안전", "note": "가족 프로그램"},
+            {"month": "6월", "main_events": "상반기 평가", "safety_education": "시설 점검", "note": "성과 분석"}
         ],
         "part4_monthly": [
-            {"month": "7월", "activity": "여름 프로그램", "safety": "폭염 대비", "note": "냉방 시설 점검"},
-            {"month": "8월", "activity": "여름 캠프", "safety": "수상 안전", "note": "청소년 대상"},
-            {"month": "9월", "activity": "추석 행사", "safety": "식품 안전", "note": "전통 음식 체험"},
-            {"month": "10월", "activity": "가을 축제", "safety": "행사장 안전", "note": "지역 축제 연계"},
-            {"month": "11월", "activity": "연말 준비", "safety": "난방 안전", "note": "결산 준비"},
-            {"month": "12월", "activity": "송년 행사", "safety": "화재 예방", "note": "연간 평가"}
+            {"month": "7월", "main_events": "여름 프로그램", "safety_education": "폭염 대비", "note": "냉방 시설 점검"},
+            {"month": "8월", "main_events": "여름 캠프", "safety_education": "수상 안전", "note": "청소년 대상"},
+            {"month": "9월", "main_events": "추석 행사", "safety_education": "식품 안전", "note": "전통 음식 체험"},
+            {"month": "10월", "main_events": "가을 축제", "safety_education": "행사장 안전", "note": "지역 축제 연계"},
+            {"month": "11월", "main_events": "연말 준비", "safety_education": "난방 안전", "note": "결산 준비"},
+            {"month": "12월", "main_events": "송년 행사", "safety_education": "화재 예방", "note": "연간 평가"}
         ]
     }
