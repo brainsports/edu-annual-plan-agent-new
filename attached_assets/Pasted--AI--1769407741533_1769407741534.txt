@@ -1,0 +1,81 @@
+💎 [가독성 끝판왕] 소제목 볼드체 자동 변환 & 구조화
+이 프롬프트는 단순한 텍스트 생성을 넘어, "AI가 구조화된 글을 쓰게 하고", "워드 파일 생성기가 **표시**를 인식해서 진짜 굵은 글씨로 바꿔주게" 만드는 고급 기술이 포함되어 있습니다.
+
+아래 박스 내용을 복사(Ctrl+C)하여 Replit 에이전트 채팅창에 붙여넣기(Ctrl+V) 하세요.
+
+Markdown
+# Visual & Content Upgrade: Structured Text with Real Bold Formatting
+
+The user wants to improve readability for evaluators by using **Bold Subheadings** inside tables and text blocks.
+We need to:
+1.  **AI**: Force Gemini to generate text in the format `**Keyword**: Description`.
+2.  **Word Output**: Parsing this syntax so `**text**` becomes actual **Bold Text** in the `.docx` file, NOT just symbols.
+
+# 1. Update AI Instructions (`utils.py`)
+
+Modify the prompts for `needs_assessment`, `environmental_analysis`, `satisfaction_survey`, and especially `total_review` (Table Content).
+
+-   **Strict Output Format**:
+    -   Instruct Gemini to NEVER return a wall of text.
+    -   ALWAYS use the pattern: `**[Core Theme]**: [Detailed explanation]\n\n`
+    -   **Example for Total Review**:
+        `**📉 운영 효율화**: 전자문서 시스템 도입으로 행정 업무 시간을 30% 단축함.\n\n**🤝 지역 연계 강화**: 인근 병원과 협약을 체결하여...`
+
+# 2. Update Word Generator (`doc_utils.py`) - The Bold Parser
+
+Standard `python-docx` does not understand `**`. You MUST implement a parser function.
+
+## A. Create Helper Function
+Add this function to `doc_utils.py`:
+
+```python
+def add_markdown_text(paragraph, text):
+    """
+    Parses text with **bold** markers and adds runs to the paragraph.
+    Example: "Start **Bold** End" -> Run("Start "), Run("Bold", bold=True), Run(" End")
+    """
+    parts = text.split('**')
+    for i, part in enumerate(parts):
+        run = paragraph.add_run(part)
+        # Even indices are normal, Odd indices are BOLD (assuming pairs)
+        if i % 2 == 1:
+            run.bold = True
+B. Apply to Document Generation
+Update create_word_document to use this function instead of paragraph.add_run(text) or cell.text = ....
+
+For Tables (Total Review, Feedback):
+
+Instead of cell.text = row['content'], use:
+
+Python
+cell.text = "" # Clear default
+p = cell.paragraphs[0]
+add_markdown_text(p, row['content'])
+For Text Sections (Needs, Environment, Satisfaction):
+
+Instead of doc.add_paragraph(data['text']), use:
+
+Python
+p = doc.add_paragraph()
+add_markdown_text(p, data['text'])
+# Set alignment to Justify for professional look
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+Action
+Apply the "Structured Output" prompt to utils.py and the "Markdown Bold Parser" logic to doc_utils.py immediately. This is critical for the report's professional appearance.
+
+
+---
+
+### ✅ 적용 후 변화 (이렇게 바뀝니다!)
+
+**[기존 방식]**
+> 운영 평가: 2024년 전자문서 시스템을 도입하여 행정 업무 시간을 30% 단축하는 성과를 거두었으며, 인근 병원과 협약을 체결하여 아동 건강 검진을 정례화하였습니다. (줄글이라 눈에 안 들어옴)
+
+**[개선된 방식 (화면 & 워드 출력물)]**
+
+> **📉 운영 효율화**: 2024년 전자문서 시스템을 도입하여 행정 업무 시간을 30% 단축하는 성과를 거두었습니다.
+>
+> **🏥 지역 사회 연계**: 인근 병원과 업무 협약을 체결하여, 분기별 아동 건강 검진을 정례화하고 의료 지원 체계를 구축했습니다.
+
+이제 심사위원이나 평가위원이 **굵은 글씨(키워드)**만 쓱 훑어봐도, 선생님 기관이 얼마나 체계적으로
