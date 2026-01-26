@@ -80,7 +80,11 @@ def generate_part1_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
     document.add_paragraph(data_dict.get('need_1_user_desire', ''))
     
     document.add_heading('2) 지역 환경적 특성', level=3)
-    document.add_paragraph(data_dict.get('need_2_local_env', ''))
+    
+    regional_text = f"(1) 지역적 특성\n{data_dict.get('need_2_1_regional', '')}\n\n"
+    regional_text += f"(2) 주변환경\n{data_dict.get('need_2_2_environment', '')}\n\n"
+    regional_text += f"(3) 교육적 특성\n{data_dict.get('need_2_3_educational', '')}"
+    document.add_paragraph(regional_text)
     
     document.add_heading('2. 전년도 사업평가 및 환류계획', level=2)
     
@@ -204,7 +208,11 @@ def generate_full_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
     document.add_paragraph(part1.get('need_1_user_desire', ''))
     
     document.add_heading('2) 지역 환경적 특성', level=3)
-    document.add_paragraph(part1.get('need_2_local_env', ''))
+    
+    regional_text = f"(1) 지역적 특성\n{part1.get('need_2_1_regional', '')}\n\n"
+    regional_text += f"(2) 주변환경\n{part1.get('need_2_2_environment', '')}\n\n"
+    regional_text += f"(3) 교육적 특성\n{part1.get('need_2_3_educational', '')}"
+    document.add_paragraph(regional_text)
     
     document.add_heading('2. 전년도 사업평가 및 환류계획', level=2)
     

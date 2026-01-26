@@ -106,21 +106,38 @@ else:
         with st.expander("1. 사업의 필요성", expanded=True):
             st.subheader("1) 이용아동의 욕구 및 문제점")
             need_1 = st.text_area(
-                "이용아동의 욕구 및 문제점을 작성하세요",
+                "1) 이용아동의 욕구 및 문제점 (약 500자)",
                 value=part1.get('need_1_user_desire', ''),
-                height=150,
+                height=300,
                 key="p1_need_1"
             )
             data['part1_general']['need_1_user_desire'] = need_1
             
             st.subheader("2) 지역 환경적 특성")
-            need_2 = st.text_area(
-                "지역 환경적 특성을 작성하세요",
-                value=part1.get('need_2_local_env', ''),
-                height=150,
-                key="p1_need_2"
+            
+            need_2_1 = st.text_area(
+                "(1) 지역적 특성 (약 500자)",
+                value=part1.get('need_2_1_regional', ''),
+                height=200,
+                key="p1_need_2_1"
             )
-            data['part1_general']['need_2_local_env'] = need_2
+            data['part1_general']['need_2_1_regional'] = need_2_1
+            
+            need_2_2 = st.text_area(
+                "(2) 주변환경 (약 500자)",
+                value=part1.get('need_2_2_environment', ''),
+                height=200,
+                key="p1_need_2_2"
+            )
+            data['part1_general']['need_2_2_environment'] = need_2_2
+            
+            need_2_3 = st.text_area(
+                "(3) 교육적 특성 (약 500자)",
+                value=part1.get('need_2_3_educational', ''),
+                height=200,
+                key="p1_need_2_3"
+            )
+            data['part1_general']['need_2_3_educational'] = need_2_3
         
         with st.expander("2. 전년도 사업평가 및 환류계획", expanded=True):
             st.subheader("1) 차년도 사업 환류 계획")

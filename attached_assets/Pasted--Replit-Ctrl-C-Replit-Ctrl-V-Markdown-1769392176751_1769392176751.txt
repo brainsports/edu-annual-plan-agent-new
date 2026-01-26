@@ -1,0 +1,74 @@
+🛠️ [디테일 강화] Replit 에이전트 수정 프롬프트
+아래 박스 내용을 복사(Ctrl+C)하여 Replit 에이전트 채팅창에 붙여넣기(Ctrl+V) 하세요.
+
+Markdown
+# Task: Refine Content Structure and Length Constraints
+
+The user requires specific content structures and length constraints for "Part 1". We need to split the "Regional Environment" section into 3 distinct fields and enforce character counts.
+
+# 1. Update Data Structure (JSON Schema)
+Modify the `part1_general` schema in `utils.py` and Session State initialization to be more granular:
+
+```json
+{
+  "part1_general": {
+    "need_1_user_desire": "String (Target: approx 500 chars)",
+    "need_2_1_regional": "String (Target: approx 500 chars, (1)지역적 특성)",
+    "need_2_2_environment": "String (Target: approx 500 chars, (2)주변환경)",
+    "need_2_3_educational": "String (Target: approx 500 chars, (3)교육적 특성)",
+    "feedback_table": [...],
+    "total_review_text": "String",
+    ... (rest remains same)
+  },
+  ...
+}
+2. Update AI System Instruction (utils.py)
+Explicitly instruct Gemini with the following constraints:
+
+"need_1_user_desire": Must be detailed, approximately 500 characters.
+
+"need_2_..." fields: Break down "Regional Characteristics" into 3 specific aspects. Each aspect (Regional, Environment, Educational) must be approximately 500 characters long.
+
+Tone: Use professional, administrative Korean (Formal).
+
+3. Update Frontend UI (main.py)
+Refactor the Expander: 1. 사업의 필요성 section:
+
+Section 1) 이용아동의 욕구 및 문제점
+
+Display one large st.text_area (height=300).
+
+Label: "1) 이용아동의 욕구 및 문제점 (약 500자)"
+
+Section 2) 지역 환경적 특성
+
+Instead of one box, create 3 separate st.text_area widgets to allow easier editing:
+
+Label: "(1) 지역적 특성", Key: p1_need_2_1
+
+Label: "(2) 주변환경", Key: p1_need_2_2
+
+Label: "(3) 교육적 특성", Key: p1_need_2_3
+
+Set height=200 for each to accommodate the longer text.
+
+4. Update Word Generation (doc_utils.py)
+When generating the Word document, combine need_2_1, need_2_2, and need_2_3 under the "지역 환경적 특성" heading.
+
+Format them as distinct paragraphs or numbered subsections (e.g., "(1) ... \n (2) ... \n (3) ...") so the output document looks structured.
+
+Action
+Apply these changes immediately. Ensure the prompt sent to Gemini explicitly requests the longer text length (500 chars) for these specific fields.
+
+
+---
+
+### ✅ 적용 후 확인 포인트
+
+1.  **[샘플 데이터 로드]**를 다시 눌러보세요.
+2.  **Part 1 탭**에서 **'1. 사업의 필요성'**을 펼쳤을 때:
+    * **'이용아동의 욕구...'** 칸이 큼지막하게 나오는지 확인.
+    * **'지역 환경적 특성'** 밑에 입력창이 **3개((1), (2), (3))**로 나뉘어 있는지 확인.
+3.  실제 **문서를 업로드**했을 때, AI가 각 칸에 꽉 차게(약 500자 분량) 글을 써주는지 확인.
+
+이제 사용자는 AI가 써준 긴 글을 3개의 작은 창에서 **편하게 부분 수정**만 하면 됩니다!
