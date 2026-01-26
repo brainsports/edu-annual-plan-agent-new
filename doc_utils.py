@@ -272,6 +272,13 @@ def df_to_word_table(document, df: pd.DataFrame, title: str = None, table_type: 
             row.cells[1].width = Inches(1.5)
             row.cells[2].width = Inches(2.5)
             row.cells[3].width = Inches(1.5)
+    elif table_type == 'part2_eval_enhanced' and len(df.columns) == 5:
+        for row in table.rows:
+            row.cells[0].width = Inches(0.7)
+            row.cells[1].width = Inches(1.0)
+            row.cells[2].width = Inches(2.0)
+            row.cells[3].width = Inches(1.8)
+            row.cells[4].width = Inches(1.0)
     
     for row_idx, row in enumerate(table.rows):
         for cell in row.cells:
@@ -428,14 +435,28 @@ def generate_part2_report(programs_dict: dict) -> io.BytesIO:
             
             if 'eval_table' in category_data and category_data['eval_table']:
                 df = pd.DataFrame(category_data['eval_table'])
-                column_mapping = {
-                    'program_name': '프로그램명',
-                    'eval_tool': '평가도구',
-                    'eval_method': '평가방법',
-                    'eval_timing': '평가시기'
-                }
-                df = df.rename(columns=column_mapping)
-                df_to_word_table(document, df, '평가계획', table_type='part2_eval')
+                if 'sub_area' in df.columns and 'main_plan' in df.columns:
+                    column_mapping = {
+                        'sub_area': '세부영역',
+                        'program_name': '프로그램명',
+                        'expected_effect': '기대효과',
+                        'main_plan': '주요계획',
+                        'eval_method': '평가방법'
+                    }
+                    df = df.rename(columns=column_mapping)
+                    expected_cols = ['세부영역', '프로그램명', '기대효과', '주요계획', '평가방법']
+                    existing_cols = [c for c in expected_cols if c in df.columns]
+                    df = df[existing_cols]
+                    df_to_word_table(document, df, '평가계획', table_type='part2_eval_enhanced')
+                else:
+                    column_mapping = {
+                        'program_name': '프로그램명',
+                        'eval_tool': '평가도구',
+                        'eval_method': '평가방법',
+                        'eval_timing': '평가시기'
+                    }
+                    df = df.rename(columns=column_mapping)
+                    df_to_word_table(document, df, '평가계획', table_type='part2_eval')
     
     buffer = io.BytesIO()
     document.save(buffer)
@@ -589,14 +610,28 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
             
             if 'eval_table' in category_data and category_data['eval_table']:
                 df = pd.DataFrame(category_data['eval_table'])
-                column_mapping = {
-                    'program_name': '프로그램명',
-                    'eval_tool': '평가도구',
-                    'eval_method': '평가방법',
-                    'eval_timing': '평가시기'
-                }
-                df = df.rename(columns=column_mapping)
-                df_to_word_table(document, df, '평가계획', table_type='part2_eval')
+                if 'sub_area' in df.columns and 'main_plan' in df.columns:
+                    column_mapping = {
+                        'sub_area': '세부영역',
+                        'program_name': '프로그램명',
+                        'expected_effect': '기대효과',
+                        'main_plan': '주요계획',
+                        'eval_method': '평가방법'
+                    }
+                    df = df.rename(columns=column_mapping)
+                    expected_cols = ['세부영역', '프로그램명', '기대효과', '주요계획', '평가방법']
+                    existing_cols = [c for c in expected_cols if c in df.columns]
+                    df = df[existing_cols]
+                    df_to_word_table(document, df, '평가계획', table_type='part2_eval_enhanced')
+                else:
+                    column_mapping = {
+                        'program_name': '프로그램명',
+                        'eval_tool': '평가도구',
+                        'eval_method': '평가방법',
+                        'eval_timing': '평가시기'
+                    }
+                    df = df.rename(columns=column_mapping)
+                    df_to_word_table(document, df, '평가계획', table_type='part2_eval')
     
     document.add_page_break()
     
