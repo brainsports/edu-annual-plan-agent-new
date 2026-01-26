@@ -119,7 +119,7 @@ def insert_chart_to_doc(document, fig, title: str = None):
     document.add_paragraph()
 
 
-def generate_part1_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
+def generate_part1_report(data_dict: dict) -> io.BytesIO:
     """Generate Word report for Part 1 (총괄/기획)."""
     document = Document()
     set_narrow_margins(document)
@@ -153,20 +153,32 @@ def generate_part1_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
             df = df.rename(columns={'category': '영역', 'content': '내용'})
         df_to_word_table(document, df, None, table_type='review')
     
-    if chart_fig:
-        insert_chart_to_doc(document, chart_fig, '3. 만족도조사')
+    document.add_heading('3. 만족도조사', level=2)
+    satisfaction_survey = data_dict.get('satisfaction_survey', {})
     
-    if 'satisfaction_stats' in data_dict and data_dict['satisfaction_stats']:
-        df = pd.DataFrame(data_dict['satisfaction_stats'])
-        if 'category' in df.columns:
-            df = df.rename(columns={
-                'category': '카테고리',
-                'very_satisfied': '매우 만족',
-                'satisfied': '만족',
-                'normal': '보통',
-                'dissatisfied': '불만족'
-            })
-        df_to_word_table(document, df, '만족도 상세 데이터')
+    if satisfaction_survey and satisfaction_survey.get('questions_list'):
+        questions_list = satisfaction_survey.get('questions_list', [])
+        survey_df = pd.DataFrame(questions_list)
+        if 'question' in survey_df.columns:
+            survey_df = survey_df.rename(columns={'question': '문항', 'score': '점수'})
+        
+        avg_score = survey_df['점수'].mean() if not survey_df.empty else 0
+        add_justified_paragraph(document, f"전체 평균 만족도: {avg_score:.2f}점 (5점 만점)")
+        
+        df_to_word_table(document, survey_df, '문항별 만족도 결과')
+        
+        subjective_q = satisfaction_survey.get('subjective_question', '')
+        subjective_analysis = satisfaction_survey.get('subjective_analysis', '')
+        overall_suggestion = satisfaction_survey.get('overall_suggestion', '')
+        
+        if subjective_q:
+            document.add_heading(f'주관식 문항: {subjective_q}', level=3)
+        if subjective_analysis:
+            add_justified_paragraph(document, subjective_analysis)
+        
+        if overall_suggestion:
+            document.add_heading('종합 분석 및 제언', level=3)
+            add_justified_paragraph(document, overall_suggestion)
     
     document.add_heading('4. 사업목적', level=2)
     add_justified_paragraph(document, data_dict.get('purpose_text', ''))
@@ -249,7 +261,7 @@ def generate_monthly_report(monthly_list: list, period: str) -> io.BytesIO:
     return buffer
 
 
-def generate_full_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
+def generate_full_report(data_dict: dict) -> io.BytesIO:
     """Generate complete Word report with all parts."""
     document = Document()
     set_narrow_margins(document)
@@ -288,18 +300,32 @@ def generate_full_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
             df = df.rename(columns={'category': '영역', 'content': '내용'})
         df_to_word_table(document, df, None, table_type='review')
     
-    if 'satisfaction_stats' in part1 and part1['satisfaction_stats']:
-        document.add_heading('3. 만족도조사', level=2)
-        df = pd.DataFrame(part1['satisfaction_stats'])
-        if 'category' in df.columns:
-            df = df.rename(columns={
-                'category': '카테고리',
-                'very_satisfied': '매우 만족',
-                'satisfied': '만족',
-                'normal': '보통',
-                'dissatisfied': '불만족'
-            })
-        df_to_word_table(document, df)
+    document.add_heading('3. 만족도조사', level=2)
+    satisfaction_survey = part1.get('satisfaction_survey', {})
+    
+    if satisfaction_survey and satisfaction_survey.get('questions_list'):
+        questions_list = satisfaction_survey.get('questions_list', [])
+        survey_df = pd.DataFrame(questions_list)
+        if 'question' in survey_df.columns:
+            survey_df = survey_df.rename(columns={'question': '문항', 'score': '점수'})
+        
+        avg_score = survey_df['점수'].mean() if not survey_df.empty else 0
+        add_justified_paragraph(document, f"전체 평균 만족도: {avg_score:.2f}점 (5점 만점)")
+        
+        df_to_word_table(document, survey_df, '문항별 만족도 결과')
+        
+        subjective_q = satisfaction_survey.get('subjective_question', '')
+        subjective_analysis = satisfaction_survey.get('subjective_analysis', '')
+        overall_suggestion = satisfaction_survey.get('overall_suggestion', '')
+        
+        if subjective_q:
+            document.add_heading(f'주관식 문항: {subjective_q}', level=3)
+        if subjective_analysis:
+            add_justified_paragraph(document, subjective_analysis)
+        
+        if overall_suggestion:
+            document.add_heading('종합 분석 및 제언', level=3)
+            add_justified_paragraph(document, overall_suggestion)
     
     document.add_heading('4. 사업목적', level=2)
     add_justified_paragraph(document, part1.get('purpose_text', ''))

@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
+import altair as alt
 from utils import get_gemini_analysis, get_default_data, read_uploaded_file, process_multiple_files
 from doc_utils import (
     generate_part1_report,
@@ -207,62 +208,100 @@ else:
                 ).to_dict('records')
         
         with st.expander("3. 만족도조사", expanded=True):
-            satisfaction_stats = part1.get('satisfaction_stats', [])
+            satisfaction_survey = part1.get('satisfaction_survey', {})
             
-            if satisfaction_stats:
-                stats_df = pd.DataFrame(satisfaction_stats)
-                if 'category' in stats_df.columns:
-                    stats_df = stats_df.rename(columns={
-                        'category': '카테고리',
-                        'very_satisfied': '매우 만족',
-                        'satisfied': '만족',
-                        'normal': '보통',
-                        'dissatisfied': '불만족'
-                    })
+            if satisfaction_survey and satisfaction_survey.get('questions_list'):
+                questions_list = satisfaction_survey.get('questions_list', [])
+                survey_df = pd.DataFrame(questions_list)
                 
-                col_chart, col_data = st.columns([1, 1])
+                if not survey_df.empty and 'question' in survey_df.columns:
+                    survey_df = survey_df.rename(columns={'question': '문항', 'score': '점수'})
                 
-                with col_chart:
-                    fig, ax = plt.subplots(figsize=(8, 6))
-                    
-                    totals = stats_df[['매우 만족', '만족', '보통', '불만족']].sum()
-                    colors = ['#2ecc71', '#3498db', '#f39c12', '#e74c3c']
-                    labels = ['매우 만족', '만족', '보통', '불만족']
-                    
-                    wedges, texts, autotexts = ax.pie(
-                        totals.values,
-                        labels=labels,
-                        autopct='%1.1f%%',
-                        colors=colors,
-                        startangle=90
-                    )
-                    
-                    ax.set_title('만족도 분포')
-                    plt.tight_layout()
-                    
-                    st.pyplot(fig)
-                    plt.close()
+                st.subheader("문항별 만족도 결과")
                 
-                with col_data:
-                    st.caption("세부 수치 수정")
-                    edited_stats = st.data_editor(
-                        stats_df,
+                chart_df = survey_df.copy()
+                chart_df['문항_short'] = chart_df['문항'].apply(lambda x: x[:25] + '...' if len(x) > 25 else x)
+                
+                bar_chart = alt.Chart(chart_df).mark_bar(color='#3498db').encode(
+                    x=alt.X('점수:Q', scale=alt.Scale(domain=[0, 5]), title='점수 (5점 만점)'),
+                    y=alt.Y('문항_short:N', sort='-x', title='문항'),
+                    tooltip=['문항:N', '점수:Q']
+                ).properties(
+                    height=400
+                )
+                
+                text = bar_chart.mark_text(
+                    align='left',
+                    baseline='middle',
+                    dx=3
+                ).encode(
+                    text=alt.Text('점수:Q', format='.1f')
+                )
+                
+                st.altair_chart(bar_chart + text, use_container_width=True)
+                
+                col_table, col_avg = st.columns([3, 1])
+                
+                with col_table:
+                    st.caption("문항별 점수 (수정 가능)")
+                    edited_survey = st.data_editor(
+                        survey_df,
                         num_rows="dynamic",
                         use_container_width=True,
-                        key="p1_sat_tbl"
+                        hide_index=True,
+                        column_config={
+                            "문항": st.column_config.TextColumn("문항", width="large"),
+                            "점수": st.column_config.NumberColumn("점수", min_value=0.0, max_value=5.0, step=0.1, format="%.1f"),
+                        },
+                        key="p1_survey_tbl"
                     )
                     
-                    data['part1_general']['satisfaction_stats'] = edited_stats.rename(
-                        columns={
-                            '카테고리': 'category',
-                            '매우 만족': 'very_satisfied',
-                            '만족': 'satisfied',
-                            '보통': 'normal',
-                            '불만족': 'dissatisfied'
-                        }
+                    data['part1_general']['satisfaction_survey']['questions_list'] = edited_survey.rename(
+                        columns={'문항': 'question', '점수': 'score'}
                     ).to_dict('records')
+                
+                with col_avg:
+                    avg_score = survey_df['점수'].mean()
+                    st.metric("평균 만족도", f"{avg_score:.2f}점", delta=None)
+                    st.caption("5점 만점 기준")
+                
+                st.markdown("---")
+                
+                st.subheader("주관식 문항 분석")
+                subjective_q = st.text_input(
+                    "주관식 문항",
+                    value=satisfaction_survey.get('subjective_question', '기타 건의사항 및 개선 의견'),
+                    key="p1_subj_q"
+                )
+                data['part1_general']['satisfaction_survey']['subjective_question'] = subjective_q
+                
+                subjective_analysis = st.text_area(
+                    "주관식 문항 요약 및 분석 (500자 이상)",
+                    value=satisfaction_survey.get('subjective_analysis', ''),
+                    height=300,
+                    key="p1_subj_analysis"
+                )
+                data['part1_general']['satisfaction_survey']['subjective_analysis'] = subjective_analysis
+                
+                st.markdown("---")
+                
+                st.subheader("종합 분석 및 제언")
+                overall_suggestion = st.text_area(
+                    "종합 분석 및 제언 (500자 이상)",
+                    value=satisfaction_survey.get('overall_suggestion', ''),
+                    height=300,
+                    key="p1_overall_suggestion"
+                )
+                data['part1_general']['satisfaction_survey']['overall_suggestion'] = overall_suggestion
             else:
                 st.info("만족도 조사 데이터가 없습니다.")
+                if 'satisfaction_survey' not in data['part1_general']:
+                    data['part1_general']['satisfaction_survey'] = {
+                        'questions_list': [],
+                        'subjective_question': '',
+                        'subjective_analysis': '',
+                        'overall_suggestion': ''
+                    }
         
         with st.expander("4. 사업목적", expanded=True):
             purpose = st.text_area(
@@ -284,18 +323,7 @@ else:
         
         st.markdown("---")
         
-        fig_for_doc, ax_doc = plt.subplots(figsize=(8, 6))
-        if satisfaction_stats:
-            stats_for_chart = pd.DataFrame(satisfaction_stats)
-            totals = stats_for_chart[['very_satisfied', 'satisfied', 'normal', 'dissatisfied']].sum()
-            colors = ['#2ecc71', '#3498db', '#f39c12', '#e74c3c']
-            labels = ['매우 만족', '만족', '보통', '불만족']
-            ax_doc.pie(totals.values, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
-            ax_doc.set_title('만족도 분포')
-        plt.tight_layout()
-        
-        part1_report = generate_part1_report(data['part1_general'], fig_for_doc)
-        plt.close()
+        part1_report = generate_part1_report(data['part1_general'])
         
         st.download_button(
             label="PART 1 다운로드 (Word)",

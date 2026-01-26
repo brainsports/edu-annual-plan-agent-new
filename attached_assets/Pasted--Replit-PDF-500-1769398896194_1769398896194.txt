@@ -1,0 +1,75 @@
+💎 [만족도 조사 고도화] 막대 그래프 & 심층 분석 프롬프트
+이 프롬프트는 Replit 에이전트가 업로드된 PDF에서 질문을 추출하고, 이를 바탕으로 가로 막대 그래프와 500자 이상의 심층 분석글을 생성하도록 지시합니다.
+
+아래 박스 내용을 복사(Ctrl+C)하여 Replit 에이전트 채팅창에 붙여넣기(Ctrl+V) 하세요.
+
+Markdown
+# Major Task: Upgrade "Satisfaction Survey" (Part 1 - 3)
+
+The user wants to replace the simple Pie Chart with a **Horizontal Bar Chart** and add a **Detailed Analysis Table** with 10 objective questions and 1 subjective question.
+
+# 1. Update Data Structure (`utils.py`)
+- Redefine `part1_general` -> `satisfaction_survey`.
+- New Schema:
+  ```json
+  "satisfaction_survey": {
+    "questions_list": [
+      {"question": "String (Extract from PDF)", "score": Float (out of 5.0)}
+    ],
+    "subjective_question": "String (e.g. 기타 건의사항)",
+    "subjective_analysis": "String (Summary of subjective answers, Min 500 chars)",
+    "overall_suggestion": "String (Comprehensive analysis & suggestions, Min 500 chars)"
+  }
+2. Update AI Instructions (utils.py)
+Source: Instruct Gemini to Extract the 10 specific questions from the uploaded file (PDF). If exact text is missing, use standard "Community Child Center Evaluation Indicators" (Program, Facility, Staff, Food, Safety, etc.).
+
+Data Generation: Generate realistic satisfaction scores (e.g., 4.2, 4.8) for each of the 10 questions.
+
+Text Analysis:
+
+subjective_analysis: Summarize the subjective feedback in detail (Min 500 Korean chars).
+
+overall_suggestion: Provide a comprehensive analysis and future suggestions based on the scores (Min 500 Korean chars).
+
+3. Update Frontend UI (main.py)
+A. Visual: Horizontal Bar Chart
+Use st.bar_chart or altair to create a Horizontal Bar Chart.
+
+Y-axis: Question Text.
+
+X-axis: Score (0 to 5).
+
+Add a title: "문항별 만족도 결과".
+
+B. Data Table
+Display the survey results in a clean table (Question | Score).
+
+Use st.dataframe or st.table.
+
+C. Text Analysis Area
+Create 2 large text areas (or use st.data_editor with strict width if preferred, but text_area is better here for simple text).
+
+1. 주관식 문항 분석: st.text_area("주관식 문항 요약 및 분석 (500자)", value=..., height=300)
+
+2. 종합 분석 및 제언: st.text_area("종합 분석 및 제언 (500자)", value=..., height=300)
+
+4. Update Word Generator (doc_utils.py)
+Render the Satisfaction Table (Question | Score) in the Word doc.
+
+Render the Two Analysis Paragraphs clearly.
+
+(Optional) If chart generation for Word is too complex, ensure the Table and Text are formatted perfectly with "Justified" alignment.
+
+Action
+Apply these changes to utils.py and main.py immediately.
+
+
+---
+
+### ✅ 적용 후 확인 포인트
+
+1.  **그래프:** Part 1의 만족도 조사 섹션에 **가로 막대 그래프**가 생겼는지 확인하세요. (항목별 점수가 막대로 길게 나와야 합니다.)
+2.  **질문 10개:** 표와 그래프에 있는 질문 내용이 **아동센터 평가 항목(급식, 프로그램, 안전 등)**으로 잘 채워져 있는지 확인하세요.
+3.  **긴 글:** 하단에 생긴 두 개의 글상자(주관식 분석, 종합 제언)에 내용이 **500자 이상 꽉 차게** 들어갔는지 확인하세요.
+
+이제 보고서가 훨씬 전문적으로 보일 것입니다! 🚀
