@@ -59,6 +59,21 @@ def read_uploaded_file(uploaded_file) -> str:
         return ""
 
 
+def process_multiple_files(uploaded_files: list) -> str:
+    """Process multiple uploaded files and combine their text content."""
+    all_text = ""
+    
+    for uploaded_file in uploaded_files:
+        file_text = read_uploaded_file(uploaded_file)
+        if file_text:
+            all_text += f"\n--- {uploaded_file.name} 시작 ---\n"
+            all_text += file_text
+            all_text += f"\n--- {uploaded_file.name} 끝 ---\n"
+        uploaded_file.seek(0)
+    
+    return all_text.strip()
+
+
 def get_api_key():
     """Get Gemini API key from environment variables."""
     api_key = os.environ.get('GEMINI_API_KEY')

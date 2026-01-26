@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
-from utils import get_gemini_analysis, get_default_data, read_uploaded_file
+from utils import get_gemini_analysis, get_default_data, read_uploaded_file, process_multiple_files
 from doc_utils import (
     generate_part1_report,
     generate_part2_report,
@@ -32,20 +32,32 @@ if 'analysis_data' not in st.session_state:
 
 with st.sidebar:
     st.header("문서 업로드")
-    uploaded_file = st.file_uploader(
-        "분석할 문서를 업로드하세요",
+    uploaded_files = st.file_uploader(
+        "분석할 평가서 파일들을 모두 선택하여 업로드하세요 (복수 선택 가능)",
         type=['pdf', 'docx', 'hwp', 'txt', 'csv'],
-        help="PDF, Word(.docx), HWP, 텍스트(.txt) 또는 CSV(.csv) 파일을 업로드하세요"
+        accept_multiple_files=True,
+        help="파일당 최대 200MB • PDF, DOCX, TXT, CSV 지원"
     )
     
-    if uploaded_file is not None:
-        file_content = read_uploaded_file(uploaded_file)
-        if file_content:
-            st.text_area("업로드된 내용 미리보기", file_content[:500] + "..." if len(file_content) > 500 else file_content, height=150)
+    if uploaded_files:
+        st.info(f"📁 {len(uploaded_files)}개 파일 선택됨")
+        
+        for uf in uploaded_files:
+            st.caption(f"• {uf.name}")
+        
+        combined_content = process_multiple_files(uploaded_files)
+        
+        if combined_content:
+            with st.expander("업로드된 내용 미리보기"):
+                st.text_area(
+                    "통합된 문서 내용",
+                    combined_content[:1000] + "..." if len(combined_content) > 1000 else combined_content,
+                    height=150
+                )
         
             if st.button("AI 분석 시작", type="primary"):
-                with st.spinner("Gemini AI가 문서를 분석 중입니다..."):
-                    result = get_gemini_analysis(file_content)
+                with st.spinner(f"Gemini AI가 {len(uploaded_files)}개 문서를 분석 중입니다..."):
+                    result = get_gemini_analysis(combined_content)
                     if result:
                         st.session_state.analysis_data = result
                         st.success("분석이 완료되었습니다!")
