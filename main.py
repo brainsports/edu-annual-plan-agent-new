@@ -159,7 +159,7 @@ else:
                     hide_index=True,
                     column_config={
                         "영역": st.column_config.TextColumn("영역", width=100),
-                        "문제점": st.column_config.TextColumn("문제점", width=350),
+                        "문제점": st.column_config.TextColumn("문제점", width="large"),
                         "개선방안": st.column_config.TextColumn("개선방안", width="large"),
                     },
                     key="p1_feedback_tbl"
