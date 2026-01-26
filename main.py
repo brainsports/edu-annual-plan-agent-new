@@ -134,7 +134,7 @@ else:
                 
                 totals = stats_df[['매우 만족', '만족', '보통', '불만족']].sum()
                 colors = ['#2ecc71', '#3498db', '#f39c12', '#e74c3c']
-                labels = ['Very Satisfied', 'Satisfied', 'Normal', 'Dissatisfied']
+                labels = ['매우 만족', '만족', '보통', '불만족']
                 
                 wedges, texts, autotexts = ax.pie(
                     totals.values,
@@ -144,7 +144,7 @@ else:
                     startangle=90
                 )
                 
-                ax.set_title('Satisfaction Distribution')
+                ax.set_title('만족도 분포')
                 plt.tight_layout()
                 
                 st.pyplot(fig)
@@ -174,9 +174,9 @@ else:
         if satisfaction_stats:
             totals = pd.DataFrame(satisfaction_stats)[['very_satisfied', 'satisfied', 'normal', 'dissatisfied']].sum()
             colors = ['#2ecc71', '#3498db', '#f39c12', '#e74c3c']
-            labels = ['Very Satisfied', 'Satisfied', 'Normal', 'Dissatisfied']
+            labels = ['매우 만족', '만족', '보통', '불만족']
             ax_doc.pie(totals.values, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
-            ax_doc.set_title('Satisfaction Distribution')
+            ax_doc.set_title('만족도 분포')
         plt.tight_layout()
         
         part1_report = generate_part1_report(data['part1'], fig_for_doc)
@@ -296,7 +296,7 @@ else:
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: gray;'>"
-    "Powered by Google Gemini 1.5 Pro | Built with Streamlit"
+    "Google Gemini 1.5 Pro 기반 | Streamlit으로 제작"
     "</div>",
     unsafe_allow_html=True
 )

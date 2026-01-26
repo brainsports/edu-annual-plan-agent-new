@@ -42,32 +42,36 @@ def get_gemini_analysis(text: str) -> dict:
 주어진 문서를 분석하여 반드시 아래의 정확한 JSON 구조로 응답해주세요.
 다른 텍스트 없이 오직 JSON만 반환하세요.
 
+**중요: 모든 내용, 요약, 테이블 값은 반드시 한국어(한글)로 작성해야 합니다.**
+
 필수 JSON 구조:
 {
   "part1": {
-    "total_review": "성과 요약 (문자열)",
-    "future_plan": "내년 계획 (문자열)",
+    "total_review": "성과 요약 (한국어 문자열)",
+    "future_plan": "내년 계획 (한국어 문자열)",
     "feedback_table": [
-      {"area": "영역", "problem": "문제점", "improvement": "개선방안"}
+      {"area": "영역 (한국어)", "problem": "문제점 (한국어)", "improvement": "개선방안 (한국어)"}
     ],
     "satisfaction_stats": [
-      {"category": "카테고리", "very_satisfied": 숫자, "satisfied": 숫자, "normal": 숫자, "dissatisfied": 숫자}
+      {"category": "카테고리 (한국어)", "very_satisfied": 숫자, "satisfied": 숫자, "normal": 숫자, "dissatisfied": 숫자}
     ]
   },
   "part2_programs": [
-    {"area": "영역", "program_name": "프로그램명", "effect": "효과", "target": "대상", "count": "인원", "cycle": "주기", "content": "내용"}
+    {"area": "영역 (한국어)", "program_name": "프로그램명 (한국어)", "effect": "효과 (한국어)", "target": "대상 (한국어)", "count": "인원 (한국어)", "cycle": "주기 (한국어)", "content": "내용 (한국어)"}
   ],
   "part3_monthly": [
-    {"month": "월", "activity": "활동", "safety": "안전", "note": "비고"}
+    {"month": "월 (한국어, 예: 1월)", "activity": "활동 (한국어)", "safety": "안전 (한국어)", "note": "비고 (한국어)"}
   ],
   "part4_monthly": [
-    {"month": "월", "activity": "활동", "safety": "안전", "note": "비고"}
+    {"month": "월 (한국어, 예: 7월)", "activity": "활동 (한국어)", "safety": "안전 (한국어)", "note": "비고 (한국어)"}
   ]
 }
 
-중요:
+중요 사항:
+- **모든 텍스트 값은 반드시 한국어(한글)로 작성하세요.**
+- JSON 키(key)는 영어로 유지하되, 값(value)은 모두 한국어로 작성하세요.
 - satisfaction_stats의 숫자 필드는 반드시 정수여야 합니다.
-- 문서에 정보가 없는 경우 적절한 기본값을 사용하세요.
+- 문서에 정보가 없는 경우 적절한 한국어 기본값을 사용하세요.
 - part3_monthly는 상반기(1월~6월), part4_monthly는 하반기(7월~12월) 계획입니다.
 """
 
