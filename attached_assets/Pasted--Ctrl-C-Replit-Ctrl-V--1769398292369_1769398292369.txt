@@ -1,0 +1,74 @@
+💎 [최종 완성] 워드 문서 스타일링 마스터 (여백, 너비, 완전 정렬)
+아래 박스 내용을 복사(Ctrl+C)하여 Replit 에이전트 채팅창에 붙여넣기(Ctrl+V) 하세요.
+
+Markdown
+# Visual Polish Task: Finalize Word Document Styling (Margins, Widths, & Full Justification)
+
+The user requires a professional layout for the generated Word document (.docx). We need to strictly update `doc_utils.py` to handle margins, table dimensions, and text alignment (including INSIDE tables).
+
+# 1. Page Margins: Set to "Narrow" (0.5 inch)
+- In the document initialization function:
+  ```python
+  from docx.shared import Inches
+  section = document.sections[0]
+  section.left_margin = Inches(0.5)
+  section.right_margin = Inches(0.5)
+  section.top_margin = Inches(0.5)
+  section.bottom_margin = Inches(0.5)
+2. Global Alignment Rule: Justified (양쪽 정렬)
+Body Text: All standard paragraphs added to the document must be set to WD_ALIGN_PARAGRAPH.JUSTIFY.
+
+Table Text: CRITICAL. After populating ANY table (Feedback Table, Total Review Table, etc.), iterate through every cell and force paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY.
+
+3. Table Column Widths (Fixed Ratios)
+You must disable autofit (table.autofit = False) and set explicit widths. Assuming ~7.5 inches of usable width:
+
+A. Feedback Plan Table (환류 계획)
+Target Ratio: 20% : 40% : 40%
+
+Logic:
+
+Column 0 (Area): 1.5 Inches
+
+Column 1 (Problem): 3.0 Inches
+
+Column 2 (Improvement): 3.0 Inches
+
+B. Total Review Table (총평)
+Target Ratio: 20% : 80%
+
+Logic:
+
+Column 0 (Category): 1.5 Inches
+
+Column 1 (Content): 6.0 Inches
+
+Implementation Hint
+When creating tables in doc_utils.py:
+
+Create table -> table.autofit = False
+
+Set column widths logic.
+
+Fill data.
+
+Final Loop:
+
+Python
+for row in table.rows:
+    for cell in row.cells:
+        for paragraph in cell.paragraphs:
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+Action
+Update doc_utils.py to apply these strictly formatted styles.
+
+
+---
+
+### ✅ 적용 후 확인 포인트 (Word 파일)
+
+1.  **표 내부 정렬:** 환류계획이나 총평 표 안의 긴 글들이, **왼쪽 끝과 오른쪽 끝이 일자로 쫙 맞추어져 있는지(양쪽 정렬)** 확인하세요. (울퉁불퉁하면 안 됩니다!)
+2.  **여백:** 종이 테두리 여백이 좁아져서 내용이 시원하게 찼는지 확인하세요.
+3.  **너비:** 표의 칸 비율이 2:4:4 / 2:8로 정확하게 고정되었는지 확인하세요.
+
+이제 정말 깔끔한 보고서를 받아보실 수 있을 것입니다! 🚀
