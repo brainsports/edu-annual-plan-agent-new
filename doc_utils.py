@@ -69,29 +69,50 @@ def insert_chart_to_doc(document, fig, title: str = None):
 
 
 def generate_part1_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
-    """Generate Word report for Part 1 (총괄/환류)."""
+    """Generate Word report for Part 1 (총괄/기획)."""
     document = Document()
     
-    document.add_heading('Part 1: 총괄 평가 및 환류', level=1)
+    document.add_heading('PART 1: 총괄 및 기획', level=1)
     
-    document.add_heading('1. 총괄 평가', level=2)
-    document.add_paragraph(data_dict.get('total_review', ''))
+    document.add_heading('1. 사업의 필요성', level=2)
     
-    document.add_heading('2. 향후 계획', level=2)
-    document.add_paragraph(data_dict.get('future_plan', ''))
+    document.add_heading('1) 이용아동의 욕구 및 문제점', level=3)
+    document.add_paragraph(data_dict.get('need_1_user_desire', ''))
+    
+    document.add_heading('2) 지역 환경적 특성', level=3)
+    document.add_paragraph(data_dict.get('need_2_local_env', ''))
+    
+    document.add_heading('2. 전년도 사업평가 및 환류계획', level=2)
     
     if 'feedback_table' in data_dict and data_dict['feedback_table']:
         df = pd.DataFrame(data_dict['feedback_table'])
-        df.columns = ['영역', '문제점', '개선방안']
-        df_to_word_table(document, df, '3. 환류 테이블')
+        if 'area' in df.columns:
+            df = df.rename(columns={'area': '영역', 'problem': '문제점', 'improvement': '개선방안'})
+        df_to_word_table(document, df, '1) 차년도 사업 환류 계획')
+    
+    document.add_heading('2) 총평', level=3)
+    document.add_paragraph(data_dict.get('total_review_text', ''))
     
     if chart_fig:
-        insert_chart_to_doc(document, chart_fig, '4. 만족도 통계')
+        insert_chart_to_doc(document, chart_fig, '3. 만족도조사')
     
     if 'satisfaction_stats' in data_dict and data_dict['satisfaction_stats']:
         df = pd.DataFrame(data_dict['satisfaction_stats'])
-        df.columns = ['카테고리', '매우 만족', '만족', '보통', '불만족']
+        if 'category' in df.columns:
+            df = df.rename(columns={
+                'category': '카테고리',
+                'very_satisfied': '매우 만족',
+                'satisfied': '만족',
+                'normal': '보통',
+                'dissatisfied': '불만족'
+            })
         df_to_word_table(document, df, '만족도 상세 데이터')
+    
+    document.add_heading('4. 사업목적', level=2)
+    document.add_paragraph(data_dict.get('purpose_text', ''))
+    
+    document.add_heading('5. 사업목표', level=2)
+    document.add_paragraph(data_dict.get('goals_text', ''))
     
     buffer = io.BytesIO()
     document.save(buffer)
@@ -99,25 +120,43 @@ def generate_part1_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
     return buffer
 
 
-def generate_part2_report(programs_list: list) -> io.BytesIO:
+def generate_part2_report(programs_dict: dict) -> io.BytesIO:
     """Generate Word report for Part 2 (세부사업)."""
     document = Document()
     
-    document.add_heading('Part 2: 세부 사업 계획', level=1)
+    document.add_heading('PART 2: 세부 사업 계획', level=1)
     
-    if programs_list:
-        df = pd.DataFrame(programs_list)
-        column_mapping = {
-            'sub_area': '세부영역',
-            'program_name': '프로그램명',
-            'expected_effect': '기대효과',
-            'target_children': '대상아동',
-            'planned_count': '계획인원',
-            'cycle': '주기',
-            'planned_content': '계획내용'
-        }
-        df.columns = [column_mapping.get(col, col) for col in df.columns]
-        df_to_word_table(document, df)
+    categories = ["보호", "교육", "문화", "정서지원", "지역사회연계"]
+    
+    for category in categories:
+        if category in programs_dict:
+            category_data = programs_dict[category]
+            
+            document.add_heading(f'{category} 영역', level=2)
+            
+            if 'detail_table' in category_data and category_data['detail_table']:
+                df = pd.DataFrame(category_data['detail_table'])
+                column_mapping = {
+                    'sub_area': '세부영역',
+                    'program_name': '프로그램명',
+                    'target': '대상',
+                    'count': '인원',
+                    'cycle': '주기',
+                    'content': '계획내용'
+                }
+                df = df.rename(columns=column_mapping)
+                df_to_word_table(document, df, '세부사업내용')
+            
+            if 'eval_table' in category_data and category_data['eval_table']:
+                df = pd.DataFrame(category_data['eval_table'])
+                column_mapping = {
+                    'program_name': '프로그램명',
+                    'eval_tool': '평가도구',
+                    'eval_method': '평가방법',
+                    'eval_timing': '평가시기'
+                }
+                df = df.rename(columns=column_mapping)
+                df_to_word_table(document, df, '평가계획')
     
     buffer = io.BytesIO()
     document.save(buffer)
@@ -135,11 +174,11 @@ def generate_monthly_report(monthly_list: list, period: str) -> io.BytesIO:
         df = pd.DataFrame(monthly_list)
         column_mapping = {
             'month': '월',
-            'main_events': '주요 행사 및 활동',
-            'safety_education': '안전교육',
+            'activity': '주요 행사 및 활동',
+            'safety': '안전교육',
             'note': '비고'
         }
-        df.columns = [column_mapping.get(col, col) for col in df.columns]
+        df = df.rename(columns=column_mapping)
         df_to_word_table(document, df)
     
     buffer = io.BytesIO()
@@ -152,75 +191,114 @@ def generate_full_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
     """Generate complete Word report with all parts."""
     document = Document()
     
-    title = document.add_heading('2025 연간 사업 평가서', level=0)
+    title = document.add_heading('2025 연간 사업 계획서', level=0)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    part1 = data_dict.get('part1', {})
+    part1 = data_dict.get('part1_general', {})
     
-    document.add_heading('Part 1: 총괄 평가 및 환류', level=1)
+    document.add_heading('PART 1: 총괄 및 기획', level=1)
     
-    document.add_heading('1. 총괄 평가', level=2)
-    document.add_paragraph(part1.get('total_review', ''))
+    document.add_heading('1. 사업의 필요성', level=2)
     
-    document.add_heading('2. 향후 계획', level=2)
-    document.add_paragraph(part1.get('future_plan', ''))
+    document.add_heading('1) 이용아동의 욕구 및 문제점', level=3)
+    document.add_paragraph(part1.get('need_1_user_desire', ''))
+    
+    document.add_heading('2) 지역 환경적 특성', level=3)
+    document.add_paragraph(part1.get('need_2_local_env', ''))
+    
+    document.add_heading('2. 전년도 사업평가 및 환류계획', level=2)
     
     if 'feedback_table' in part1 and part1['feedback_table']:
         df = pd.DataFrame(part1['feedback_table'])
-        df.columns = ['영역', '문제점', '개선방안']
-        df_to_word_table(document, df, '3. 환류 테이블')
+        if 'area' in df.columns:
+            df = df.rename(columns={'area': '영역', 'problem': '문제점', 'improvement': '개선방안'})
+        df_to_word_table(document, df, '1) 차년도 사업 환류 계획')
     
-    if chart_fig:
-        insert_chart_to_doc(document, chart_fig, '4. 만족도 통계')
+    document.add_heading('2) 총평', level=3)
+    document.add_paragraph(part1.get('total_review_text', ''))
     
     if 'satisfaction_stats' in part1 and part1['satisfaction_stats']:
+        document.add_heading('3. 만족도조사', level=2)
         df = pd.DataFrame(part1['satisfaction_stats'])
-        df.columns = ['카테고리', '매우 만족', '만족', '보통', '불만족']
+        if 'category' in df.columns:
+            df = df.rename(columns={
+                'category': '카테고리',
+                'very_satisfied': '매우 만족',
+                'satisfied': '만족',
+                'normal': '보통',
+                'dissatisfied': '불만족'
+            })
         df_to_word_table(document, df)
+    
+    document.add_heading('4. 사업목적', level=2)
+    document.add_paragraph(part1.get('purpose_text', ''))
+    
+    document.add_heading('5. 사업목표', level=2)
+    document.add_paragraph(part1.get('goals_text', ''))
     
     document.add_page_break()
     
-    document.add_heading('Part 2: 세부 사업 계획', level=1)
-    if 'part2_programs' in data_dict and data_dict['part2_programs']:
-        df = pd.DataFrame(data_dict['part2_programs'])
-        column_mapping = {
-            'sub_area': '세부영역',
-            'program_name': '프로그램명',
-            'expected_effect': '기대효과',
-            'target_children': '대상아동',
-            'planned_count': '계획인원',
-            'cycle': '주기',
-            'planned_content': '계획내용'
-        }
-        df.columns = [column_mapping.get(col, col) for col in df.columns]
-        df_to_word_table(document, df)
+    document.add_heading('PART 2: 세부 사업 계획', level=1)
+    
+    part2 = data_dict.get('part2_programs', {})
+    categories = ["보호", "교육", "문화", "정서지원", "지역사회연계"]
+    
+    for category in categories:
+        if category in part2:
+            category_data = part2[category]
+            
+            document.add_heading(f'{category} 영역', level=2)
+            
+            if 'detail_table' in category_data and category_data['detail_table']:
+                df = pd.DataFrame(category_data['detail_table'])
+                column_mapping = {
+                    'sub_area': '세부영역',
+                    'program_name': '프로그램명',
+                    'target': '대상',
+                    'count': '인원',
+                    'cycle': '주기',
+                    'content': '계획내용'
+                }
+                df = df.rename(columns=column_mapping)
+                df_to_word_table(document, df, '세부사업내용')
+            
+            if 'eval_table' in category_data and category_data['eval_table']:
+                df = pd.DataFrame(category_data['eval_table'])
+                column_mapping = {
+                    'program_name': '프로그램명',
+                    'eval_tool': '평가도구',
+                    'eval_method': '평가방법',
+                    'eval_timing': '평가시기'
+                }
+                df = df.rename(columns=column_mapping)
+                df_to_word_table(document, df, '평가계획')
     
     document.add_page_break()
     
-    document.add_heading('Part 3: 상반기 월별 계획', level=1)
-    if 'part3_monthly' in data_dict and data_dict['part3_monthly']:
-        df = pd.DataFrame(data_dict['part3_monthly'])
+    document.add_heading('PART 3: 상반기 월별 계획', level=1)
+    if 'part3_monthly_1h' in data_dict and data_dict['part3_monthly_1h']:
+        df = pd.DataFrame(data_dict['part3_monthly_1h'])
         column_mapping = {
             'month': '월',
-            'main_events': '주요 행사 및 활동',
-            'safety_education': '안전교육',
+            'activity': '주요 행사 및 활동',
+            'safety': '안전교육',
             'note': '비고'
         }
-        df.columns = [column_mapping.get(col, col) for col in df.columns]
+        df = df.rename(columns=column_mapping)
         df_to_word_table(document, df)
     
     document.add_page_break()
     
-    document.add_heading('Part 4: 하반기 월별 계획', level=1)
-    if 'part4_monthly' in data_dict and data_dict['part4_monthly']:
-        df = pd.DataFrame(data_dict['part4_monthly'])
+    document.add_heading('PART 4: 하반기 월별 계획', level=1)
+    if 'part4_monthly_2h' in data_dict and data_dict['part4_monthly_2h']:
+        df = pd.DataFrame(data_dict['part4_monthly_2h'])
         column_mapping = {
             'month': '월',
-            'main_events': '주요 행사 및 활동',
-            'safety_education': '안전교육',
+            'activity': '주요 행사 및 활동',
+            'safety': '안전교육',
             'note': '비고'
         }
-        df.columns = [column_mapping.get(col, col) for col in df.columns]
+        df = df.rename(columns=column_mapping)
         df_to_word_table(document, df)
     
     buffer = io.BytesIO()

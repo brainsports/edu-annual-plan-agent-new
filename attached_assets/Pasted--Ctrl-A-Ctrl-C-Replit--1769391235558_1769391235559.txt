@@ -1,0 +1,104 @@
+🧬 [최상위 리팩토링 프롬프트] 목차 기반 구조화 및 세부 수정 구현
+사용법: 아래 박스 안의 내용을 모두 복사(Ctrl+A -> Ctrl+C)하여 Replit 에이전트 채팅창에 붙여넣기(Ctrl+V) 하세요.
+
+Markdown
+# Major Refactoring Task: Implement Detailed TOC Structure & Granular Editing
+
+We need to completely restructure the application's data model, AI system instruction, and Streamlit UI to match the user's detailed Table of Contents (TOC). The core requirement is **granular editing**, meaning large text blocks must be split into smaller, section-specific text areas.
+
+# 1. Define New Data Structure (JSON Schema)
+The AI output and Streamlit Session State must strictly adhere to this new, granular schema based on the TOC.
+
+```json
+{
+  "part1_general": {
+    "need_1_user_desire": "String (1)이용아동의 욕구 및 문제점)",
+    "need_2_local_env": "String (2)지역 환경적 특성 - 통합 기술)",
+    "feedback_table": [ {"area": "String", "problem": "String", "improvement": "String"} ],
+    "total_review_text": "String (2)총평)",
+    "satisfaction_stats": [ {"category": "String", "very_satisfied": Int, "satisfied": Int, "normal": Int, "dissatisfied": Int} ],
+    "purpose_text": "String (4.사업목적)",
+    "goals_text": "String (5.사업목표)"
+  },
+  "part2_programs": {
+    "보호": { "detail_table": [], "eval_table": [] },
+    "교육": { "detail_table": [], "eval_table": [] },
+    "문화": { "detail_table": [], "eval_table": [] },
+    "정서지원": { "detail_table": [], "eval_table": [] },
+    "지역사회연계": { "detail_table": [], "eval_table": [] }
+    // Note: detail_table columns = [세부영역, 프로그램명, 대상, 인원, 주기, 계획내용]
+    // Note: eval_table columns = [프로그램명, 평가도구, 평가방법, 평가시기]
+  },
+  "part3_monthly_1h": [ {"month": "String", "activity": "String", "safety": "String", "note": "String"} ],
+  "part4_monthly_2h": [ {"month": "String", "activity": "String", "safety": "String", "note": "String"} ]
+}
+2. Update Backend Logic (utils.py)
+Modify the System Instruction sent to Gemini. It must explicitly demand the exact JSON structure defined above.
+
+Instruct Gemini to analyze input files and populate each specific text field (e.g., need_1_user_desire) separately, rather than summarizing everything into one block.
+
+3. Update Frontend UI (main.py)
+Implement the approved UI strategy: Tabs + Expanders + Radio Buttons.
+
+Tab 1: PART 1 (총괄/기획) Use st.expander for main sections to allow granular editing.
+
+Expander: 1. 사업의 필요성
+
+st.text_area("1) 이용아동의 욕구 및 문제점", key="p1_need_1")
+
+st.text_area("2) 지역 환경적 특성 (통합서술)", key="p1_need_2")
+
+Expander: 2. 전년도 사업평가 및 환류계획
+
+st.data_editor("1) 차년도 사업 환류 계획", key="p1_feedback_tbl")
+
+st.text_area("2) 총평", key="p1_review_txt")
+
+Expander: 3. 만족도조사
+
+(Display Pie Chart first)
+
+st.data_editor("세부 수치 수정", key="p1_sat_tbl")
+
+Expander: 4. 사업목적
+
+st.text_area(key="p1_purpose_txt")
+
+Expander: 5. 사업목표
+
+st.text_area(key="p1_goals_txt")
+
+Tab 2: PART 2 (세부사업)
+
+Use st.radio at the top to select category: ["보호", "교육", "문화", "정서지원", "지역사회연계"].
+
+Based on selection, dynamically display two st.data_editor widgets:
+
+세부사업내용 Table
+
+평가계획 Table
+
+Tab 3 & 4 (월간 계획)
+
+Keep the existing st.data_editor structure for monthly plans.
+
+4. Update Word Generation (doc_utils.py)
+Update the function to read data from the new granular JSON structure.
+
+Ensure the generated Word doc uses correct headings (H1, H2) following the provided TOC structure exactly.
+
+Action
+Execute this major refactoring across main.py, utils.py, and doc_utils.py. Ensure the session state initialization matches the new JSON schema.
+
+
+---
+
+### 🕒 예상 진행 과정
+
+이 작업은 단순 수정이 아니라 앱의 뇌(데이터 구조)와 얼굴(UI)을 모두 바꾸는 대공사입니다.
+
+1.  **프롬프트 입력:** 위 내용을 Replit 에이전트에게 붙여넣습니다.
+2.  **에이전트 작업:** 에이전트가 `main.py`, `utils.py`, `doc_utils.py` 등 여러 파일을 동시에 수정하며 꽤 긴 코드를 작성할 것입니다. (1~2분 정도 소요될 수 있습니다.)
+3.  **확인:** 작업이 완료되면 **[Run]**을 눌러 새로고침하세요. 아까 보셨던 이미지처럼 **접이식 메뉴(Expander)와 라디오 버튼**이 적용된 새로운 UI가 나타날 것입니다.
+
+이제 이 구조가 적용되면, 아무리 긴 보고서라도 원하는 부분만 콕 집어서 수정할 수 있는 강력한 도구가 됩니다. 실행해 보시고 결과 알려주세요!

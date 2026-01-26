@@ -87,148 +87,252 @@ if st.session_state.analysis_data is None:
 else:
     data = st.session_state.analysis_data
     
-    tab1, tab2, tab3, tab4 = st.tabs(["📋 총괄/환류", "📑 세부사업", "📅 상반기", "📅 하반기"])
+    if 'part1_general' not in data:
+        data['part1_general'] = {}
+    if 'part2_programs' not in data:
+        data['part2_programs'] = {}
+    if 'part3_monthly_1h' not in data:
+        data['part3_monthly_1h'] = []
+    if 'part4_monthly_2h' not in data:
+        data['part4_monthly_2h'] = []
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["📋 PART 1 (총괄/기획)", "📑 PART 2 (세부사업)", "📅 PART 3 (상반기)", "📅 PART 4 (하반기)"])
     
     with tab1:
-        st.header("Part 1: 총괄 평가 및 환류")
+        st.header("PART 1: 총괄 및 기획")
         
-        col1, col2 = st.columns(2)
+        part1 = data.get('part1_general', {})
         
-        with col1:
-            st.subheader("총괄 평가")
-            part1 = data.get('part1', {})
+        with st.expander("1. 사업의 필요성", expanded=True):
+            st.subheader("1) 이용아동의 욕구 및 문제점")
+            need_1 = st.text_area(
+                "이용아동의 욕구 및 문제점을 작성하세요",
+                value=part1.get('need_1_user_desire', ''),
+                height=150,
+                key="p1_need_1"
+            )
+            data['part1_general']['need_1_user_desire'] = need_1
+            
+            st.subheader("2) 지역 환경적 특성")
+            need_2 = st.text_area(
+                "지역 환경적 특성을 작성하세요",
+                value=part1.get('need_2_local_env', ''),
+                height=150,
+                key="p1_need_2"
+            )
+            data['part1_general']['need_2_local_env'] = need_2
+        
+        with st.expander("2. 전년도 사업평가 및 환류계획", expanded=True):
+            st.subheader("1) 차년도 사업 환류 계획")
+            feedback_data = part1.get('feedback_table', [])
+            feedback_df = pd.DataFrame(feedback_data) if feedback_data else pd.DataFrame(columns=['area', 'problem', 'improvement'])
+            
+            if not feedback_df.empty and 'area' in feedback_df.columns:
+                feedback_df = feedback_df.rename(columns={'area': '영역', 'problem': '문제점', 'improvement': '개선방안'})
+            else:
+                feedback_df = pd.DataFrame(columns=['영역', '문제점', '개선방안'])
+            
+            edited_feedback = st.data_editor(
+                feedback_df,
+                num_rows="dynamic",
+                use_container_width=True,
+                key="p1_feedback_tbl"
+            )
+            
+            data['part1_general']['feedback_table'] = edited_feedback.rename(
+                columns={'영역': 'area', '문제점': 'problem', '개선방안': 'improvement'}
+            ).to_dict('records')
+            
+            st.subheader("2) 총평")
             total_review = st.text_area(
-                "성과 요약",
-                value=part1.get('total_review', ''),
+                "전년도 사업평가 총평을 작성하세요",
+                value=part1.get('total_review_text', ''),
                 height=150,
-                key="total_review"
+                key="p1_review_txt"
             )
-            data['part1']['total_review'] = total_review
+            data['part1_general']['total_review_text'] = total_review
         
-        with col2:
-            st.subheader("향후 계획")
-            future_plan = st.text_area(
-                "내년 계획",
-                value=part1.get('future_plan', ''),
+        with st.expander("3. 만족도조사", expanded=True):
+            satisfaction_stats = part1.get('satisfaction_stats', [])
+            
+            if satisfaction_stats:
+                stats_df = pd.DataFrame(satisfaction_stats)
+                if 'category' in stats_df.columns:
+                    stats_df = stats_df.rename(columns={
+                        'category': '카테고리',
+                        'very_satisfied': '매우 만족',
+                        'satisfied': '만족',
+                        'normal': '보통',
+                        'dissatisfied': '불만족'
+                    })
+                
+                col_chart, col_data = st.columns([1, 1])
+                
+                with col_chart:
+                    fig, ax = plt.subplots(figsize=(8, 6))
+                    
+                    totals = stats_df[['매우 만족', '만족', '보통', '불만족']].sum()
+                    colors = ['#2ecc71', '#3498db', '#f39c12', '#e74c3c']
+                    labels = ['매우 만족', '만족', '보통', '불만족']
+                    
+                    wedges, texts, autotexts = ax.pie(
+                        totals.values,
+                        labels=labels,
+                        autopct='%1.1f%%',
+                        colors=colors,
+                        startangle=90
+                    )
+                    
+                    ax.set_title('만족도 분포')
+                    plt.tight_layout()
+                    
+                    st.pyplot(fig)
+                    plt.close()
+                
+                with col_data:
+                    st.caption("세부 수치 수정")
+                    edited_stats = st.data_editor(
+                        stats_df,
+                        num_rows="dynamic",
+                        use_container_width=True,
+                        key="p1_sat_tbl"
+                    )
+                    
+                    data['part1_general']['satisfaction_stats'] = edited_stats.rename(
+                        columns={
+                            '카테고리': 'category',
+                            '매우 만족': 'very_satisfied',
+                            '만족': 'satisfied',
+                            '보통': 'normal',
+                            '불만족': 'dissatisfied'
+                        }
+                    ).to_dict('records')
+            else:
+                st.info("만족도 조사 데이터가 없습니다.")
+        
+        with st.expander("4. 사업목적", expanded=True):
+            purpose = st.text_area(
+                "사업목적을 작성하세요",
+                value=part1.get('purpose_text', ''),
                 height=150,
-                key="future_plan"
+                key="p1_purpose_txt"
             )
-            data['part1']['future_plan'] = future_plan
+            data['part1_general']['purpose_text'] = purpose
         
-        st.subheader("환류 테이블")
-        feedback_df = pd.DataFrame(part1.get('feedback_table', []))
-        if not feedback_df.empty:
-            feedback_df.columns = ['영역', '문제점', '개선방안']
-        else:
-            feedback_df = pd.DataFrame(columns=['영역', '문제점', '개선방안'])
-        
-        edited_feedback = st.data_editor(
-            feedback_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key="feedback_editor"
-        )
-        
-        data['part1']['feedback_table'] = edited_feedback.rename(
-            columns={'영역': 'area', '문제점': 'problem', '개선방안': 'improvement'}
-        ).to_dict('records')
-        
-        st.subheader("만족도 통계")
-        
-        satisfaction_stats = part1.get('satisfaction_stats', [])
-        if satisfaction_stats:
-            stats_df = pd.DataFrame(satisfaction_stats)
-            stats_df.columns = ['카테고리', '매우 만족', '만족', '보통', '불만족']
-            
-            col_chart, col_data = st.columns([1, 1])
-            
-            with col_chart:
-                fig, ax = plt.subplots(figsize=(8, 6))
-                
-                totals = stats_df[['매우 만족', '만족', '보통', '불만족']].sum()
-                colors = ['#2ecc71', '#3498db', '#f39c12', '#e74c3c']
-                labels = ['매우 만족', '만족', '보통', '불만족']
-                
-                wedges, texts, autotexts = ax.pie(
-                    totals.values,
-                    labels=labels,
-                    autopct='%1.1f%%',
-                    colors=colors,
-                    startangle=90
-                )
-                
-                ax.set_title('만족도 분포')
-                plt.tight_layout()
-                
-                st.pyplot(fig)
-                plt.close()
-            
-            with col_data:
-                edited_stats = st.data_editor(
-                    stats_df,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    key="stats_editor"
-                )
-                
-                data['part1']['satisfaction_stats'] = edited_stats.rename(
-                    columns={
-                        '카테고리': 'category',
-                        '매우 만족': 'very_satisfied',
-                        '만족': 'satisfied',
-                        '보통': 'normal',
-                        '불만족': 'dissatisfied'
-                    }
-                ).to_dict('records')
+        with st.expander("5. 사업목표", expanded=True):
+            goals = st.text_area(
+                "사업목표를 작성하세요",
+                value=part1.get('goals_text', ''),
+                height=150,
+                key="p1_goals_txt"
+            )
+            data['part1_general']['goals_text'] = goals
         
         st.markdown("---")
         
         fig_for_doc, ax_doc = plt.subplots(figsize=(8, 6))
         if satisfaction_stats:
-            totals = pd.DataFrame(satisfaction_stats)[['very_satisfied', 'satisfied', 'normal', 'dissatisfied']].sum()
+            stats_for_chart = pd.DataFrame(satisfaction_stats)
+            totals = stats_for_chart[['very_satisfied', 'satisfied', 'normal', 'dissatisfied']].sum()
             colors = ['#2ecc71', '#3498db', '#f39c12', '#e74c3c']
             labels = ['매우 만족', '만족', '보통', '불만족']
             ax_doc.pie(totals.values, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
             ax_doc.set_title('만족도 분포')
         plt.tight_layout()
         
-        part1_report = generate_part1_report(data['part1'], fig_for_doc)
+        part1_report = generate_part1_report(data['part1_general'], fig_for_doc)
         plt.close()
         
         st.download_button(
-            label="Part 1 다운로드 (Word)",
+            label="PART 1 다운로드 (Word)",
             data=part1_report,
-            file_name="Part1_총괄환류.docx",
+            file_name="Part1_총괄기획.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
     
     with tab2:
-        st.header("Part 2: 세부 사업 계획")
+        st.header("PART 2: 세부 사업 계획")
         
-        programs = data.get('part2_programs', [])
-        programs_df = pd.DataFrame(programs)
+        categories = ["보호", "교육", "문화", "정서지원", "지역사회연계"]
         
-        if not programs_df.empty:
-            programs_df.columns = ['세부영역', '프로그램명', '기대효과', '대상아동', '계획인원', '주기', '계획내용']
-        else:
-            programs_df = pd.DataFrame(columns=['세부영역', '프로그램명', '기대효과', '대상아동', '계획인원', '주기', '계획내용'])
-        
-        edited_programs = st.data_editor(
-            programs_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key="programs_editor"
+        selected_category = st.radio(
+            "영역 선택",
+            categories,
+            horizontal=True,
+            key="p2_category_select"
         )
         
-        data['part2_programs'] = edited_programs.rename(
+        part2 = data.get('part2_programs', {})
+        
+        if selected_category not in part2:
+            part2[selected_category] = {"detail_table": [], "eval_table": []}
+            data['part2_programs'] = part2
+        
+        category_data = part2.get(selected_category, {"detail_table": [], "eval_table": []})
+        
+        st.subheader(f"📋 {selected_category} - 세부사업내용")
+        
+        detail_data = category_data.get('detail_table', [])
+        detail_df = pd.DataFrame(detail_data) if detail_data else pd.DataFrame(columns=['sub_area', 'program_name', 'target', 'count', 'cycle', 'content'])
+        
+        if not detail_df.empty and 'sub_area' in detail_df.columns:
+            detail_df = detail_df.rename(columns={
+                'sub_area': '세부영역',
+                'program_name': '프로그램명',
+                'target': '대상',
+                'count': '인원',
+                'cycle': '주기',
+                'content': '계획내용'
+            })
+        else:
+            detail_df = pd.DataFrame(columns=['세부영역', '프로그램명', '대상', '인원', '주기', '계획내용'])
+        
+        edited_detail = st.data_editor(
+            detail_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            key=f"p2_detail_{selected_category}"
+        )
+        
+        data['part2_programs'][selected_category]['detail_table'] = edited_detail.rename(
             columns={
                 '세부영역': 'sub_area',
                 '프로그램명': 'program_name',
-                '기대효과': 'expected_effect',
-                '대상아동': 'target_children',
-                '계획인원': 'planned_count',
+                '대상': 'target',
+                '인원': 'count',
                 '주기': 'cycle',
-                '계획내용': 'planned_content'
+                '계획내용': 'content'
+            }
+        ).to_dict('records')
+        
+        st.subheader(f"📊 {selected_category} - 평가계획")
+        
+        eval_data = category_data.get('eval_table', [])
+        eval_df = pd.DataFrame(eval_data) if eval_data else pd.DataFrame(columns=['program_name', 'eval_tool', 'eval_method', 'eval_timing'])
+        
+        if not eval_df.empty and 'program_name' in eval_df.columns:
+            eval_df = eval_df.rename(columns={
+                'program_name': '프로그램명',
+                'eval_tool': '평가도구',
+                'eval_method': '평가방법',
+                'eval_timing': '평가시기'
+            })
+        else:
+            eval_df = pd.DataFrame(columns=['프로그램명', '평가도구', '평가방법', '평가시기'])
+        
+        edited_eval = st.data_editor(
+            eval_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            key=f"p2_eval_{selected_category}"
+        )
+        
+        data['part2_programs'][selected_category]['eval_table'] = edited_eval.rename(
+            columns={
+                '프로그램명': 'program_name',
+                '평가도구': 'eval_tool',
+                '평가방법': 'eval_method',
+                '평가시기': 'eval_timing'
             }
         ).to_dict('records')
         
@@ -236,20 +340,25 @@ else:
         
         part2_report = generate_part2_report(data['part2_programs'])
         st.download_button(
-            label="Part 2 다운로드 (Word)",
+            label="PART 2 다운로드 (Word)",
             data=part2_report,
             file_name="Part2_세부사업.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
     
     with tab3:
-        st.header("Part 3: 상반기 월별 계획 (1월~6월)")
+        st.header("PART 3: 상반기 월별 계획 (1월~6월)")
         
-        monthly_h1 = data.get('part3_monthly', [])
-        h1_df = pd.DataFrame(monthly_h1)
+        monthly_h1 = data.get('part3_monthly_1h', [])
+        h1_df = pd.DataFrame(monthly_h1) if monthly_h1 else pd.DataFrame(columns=['month', 'activity', 'safety', 'note'])
         
-        if not h1_df.empty:
-            h1_df.columns = ['월', '주요 행사 및 활동', '안전교육', '비고']
+        if not h1_df.empty and 'month' in h1_df.columns:
+            h1_df = h1_df.rename(columns={
+                'month': '월',
+                'activity': '주요 행사 및 활동',
+                'safety': '안전교육',
+                'note': '비고'
+            })
         else:
             h1_df = pd.DataFrame(columns=['월', '주요 행사 및 활동', '안전교육', '비고'])
         
@@ -260,28 +369,33 @@ else:
             key="h1_editor"
         )
         
-        data['part3_monthly'] = edited_h1.rename(
-            columns={'월': 'month', '주요 행사 및 활동': 'main_events', '안전교육': 'safety_education', '비고': 'note'}
+        data['part3_monthly_1h'] = edited_h1.rename(
+            columns={'월': 'month', '주요 행사 및 활동': 'activity', '안전교육': 'safety', '비고': 'note'}
         ).to_dict('records')
         
         st.markdown("---")
         
-        h1_report = generate_monthly_report(data['part3_monthly'], "상반기")
+        h1_report = generate_monthly_report(data['part3_monthly_1h'], "상반기")
         st.download_button(
-            label="Part 3 다운로드 (Word)",
+            label="PART 3 다운로드 (Word)",
             data=h1_report,
             file_name="Part3_상반기계획.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
     
     with tab4:
-        st.header("Part 4: 하반기 월별 계획 (7월~12월)")
+        st.header("PART 4: 하반기 월별 계획 (7월~12월)")
         
-        monthly_h2 = data.get('part4_monthly', [])
-        h2_df = pd.DataFrame(monthly_h2)
+        monthly_h2 = data.get('part4_monthly_2h', [])
+        h2_df = pd.DataFrame(monthly_h2) if monthly_h2 else pd.DataFrame(columns=['month', 'activity', 'safety', 'note'])
         
-        if not h2_df.empty:
-            h2_df.columns = ['월', '주요 행사 및 활동', '안전교육', '비고']
+        if not h2_df.empty and 'month' in h2_df.columns:
+            h2_df = h2_df.rename(columns={
+                'month': '월',
+                'activity': '주요 행사 및 활동',
+                'safety': '안전교육',
+                'note': '비고'
+            })
         else:
             h2_df = pd.DataFrame(columns=['월', '주요 행사 및 활동', '안전교육', '비고'])
         
@@ -292,15 +406,15 @@ else:
             key="h2_editor"
         )
         
-        data['part4_monthly'] = edited_h2.rename(
-            columns={'월': 'month', '주요 행사 및 활동': 'main_events', '안전교육': 'safety_education', '비고': 'note'}
+        data['part4_monthly_2h'] = edited_h2.rename(
+            columns={'월': 'month', '주요 행사 및 활동': 'activity', '안전교육': 'safety', '비고': 'note'}
         ).to_dict('records')
         
         st.markdown("---")
         
-        h2_report = generate_monthly_report(data['part4_monthly'], "하반기")
+        h2_report = generate_monthly_report(data['part4_monthly_2h'], "하반기")
         st.download_button(
-            label="Part 4 다운로드 (Word)",
+            label="PART 4 다운로드 (Word)",
             data=h2_report,
             file_name="Part4_하반기계획.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
