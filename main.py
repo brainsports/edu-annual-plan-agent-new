@@ -70,17 +70,6 @@ with st.sidebar:
         st.success("샘플 데이터가 로드되었습니다!")
         st.rerun()
     
-    if st.session_state.analysis_data:
-        st.markdown("---")
-        st.subheader("전체 보고서 다운로드")
-        
-        full_report = generate_full_report(st.session_state.analysis_data)
-        st.download_button(
-            label="전체 보고서 다운로드 (Word)",
-            data=full_report,
-            file_name="2025_연간사업평가서_전체.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
 
 if st.session_state.analysis_data is None:
     st.info("👈 왼쪽 사이드바에서 문서를 업로드하거나 '샘플 데이터 로드' 버튼을 클릭하여 시작하세요.")
@@ -106,7 +95,7 @@ else:
         with st.expander("1. 사업의 필요성", expanded=True):
             st.subheader("1) 이용아동의 욕구 및 문제점")
             need_1 = st.text_area(
-                "1) 이용아동의 욕구 및 문제점 (약 500자)",
+                "1) 이용아동의 욕구 및 문제점 (상세 서술)",
                 value=part1.get('need_1_user_desire', ''),
                 height=300,
                 key="p1_need_1"
@@ -116,7 +105,7 @@ else:
             st.subheader("2) 지역 환경적 특성")
             
             need_2_1 = st.text_area(
-                "(1) 지역적 특성 (약 500자)",
+                "(1) 지역적 특성 (상세 서술)",
                 value=part1.get('need_2_1_regional', ''),
                 height=200,
                 key="p1_need_2_1"
@@ -124,7 +113,7 @@ else:
             data['part1_general']['need_2_1_regional'] = need_2_1
             
             need_2_2 = st.text_area(
-                "(2) 주변환경 (약 500자)",
+                "(2) 주변환경 (상세 서술)",
                 value=part1.get('need_2_2_environment', ''),
                 height=200,
                 key="p1_need_2_2"
@@ -132,7 +121,7 @@ else:
             data['part1_general']['need_2_2_environment'] = need_2_2
             
             need_2_3 = st.text_area(
-                "(3) 교육적 특성 (약 500자)",
+                "(3) 교육적 특성 (상세 서술)",
                 value=part1.get('need_2_3_educational', ''),
                 height=200,
                 key="p1_need_2_3"
@@ -440,7 +429,7 @@ else:
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: gray;'>"
-    "AI 연간 사업계획 통합 에이전트 / 정보광장"
+    "AI 연간 사업계획 통합 에이전트 | 정보광장"
     "</div>",
     unsafe_allow_html=True
 )

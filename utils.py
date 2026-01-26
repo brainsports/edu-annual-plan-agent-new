@@ -117,10 +117,10 @@ def get_gemini_analysis(text: str) -> dict:
 필수 JSON 구조:
 {
   "part1_general": {
-    "need_1_user_desire": "이용아동의 욕구 및 문제점 분석 내용 (약 500자 분량으로 상세히 작성)",
-    "need_2_1_regional": "지역적 특성 - 해당 지역의 인구통계, 경제적 특성, 행정구역 특성 등 (약 500자 분량)",
-    "need_2_2_environment": "주변환경 - 시설 주변의 교통, 접근성, 주거환경, 편의시설 등 (약 500자 분량)",
-    "need_2_3_educational": "교육적 특성 - 지역 내 학교, 교육기관, 학습환경 특성 등 (약 500자 분량)",
+    "need_1_user_desire": "이용아동의 욕구 및 문제점 분석 내용 (700~800자로 상세히 작성, 공백 제외 500자 이상 필수)",
+    "need_2_1_regional": "지역적 특성 - 해당 지역의 인구통계, 경제적 특성, 행정구역 특성 등 (700~800자로 상세히 작성)",
+    "need_2_2_environment": "주변환경 - 시설 주변의 교통, 접근성, 주거환경, 편의시설 등 (700~800자로 상세히 작성)",
+    "need_2_3_educational": "교육적 특성 - 지역 내 학교, 교육기관, 학습환경 특성 등 (700~800자로 상세히 작성)",
     "feedback_table": [
       {"area": "영역", "problem": "문제점", "improvement": "개선방안"}
     ],
@@ -171,8 +171,8 @@ def get_gemini_analysis(text: str) -> dict:
 - JSON 키(key)는 영어로 유지하되, 값(value)은 모두 한국어로 작성하세요.
 - satisfaction_stats의 숫자 필드는 반드시 정수여야 합니다.
 - 문서에 정보가 없는 경우 적절한 한국어 기본값을 사용하세요.
-- **need_1_user_desire는 약 500자 분량으로 이용아동의 욕구와 문제점을 상세히 분석하세요.**
-- **need_2_1_regional, need_2_2_environment, need_2_3_educational 각각 약 500자 분량으로 상세히 작성하세요.**
+- **need_1_user_desire는 700~800자 분량(공백 제외 500자 이상)으로 이용아동의 욕구와 문제점을 상세히 분석하세요. 간략히 요약하지 말고 구체적인 예시와 근거를 들어 충분히 서술하세요.**
+- **need_2_1_regional, need_2_2_environment, need_2_3_educational 각각 700~800자 분량으로 상세히 작성하세요. 간략히 요약하지 말고 구체적인 예시와 근거를 들어 충분히 서술하세요.**
 - part2_programs는 5개 카테고리(보호, 교육, 문화, 정서지원, 지역사회연계)별로 구분하여 작성하세요.
 - part3_monthly_1h는 상반기(1월~6월), part4_monthly_2h는 하반기(7월~12월) 계획입니다.
 """
