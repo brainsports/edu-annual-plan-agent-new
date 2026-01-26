@@ -1,0 +1,49 @@
+# Major Task: Implement "Evaluation Plan" Table with Enhanced Details
+
+The user feels the "Evaluation Plan" (Part 2 - Section 2) is too weak.
+We need to generate a table that strictly follows the user's column order but features **significantly expanded content** for "Expected Effects".
+
+# 1. Update AI Instructions (`utils.py`) - The Expansion Logic
+
+Create/Update the prompt for `part2_evaluation_plan`.
+
+## A. Column Structure (Strict Order)
+1.  **세부영역** (Sub-category: Living, Safety, etc.) - *Matches Part 2-1*
+2.  **프로그램명** (Program Name) - *Matches Part 2-1*
+3.  **기대효과** (Expected Effect) - *The Core Focus*
+4.  **주요계획** (Main Plan) - *Summary of execution*
+5.  **평가방법** (Evaluation Method) - *Specific tools*
+
+## B. Content Generation Rules
+-   **Linkage**: Use the exact same programs identified in "Part 2-1 Detailed Content". Do not invent new ones.
+-   **Column 3: 기대효과 (Expected Effect) - "Deep Expansion"**
+    -   **Rule**: This must be **more detailed** than the description in Part 2-1.
+    -   **Content**: Focus on specific changes in the child's behavior, attitude, or skills.
+    -   **Format**: Use `●` bullets. Write 2-3 distinct effects.
+    -   *Bad*: "Improves safety."
+    * *Good*: "● **Crisis Response**: Children will master CPR techniques, enabling 100% of participants to respond correctly in mock emergencies.\n● **Safety Awareness**: Increases daily safety habit adherence by 20% through repetitive training."
+-   **Column 4: 주요계획 (Main Plan)**
+    -   Briefly summarize *how* it will be done (e.g., "Monthly fire drill with local station").
+-   **Column 5: 평가방법 (Evaluation Method)**
+    -   List specific documents: "Program Log (프로그램 일지)", "Satisfaction Survey (만족도 조사)", "Attendance Book (출석부)", "Observation Log (관찰일지)", "Pre/Post Test (사전사후 검사)".
+
+# 2. Update Word Generator (`doc_utils.py`)
+
+Create `create_evaluation_table(doc, data)`:
+
+## A. Table Layout
+-   **Columns**: 5 Columns.
+-   **Width Strategy** (Total 6.5 inches):
+    -   Sub-category: ~0.7 in
+    -   Program Name: ~1.0 in
+    -   **Expected Effect: ~2.0 in (Widest)**
+    -   Main Plan: ~1.8 in
+    -   Evaluation Method: ~1.0 in
+
+## B. Styling
+-   **Header**: Center Aligned, Gray Background.
+-   **Content Cells**: **Left Aligned** (Global Rule).
+-   **Font**: Apply `add_markdown_text` to parse bold keywords (`**...**`).
+
+# Action
+Apply this logic to `utils.py` and `doc_utils.py` to generate a rich, professional "Evaluation Plan" table for Protection, Education, Culture, Emotional, and Community sections.
