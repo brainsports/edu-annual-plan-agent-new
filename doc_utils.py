@@ -279,6 +279,24 @@ def df_to_word_table(document, df: pd.DataFrame, title: str = None, table_type: 
             row.cells[2].width = Inches(2.0)
             row.cells[3].width = Inches(1.8)
             row.cells[4].width = Inches(1.0)
+    elif table_type == 'monthly_program' and len(df.columns) == 6:
+        for row in table.rows:
+            row.cells[0].width = Inches(0.6)
+            row.cells[1].width = Inches(0.6)
+            row.cells[2].width = Inches(1.0)
+            row.cells[3].width = Inches(0.7)
+            row.cells[4].width = Inches(0.7)
+            row.cells[5].width = Inches(2.9)
+    elif table_type == 'budget' and len(df.columns) == 3:
+        for row in table.rows:
+            row.cells[0].width = Inches(1.2)
+            row.cells[1].width = Inches(1.5)
+            row.cells[2].width = Inches(3.8)
+    elif table_type == 'feedback_summary' and len(df.columns) == 3:
+        for row in table.rows:
+            row.cells[0].width = Inches(1.3)
+            row.cells[1].width = Inches(2.2)
+            row.cells[2].width = Inches(3.0)
     
     for row_idx, row in enumerate(table.rows):
         for cell in row.cells:
@@ -465,7 +483,7 @@ def generate_part2_report(programs_dict: dict) -> io.BytesIO:
 
 
 def generate_monthly_report(monthly_list: list, period: str) -> io.BytesIO:
-    """Generate Word report for monthly plans."""
+    """Generate Word report for monthly plans (legacy format)."""
     document = Document()
     set_standard_margins(document)
     
@@ -481,6 +499,90 @@ def generate_monthly_report(monthly_list: list, period: str) -> io.BytesIO:
         }
         df = df.rename(columns=column_mapping)
         df_to_word_table(document, df, table_type='monthly')
+    
+    buffer = io.BytesIO()
+    document.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
+def generate_monthly_program_report(monthly_plan: dict, months: list = None) -> io.BytesIO:
+    """Generate Word report for monthly program plans with 6-column structure.
+    
+    Args:
+        monthly_plan: Dictionary with month keys (1월~12월) and program lists as values
+        months: Optional list of months to include (e.g., ["1월", "2월", ...])
+    """
+    document = Document()
+    set_standard_margins(document)
+    
+    if months is None:
+        months = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
+    
+    for month in months:
+        programs = monthly_plan.get(month, [])
+        if programs:
+            add_left_aligned_heading(document, f'{month} 사업계획서', level=2)
+            
+            df = pd.DataFrame(programs)
+            column_mapping = {
+                'big_category': '대분류',
+                'mid_category': '중분류',
+                'program_name': '프로그램명',
+                'target': '참여자',
+                'staff': '수행인력',
+                'content': '사업내용'
+            }
+            df = df.rename(columns=column_mapping)
+            expected_cols = ['대분류', '중분류', '프로그램명', '참여자', '수행인력', '사업내용']
+            existing_cols = [c for c in expected_cols if c in df.columns]
+            df = df[existing_cols]
+            df_to_word_table(document, df, table_type='monthly_program')
+    
+    buffer = io.BytesIO()
+    document.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
+def generate_budget_evaluation_report(budget_eval_data: dict) -> io.BytesIO:
+    """Generate Word report for budget and evaluation/feedback summary.
+    
+    Args:
+        budget_eval_data: Dictionary containing budget_table and feedback_summary
+    """
+    document = Document()
+    set_standard_margins(document)
+    
+    add_left_aligned_heading(document, 'PART 4: 예산 및 평가', level=1)
+    
+    if 'budget_table' in budget_eval_data and budget_eval_data['budget_table']:
+        add_left_aligned_heading(document, '1. 예산계획', level=2)
+        df = pd.DataFrame(budget_eval_data['budget_table'])
+        column_mapping = {
+            'category': '항목',
+            'amount': '금액',
+            'details': '세부내용'
+        }
+        df = df.rename(columns=column_mapping)
+        expected_cols = ['항목', '금액', '세부내용']
+        existing_cols = [c for c in expected_cols if c in df.columns]
+        df = df[existing_cols]
+        df_to_word_table(document, df, table_type='budget')
+    
+    if 'feedback_summary' in budget_eval_data and budget_eval_data['feedback_summary']:
+        add_left_aligned_heading(document, '2. 평가 및 환류 요약', level=2)
+        df = pd.DataFrame(budget_eval_data['feedback_summary'])
+        column_mapping = {
+            'area': '영역',
+            'problem': '문제점',
+            'plan': '개선계획'
+        }
+        df = df.rename(columns=column_mapping)
+        expected_cols = ['영역', '문제점', '개선계획']
+        existing_cols = [c for c in expected_cols if c in df.columns]
+        df = df[existing_cols]
+        df_to_word_table(document, df, table_type='feedback_summary')
     
     buffer = io.BytesIO()
     document.save(buffer)
@@ -635,8 +737,30 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
     
     document.add_page_break()
     
-    add_left_aligned_heading(document, 'PART 3: 상반기 월별 계획', level=1)
-    if 'part3_monthly_1h' in data_dict and data_dict['part3_monthly_1h']:
+    add_left_aligned_heading(document, 'PART 3: 월별 사업계획', level=1)
+    
+    if 'part3_monthly_plan' in data_dict and data_dict['part3_monthly_plan']:
+        monthly_plan = data_dict['part3_monthly_plan']
+        for month in ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]:
+            programs = monthly_plan.get(month, [])
+            if programs:
+                add_left_aligned_heading(document, f'{month} 사업계획서', level=2)
+                
+                df = pd.DataFrame(programs)
+                column_mapping = {
+                    'big_category': '대분류',
+                    'mid_category': '중분류',
+                    'program_name': '프로그램명',
+                    'target': '참여자',
+                    'staff': '수행인력',
+                    'content': '사업내용'
+                }
+                df = df.rename(columns=column_mapping)
+                expected_cols = ['대분류', '중분류', '프로그램명', '참여자', '수행인력', '사업내용']
+                existing_cols = [c for c in expected_cols if c in df.columns]
+                df = df[existing_cols]
+                df_to_word_table(document, df, table_type='monthly_program')
+    elif 'part3_monthly_1h' in data_dict and data_dict['part3_monthly_1h']:
         df = pd.DataFrame(data_dict['part3_monthly_1h'])
         column_mapping = {
             'month': '월',
@@ -649,8 +773,39 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
     
     document.add_page_break()
     
-    add_left_aligned_heading(document, 'PART 4: 하반기 월별 계획', level=1)
-    if 'part4_monthly_2h' in data_dict and data_dict['part4_monthly_2h']:
+    add_left_aligned_heading(document, 'PART 4: 예산 및 평가', level=1)
+    
+    if 'part4_budget_evaluation' in data_dict and data_dict['part4_budget_evaluation']:
+        budget_eval = data_dict['part4_budget_evaluation']
+        
+        if 'budget_table' in budget_eval and budget_eval['budget_table']:
+            add_left_aligned_heading(document, '1. 예산계획', level=2)
+            df = pd.DataFrame(budget_eval['budget_table'])
+            column_mapping = {
+                'category': '항목',
+                'amount': '금액',
+                'details': '세부내용'
+            }
+            df = df.rename(columns=column_mapping)
+            expected_cols = ['항목', '금액', '세부내용']
+            existing_cols = [c for c in expected_cols if c in df.columns]
+            df = df[existing_cols]
+            df_to_word_table(document, df, table_type='budget')
+        
+        if 'feedback_summary' in budget_eval and budget_eval['feedback_summary']:
+            add_left_aligned_heading(document, '2. 평가 및 환류 요약', level=2)
+            df = pd.DataFrame(budget_eval['feedback_summary'])
+            column_mapping = {
+                'area': '영역',
+                'problem': '문제점',
+                'plan': '개선계획'
+            }
+            df = df.rename(columns=column_mapping)
+            expected_cols = ['영역', '문제점', '개선계획']
+            existing_cols = [c for c in expected_cols if c in df.columns]
+            df = df[existing_cols]
+            df_to_word_table(document, df, table_type='feedback_summary')
+    elif 'part4_monthly_2h' in data_dict and data_dict['part4_monthly_2h']:
         df = pd.DataFrame(data_dict['part4_monthly_2h'])
         column_mapping = {
             'month': '월',

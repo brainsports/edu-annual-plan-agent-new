@@ -187,12 +187,30 @@ def get_gemini_analysis(text: str) -> dict:
       "eval_table": []
     }
   },
-  "part3_monthly_1h": [
-    {"month": "1월", "activity": "주요 행사 및 활동", "safety": "안전교육", "note": "비고"}
-  ],
-  "part4_monthly_2h": [
-    {"month": "7월", "activity": "주요 행사 및 활동", "safety": "안전교육", "note": "비고"}
-  ]
+  "part3_monthly_plan": {
+    "1월": [
+      {"big_category": "대분류", "mid_category": "중분류", "program_name": "프로그램명", "target": "참여자", "staff": "수행인력", "content": "● **세부내용**: 설명..."}
+    ],
+    "2월": [],
+    "3월": [],
+    "4월": [],
+    "5월": [],
+    "6월": [],
+    "7월": [],
+    "8월": [],
+    "9월": [],
+    "10월": [],
+    "11월": [],
+    "12월": []
+  },
+  "part4_budget_evaluation": {
+    "budget_table": [
+      {"category": "인건비", "amount": "50,000,000원", "details": "돌봄교사 4명, 학습지도사 2명, 상담사 1명 인건비"}
+    ],
+    "feedback_summary": [
+      {"area": "보호", "problem": "문제점 요약", "plan": "개선계획 요약"}
+    ]
+  }
 }
 
 중요 사항:
@@ -293,14 +311,33 @@ def get_gemini_analysis(text: str) -> dict:
     - 관찰일지
     - 사전사후 검사
     - 여러 도구를 조합할 수 있음 (예: "프로그램 일지, 만족도 조사")
-- **월별 계획(part3_monthly_1h, part4_monthly_2h) 작성 규칙:**
-  - part3_monthly_1h는 상반기(1월~6월), part4_monthly_2h는 하반기(7월~12월) 계획입니다.
-  - 각 월별로 반드시 다음 4개 필드를 포함하세요: month, activity, safety, note
-  - **activity 필드**: 해당 월의 주요 행사 및 활동을 상세히 작성 (최소 50자 이상)
-  - **safety 필드**: 해당 월에 적합한 안전교육 내용 작성
-  - **note 필드**: 운영 관련 특이사항 기록
-  - **이모지 사용 금지**: 모든 필드에서 이모지 대신 ● 기호 또는 일반 텍스트만 사용
-  - 형식 예시: {"month": "1월", "activity": "신년맞이 행사, 겨울방학 특별 프로그램 운영", "safety": "동계 안전교육(빙판길 보행, 난방기구 사용)", "note": "방학 중 운영시간 조정"}
+- **월별 계획(part3_monthly_plan) 작성 규칙 (지능형 날짜 배분):**
+  - **핵심 로직**: part2_programs에서 추출된 모든 프로그램을 분석하고, 각 프로그램의 '주기(cycle)'를 기반으로 해당 월에 자동 배분합니다.
+  - **날짜 확장 규칙 (CRITICAL)**:
+    - "연중" 또는 "매월" 또는 "주 N회" → 1월~12월 전체에 배분
+    - "3월~11월" → 3월, 4월, 5월, 6월, 7월, 8월, 9월, 10월, 11월에 배분
+    - "여름방학" → 7월, 8월에 배분
+    - "겨울방학" → 1월, 2월, 12월에 배분
+    - "분기 1회" → 3월, 6월, 9월, 12월에 배분
+    - "연 2회" → 1월, 7월에 배분 (상반기/하반기 대표)
+    - 특정 날짜 "4월 15일" → 4월에만 배분
+  - **JSON 구조**: 키는 "1월"..."12월"이고, 각 월에는 프로그램 목록이 배열로 포함됩니다.
+  - **프로그램 항목 필드**: 각 프로그램은 다음 6개 필드를 포함:
+    - big_category: 대분류 (보호/교육/문화/정서지원/지역사회연계)
+    - mid_category: 중분류 (세부영역)
+    - program_name: 프로그램명
+    - target: 참여자/대상
+    - staff: 수행인력 (알 수 없으면 "사회복지사", "센터장", "돌봄교사" 중 추론)
+    - content: 사업내용 (● 불릿 포인트 사용, 예: "● **안전관리**: 화재대피 훈련 실시...")
+  - **이모지 사용 금지**: ● 기호만 사용하세요.
+- **예산 및 평가(part4_budget_evaluation) 작성 규칙:**
+  - **budget_table (예산계획)**: 현실적인 예산 테이블을 생성합니다.
+    - 필드: category(항목), amount(금액), details(세부내용)
+    - 주요 항목: 인건비, 사업비, 운영비, 기타경비 등
+    - 총계가 합리적으로 맞아야 함
+  - **feedback_summary (평가 및 환류)**: 차년도 계획 환류 요약
+    - 필드: area(영역), problem(문제점), plan(개선계획)
+    - 5대 영역별(보호, 교육, 문화, 정서지원, 지역사회연계) 환류 요약
 """
 
     model = genai.GenerativeModel(
@@ -444,20 +481,108 @@ def get_default_data() -> dict:
                 ]
             }
         },
-        "part3_monthly_1h": [
-            {"month": "1월", "activity": "신년맞이 행사, 겨울방학 특별 프로그램", "safety": "동계 안전교육(빙판길, 난방기구)", "note": "방학 중 운영시간 조정"},
-            {"month": "2월", "activity": "설날 전통문화 체험, 학년말 정리", "safety": "화재 예방 교육", "note": "새학기 준비"},
-            {"month": "3월", "activity": "새학기 적응 프로그램, 오리엔테이션", "safety": "교통 안전 교육", "note": "신규 아동 적응 지원"},
-            {"month": "4월", "activity": "봄맞이 환경정화, 식목일 행사", "safety": "야외활동 안전교육", "note": "환경 교육 연계"},
-            {"month": "5월", "activity": "어린이날 행사, 가정의 달 프로그램", "safety": "놀이 안전 교육", "note": "가족 참여 행사"},
-            {"month": "6월", "activity": "상반기 평가, 여름 프로그램 준비", "safety": "폭염 대비 교육", "note": "상반기 성과 점검"}
-        ],
-        "part4_monthly_2h": [
-            {"month": "7월", "activity": "여름방학 특별 프로그램, 물놀이", "safety": "수상 안전 교육", "note": "방학 중 운영시간 조정"},
-            {"month": "8월", "activity": "여름 캠프, 자연체험 활동", "safety": "폭염/식중독 예방 교육", "note": "외부 활동 확대"},
-            {"month": "9월", "activity": "추석 전통문화 체험, 2학기 시작", "safety": "교통 안전 교육", "note": "명절 프로그램"},
-            {"month": "10월", "activity": "가을 소풍, 독서의 달 행사", "safety": "야외활동 안전교육", "note": "문화체험 연계"},
-            {"month": "11월", "activity": "지역축제 참여, 연말 준비", "safety": "화재 예방 교육", "note": "지역사회 연계"},
-            {"month": "12월", "activity": "송년행사, 연간 성과발표회", "safety": "동계 안전교육", "note": "연간 평가 및 시상"}
-        ]
+        "part3_monthly_plan": {
+            "1월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도 및 점검표 관리\n● **환경위생 관리**: 시설 내 청소 및 정리정돈 습관 형성 지도"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 영양사 검수 식단에 따른 급식 및 간식 제공\n● **식습관 교육**: 올바른 식사 예절 및 편식 교정 지도"},
+                {"big_category": "보호", "mid_category": "안전", "program_name": "안전 교육", "target": "전체 아동", "staff": "사회복지사", "content": "● **동계 안전교육**: 빙판길 보행, 난방기구 사용 안전 교육\n● **대피 훈련**: 화재대피 훈련 실시"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **국어, 수학 지도**: 기초학력 보충 지도\n● **개별 맞춤 지도**: 학습 수준별 소그룹 지도"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "신년맞이 행사", "target": "전체 아동", "staff": "사회복지사", "content": "● **새해 소망 나누기**: 새해 목표 설정 및 다짐\n● **겨울방학 특별 프로그램**: 특기적성 집중 프로그램 운영"}
+            ],
+            "2월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 시설 내 청소 및 정리정돈"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식습관 교육**: 올바른 식사 예절 지도"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **학년말 정리**: 학기 중 학습 내용 복습\n● **새학기 준비**: 신학년 준비 학습"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "설날 전통문화 체험", "target": "전체 아동", "staff": "사회복지사", "content": "● **전통놀이**: 윷놀이, 제기차기 등 민속놀이 체험\n● **한복 체험**: 한복 입기 및 세배 예절 교육"}
+            ],
+            "3월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 시설 내 청소 및 정리정돈"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식습관 교육**: 올바른 식사 예절 지도"},
+                {"big_category": "보호", "mid_category": "안전", "program_name": "안전 교육", "target": "전체 아동", "staff": "사회복지사", "content": "● **교통안전 교육**: 등하교 시 교통안전 수칙 교육\n● **대피 훈련**: 화재대피 훈련 실시"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **새학기 적응 학습**: 신학년 교과 내용 예습\n● **학습 진단 평가**: 학기 초 학습 수준 진단"},
+                {"big_category": "교육", "mid_category": "성장과권리", "program_name": "아동권리 교육", "target": "전체 아동", "staff": "사회복지사", "content": "● **권리 교육**: UN 아동권리협약 기반 교육\n● **자치회 구성**: 신학기 아동자치회 선거 진행"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "박물관 탐방", "target": "전체 아동", "staff": "사회복지사", "content": "● **현장 학습**: 지역 역사박물관 견학\n● **체험 활동**: 전통 문화 체험 프로그램 참여"}
+            ],
+            "4월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 시설 내 청소 및 정리정돈"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식습관 교육**: 올바른 식사 예절 지도"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **교과 학습 지도**: 국어, 수학 기초학력 보충\n● **개별 맞춤 지도**: 학습 수준별 소그룹 지도"},
+                {"big_category": "교육", "mid_category": "특기적성", "program_name": "피아노 교실", "target": "희망 아동", "staff": "외부강사", "content": "● **기초 이론 교육**: 악보 읽기 및 기본 이론 학습\n● **실기 지도**: 개인별 수준에 맞는 연주 지도"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "봄 환경정화 활동", "target": "전체 아동", "staff": "사회복지사", "content": "● **환경정화**: 지역사회 환경정화 활동 참여\n● **식목일 행사**: 나무 심기 체험 활동"}
+            ],
+            "5월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 시설 내 청소 및 정리정돈"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식습관 교육**: 올바른 식사 예절 지도"},
+                {"big_category": "보호", "mid_category": "가족기능강화", "program_name": "부모 교육", "target": "보호자", "staff": "사회복지사", "content": "● **가정의 달 부모교육**: 양육 역량 강화 교육\n● **가족 참여 행사**: 가족과 함께하는 프로그램"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **교과 학습 지도**: 국어, 수학 기초학력 보충\n● **개별 맞춤 지도**: 학습 수준별 소그룹 지도"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "어린이날 행사", "target": "전체 아동", "staff": "사회복지사", "content": "● **어린이날 축하행사**: 레크리에이션 및 선물 증정\n● **놀이 안전 교육**: 안전한 놀이 방법 교육"}
+            ],
+            "6월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 시설 내 청소 및 정리정돈"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식습관 교육**: 올바른 식사 예절 지도"},
+                {"big_category": "보호", "mid_category": "안전", "program_name": "안전 교육", "target": "전체 아동", "staff": "사회복지사", "content": "● **폭염 대비 교육**: 여름철 건강관리 및 열사병 예방\n● **수상 안전 교육**: 물놀이 안전 수칙 교육"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **1학기 마무리 학습**: 학기 중 학습 내용 복습\n● **상반기 평가**: 학습 성과 점검 및 환류"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "박물관 탐방", "target": "전체 아동", "staff": "사회복지사", "content": "● **현장 학습**: 과학관 또는 역사관 견학\n● **체험 활동**: 다양한 체험 프로그램 참여"}
+            ],
+            "7월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 여름철 위생 관리 강화"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식중독 예방**: 여름철 식품 위생 관리 강화"},
+                {"big_category": "보호", "mid_category": "안전", "program_name": "안전 교육", "target": "전체 아동", "staff": "사회복지사", "content": "● **수상 안전 교육**: 물놀이 안전 수칙 교육\n● **폭염 대비 교육**: 열사병 예방 및 건강관리"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **여름방학 학습**: 방학 중 자기주도 학습 지도\n● **독서 프로그램**: 여름 독서 캠프 운영"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "여름 캠프", "target": "전체 아동", "staff": "사회복지사", "content": "● **1박 2일 캠프**: 자연체험 및 레크리에이션\n● **물놀이 활동**: 안전한 물놀이 프로그램 운영"}
+            ],
+            "8월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 여름철 위생 관리 강화"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식중독 예방**: 여름철 식품 위생 관리"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **신학기 준비 학습**: 2학기 예습 및 복습\n● **독서 지도**: 여름 독서 마무리 및 독후 활동"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "자연체험 활동", "target": "전체 아동", "staff": "사회복지사", "content": "● **생태 탐방**: 생태공원 또는 숲 체험 활동\n● **농촌 체험**: 농촌 일일 체험 프로그램"}
+            ],
+            "9월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 시설 내 청소 및 정리정돈"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식습관 교육**: 올바른 식사 예절 지도"},
+                {"big_category": "보호", "mid_category": "안전", "program_name": "안전 교육", "target": "전체 아동", "staff": "사회복지사", "content": "● **교통안전 교육**: 등하교 시 교통안전 수칙 교육\n● **대피 훈련**: 화재대피 훈련 실시"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **2학기 학습 지도**: 교과 내용 보충 학습\n● **개별 맞춤 지도**: 학습 수준별 소그룹 지도"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "추석 전통문화 체험", "target": "전체 아동", "staff": "사회복지사", "content": "● **전통놀이**: 민속놀이 체험 활동\n● **송편 만들기**: 추석 전통 음식 만들기 체험"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "박물관 탐방", "target": "전체 아동", "staff": "사회복지사", "content": "● **현장 학습**: 지역 박물관 견학\n● **체험 활동**: 역사 문화 체험 프로그램"}
+            ],
+            "10월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 시설 내 청소 및 정리정돈"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식습관 교육**: 올바른 식사 예절 지도"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **교과 학습 지도**: 국어, 수학 기초학력 보충\n● **독서의 달 행사**: 독서 골든벨 및 독후감 대회"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "독서 지도", "target": "전체 아동", "staff": "학습지도사", "content": "● **독서의 달 특별 프로그램**: 다독상, 독서왕 시상\n● **독서토론회**: 연령별 독서토론 활동"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "가을 소풍", "target": "전체 아동", "staff": "사회복지사", "content": "● **야외 활동**: 자연 속 가을 소풍\n● **체험 활동**: 고구마 캐기 등 농촌 체험"}
+            ],
+            "11월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 시설 내 청소 및 정리정돈"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식습관 교육**: 올바른 식사 예절 지도"},
+                {"big_category": "보호", "mid_category": "안전", "program_name": "안전 교육", "target": "전체 아동", "staff": "사회복지사", "content": "● **화재 예방 교육**: 겨울철 화재 예방 및 대피 훈련\n● **난방기구 안전 교육**: 안전한 난방기구 사용법"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **학기말 정리 학습**: 2학기 학습 내용 복습\n● **개별 맞춤 지도**: 학습 부진 아동 특별 지도"},
+                {"big_category": "지역사회연계", "mid_category": "연계", "program_name": "지역축제 참여", "target": "전체 아동", "staff": "사회복지사", "content": "● **지역 행사 참여**: 지역 문화축제 관람 및 참여\n● **봉사활동**: 지역사회 봉사활동 참여"}
+            ],
+            "12월": [
+                {"big_category": "보호", "mid_category": "생활", "program_name": "위생관리 지도", "target": "전체 아동", "staff": "돌봄교사", "content": "● **개인위생 점검**: 손씻기, 양치질 등 개인위생 습관 지도\n● **환경위생 관리**: 시설 내 청소 및 정리정돈"},
+                {"big_category": "보호", "mid_category": "생활", "program_name": "영양 급식", "target": "전체 아동", "staff": "돌봄교사", "content": "● **급식 운영**: 균형 잡힌 영양 식단 제공\n● **식습관 교육**: 올바른 식사 예절 지도"},
+                {"big_category": "보호", "mid_category": "안전", "program_name": "안전 교육", "target": "전체 아동", "staff": "사회복지사", "content": "● **동계 안전교육**: 빙판길 보행, 난방기구 사용 안전\n● **화재 예방 교육**: 겨울철 화재 예방 교육"},
+                {"big_category": "교육", "mid_category": "학습", "program_name": "기초학력 향상", "target": "초등학생", "staff": "학습지도사", "content": "● **연간 학습 정리**: 1년간 학습 내용 종합 복습\n● **겨울방학 학습 계획**: 방학 중 학습 계획 수립"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "송년행사", "target": "전체 아동", "staff": "사회복지사", "content": "● **송년회**: 1년 감사 나눔 및 성과 발표회\n● **연말 시상식**: 우수 아동 및 봉사자 시상"},
+                {"big_category": "문화", "mid_category": "체험활동", "program_name": "박물관 탐방", "target": "전체 아동", "staff": "사회복지사", "content": "● **현장 학습**: 연말 문화체험 활동\n● **공연 관람**: 크리스마스 공연 관람"}
+            ]
+        },
+        "part4_budget_evaluation": {
+            "budget_table": [
+                {"category": "인건비", "amount": "120,000,000원", "details": "● **돌봄교사 4명**: 48,000,000원 (월 1,000,000원 × 4명 × 12개월)\n● **학습지도사 2명**: 36,000,000원 (월 1,500,000원 × 2명 × 12개월)\n● **상담사 1명**: 24,000,000원 (월 2,000,000원 × 1명 × 12개월)\n● **센터장 1명**: 12,000,000원 (월 1,000,000원 × 1명 × 12개월)"},
+                {"category": "사업비", "amount": "35,000,000원", "details": "● **급식비**: 20,000,000원 (50명 × 2,000원 × 200일)\n● **프로그램 운영비**: 10,000,000원 (교육/문화 프로그램 운영)\n● **교재교구비**: 5,000,000원 (학습교재, 체육용품, 미술재료 등)"},
+                {"category": "운영비", "amount": "15,000,000원", "details": "● **시설관리비**: 8,000,000원 (전기, 수도, 가스, 청소 등)\n● **통신비**: 2,000,000원 (인터넷, 전화 등)\n● **사무용품비**: 3,000,000원 (문구류, 소모품 등)\n● **보험료**: 2,000,000원 (아동 상해보험, 시설 화재보험)"},
+                {"category": "체험활동비", "amount": "12,000,000원", "details": "● **현장학습비**: 6,000,000원 (분기별 박물관, 미술관 견학)\n● **캠프비**: 4,000,000원 (하계/동계 캠프 운영)\n● **공연관람비**: 2,000,000원 (분기별 문화공연 관람)"},
+                {"category": "기타경비", "amount": "8,000,000원", "details": "● **차량유지비**: 4,000,000원 (셔틀버스 유류비, 정비비)\n● **행사비**: 2,000,000원 (어린이날, 송년행사 등)\n● **예비비**: 2,000,000원 (긴급 상황 대비)"},
+                {"category": "총계", "amount": "190,000,000원", "details": "2025년 연간 예산 총액"}
+            ],
+            "feedback_summary": [
+                {"area": "보호", "problem": "저녁 돌봄 시간 부족, 안전시설 노후화", "plan": "운영시간 20시까지 연장, CCTV 및 안전문 전면 교체"},
+                {"area": "교육", "problem": "디지털 기기 부족, 교과 다양성 미흡", "plan": "태블릿 20대 구입, 영어/과학 전문강사 채용"},
+                {"area": "문화", "problem": "문화체험 횟수 부족, 예술교육 미흡", "plan": "월 1회 이상 체험활동, 음악/미술 전문강사 확보"},
+                {"area": "정서지원", "problem": "개별상담 시간 부족, 위기아동 개입 미흡", "plan": "상담사 1명 추가 채용, 위기아동 조기발견 체계 구축"},
+                {"area": "지역사회연계", "problem": "자원봉사자 참여 저조, 후원 확보 미흡", "plan": "봉사자 모집 확대, 기업 CSR 연계 강화"}
+            ]
+        }
     }

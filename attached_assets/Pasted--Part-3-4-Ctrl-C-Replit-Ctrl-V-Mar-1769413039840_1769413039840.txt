@@ -1,0 +1,61 @@
+[Part 3 & 4] 월별 자동 배분 및 예산/평가 생성 프롬프트
+아래 박스 내용을 복사(Ctrl+C)하여 Replit 에이전트 채팅창에 붙여넣기(Ctrl+V) 하세요.
+
+Markdown
+# Complex Task: Implement Part 3 (Monthly Schedule) & Part 4 (Budget/Evaluation)
+
+The user wants to finalize Part 3 and Part 4 with advanced "Date Logic".
+The AI must analyze the "Period" of each program and **automatically distribute** it to the corresponding Monthly Plans.
+
+# 1. Update AI Instructions (`utils.py`)
+
+Create/Update prompts for `part3_monthly_plan` and `part4_budget_evaluation`.
+
+## A. Part 3: Intelligent Monthly Mapping Logic
+- **Instruction**: "Review ALL programs extracted in Part 2. Analyze the 'Period/Frequency' field."
+- **Date Expansion Rule (CRITICAL)**:
+    -   If "Year-round" (연중) or "Monthly" (매월) -> Add to **Jan through Dec**.
+    -   If "Mar ~ Nov" (3월~11월) -> Add to **Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov**.
+    -   If "Summer Vacation" (여름방학) -> Add to **Jul, Aug**.
+    -   If specific date "Apr 15" -> Add to **Apr**.
+-   **Structure**: Generate a JSON object where keys are "1월"..."12월".
+    -   Value is a list of programs active in that month.
+    -   Each program item must have: `[Big Category, Middle Category, Program Name, Target, Staff, Service Content]`.
+-   **Content Formatting**:
+    -   **Service Content**: Must use `●` bullets. (e.g., "● **Safety**: Conducting fire drill...").
+    -   **Staff**: If unknown, infer based on role (e.g., "Social Worker", "Center Head").
+
+## B. Part 4: Budget & Evaluation
+-   **Budget**: Generate a realistic budget table based on the uploaded file or standard center operations.
+    -   Columns: `[Category (Item), Amount, Details]`.
+    -   Calculation: Ensure the numbers loosely add up to the total.
+-   **Evaluation**: Create a "Feedback & Next Year Plan" table.
+    -   Columns: `[Area, Problem, Improvement Plan]`.
+
+# 2. Update Word Generator (`doc_utils.py`)
+
+## A. Create `create_monthly_tables(doc, part3_data)`
+-   **Loop**: Iterate from Month 1 to Month 12.
+-   **Heading**: Add "N월 사업계획서" (Heading Level 2).
+-   **Table Structure**:
+    -   **Columns**: `[대분류, 중분류, 프로그램명, 참여자, 수행인력, 사업내용]`
+    -   **Width Strategy** (Total 6.5 in):
+        -   Big/Mid Cat: ~0.6 in
+        -   Program Name: ~1.0 in
+        -   Target/Staff: ~0.7 in
+        -   **Service Content: ~2.9 in (Widest)**
+-   **Styling**:
+    -   Header: Center, Gray Background.
+    -   **Content**: **Left Aligned** (Global Rule).
+    -   **Dynamic Rows**: The table length depends entirely on the data list size.
+
+## B. Create `create_budget_table` & `create_feedback_table`
+-   Apply the same **Left Alignment** and **● Bullet** rules.
+-   Ensure column widths are optimized for readability.
+
+# 3. Validation
+-   Ensure that a program running from "April to September" appears in ALL 6 monthly tables (Apr-Sep).
+-   Ensure no emoji usage, strictly `●`.
+
+# Action
+Apply this logic to `utils.py` and `doc_utils.py` to complete the full report generation pipeline.
