@@ -138,10 +138,20 @@ else:
             else:
                 feedback_df = pd.DataFrame(columns=['영역', '문제점', '개선방안'])
             
+            target_order = ["보호", "교육", "문화", "정서지원", "지역사회연계"]
+            if not feedback_df.empty and '영역' in feedback_df.columns:
+                feedback_df['영역'] = pd.Categorical(feedback_df['영역'], categories=target_order, ordered=True)
+                feedback_df = feedback_df.sort_values('영역').reset_index(drop=True)
+            
             edited_feedback = st.data_editor(
                 feedback_df,
                 num_rows="dynamic",
                 use_container_width=True,
+                column_config={
+                    "영역": st.column_config.TextColumn("영역", width="small"),
+                    "문제점": st.column_config.TextColumn("문제점", width="large"),
+                    "개선방안": st.column_config.TextColumn("개선방안", width="large"),
+                },
                 key="p1_feedback_tbl"
             )
             

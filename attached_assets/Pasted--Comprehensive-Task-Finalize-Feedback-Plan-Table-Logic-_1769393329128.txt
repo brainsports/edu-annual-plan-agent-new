@@ -1,0 +1,32 @@
+# Comprehensive Task: Finalize "Feedback Plan Table" (Logic, Order, Layout)
+
+We need to finalize the "Feedback Plan" (Part 1) table to strictly follow the user's standard format and layout requirements.
+
+# 1. Update AI System Instruction (`utils.py`)
+Modify the prompt for `part1_general` -> `feedback_table`. Enforce these **Strict Logic Constraints**:
+
+1.  **Content Depth & Structure**:
+    - For each category, generate **3 distinct, specific items**.
+    - **Length**: Each item must be approximately **80 Korean characters** long (detailed).
+    - **Format**: Use bullet points (•) within the cell string (e.g., "• Issue 1...\n• Issue 2...").
+    - **1:1 Mapping**: The 1st item in 'Problem' must directly correspond to the 1st item in 'Improvement'.
+
+2.  **Categories**:
+    - Ensure data is generated for: **Protection (보호), Education (교육), Culture (문화), Emotional Support (정서지원), Community Linkage (지역사회연계)**.
+
+# 2. Enforce Row Sorting (`utils.py` or `main.py`)
+- The JSON output from Gemini might be in random order.
+- **Crucial**: Before displaying the data in Streamlit, you MUST sort the rows strictly in this order:
+  `target_order = ["보호", "교육", "문화", "정서지원", "지역사회연계"]`
+- Implement a Python sort function to reorder the DataFrame/List to match this list exactly.
+
+# 3. Update UI Layout (`main.py`)
+- Update the `st.data_editor` for the Feedback Table to reflect the requested **20:40:40 width ratio**.
+- Use `st.column_config`:
+  - **"영역" (Area)**: Set width to "small" (or fixed pixel ~150px) to represent **20%**.
+  - **"문제점" (Problem)**: Set width to "large" (or fixed pixel ~300px) to represent **40%**.
+  - **"개선방안" (Improvement)**: Set width to "large" (or fixed pixel ~300px) to represent **40%**.
+- Ensure the table is editable and supports multi-line text (use `st.column_config.TextColumn`).
+
+# Action
+Apply these changes to ensure the table appears in the correct "Protection -> Education..." order with the correct column widths and detailed content.
