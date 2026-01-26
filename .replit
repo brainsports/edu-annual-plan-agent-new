@@ -1,23 +1,11 @@
-<<<<<<< HEAD
-modules = ["nodejs-20", "web", "postgresql-16"]
-run = "npm run dev"
-hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
-
-[nix]
-channel = "stable-24_05"
-packages = ["lsof"]
-
-[[ports]]
-localPort = 5000
-externalPort = 80
-
-[env]
-PORT = "5000"
-
+modules = ["python-3.11"]
 [deployment]
 deploymentTarget = "autoscale"
-run = ["node", "./dist/start.mjs"]
-build = ["npm", "run", "build"]
+run = ["streamlit", "run", "app.py", "--server.port", "5000"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["cairo", "ffmpeg-full", "freetype", "ghostscript", "glibcLocales", "gobject-introspection", "gtk3", "pkg-config", "qhull", "tcl", "tk"]
 
 [workflows]
 runButton = "Project"
@@ -37,17 +25,12 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "streamlit run main.py --server.port 5000"
 waitForPort = 5000
 
-[agent]
-integrations = ["javascript_openai_ai_integrations:2.0.0"]
-=======
-modules = ["python-3.11"]
-[deployment]
-deploymentTarget = "autoscale"
-run = ["streamlit", "run", "app.py", "--server.port", "5000"]
+[workflows.workflow.metadata]
+outputType = "webview"
 
-[nix]
-channel = "stable-25_05"
->>>>>>> cad04d9 (Extracted stack files)
+[[ports]]
+localPort = 5000
+externalPort = 80
