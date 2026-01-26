@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 modules = ["nodejs-20", "web", "postgresql-16"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
@@ -41,3 +42,12 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_openai_ai_integrations:2.0.0"]
+=======
+modules = ["python-3.11"]
+[deployment]
+deploymentTarget = "autoscale"
+run = ["streamlit", "run", "app.py", "--server.port", "5000"]
+
+[nix]
+channel = "stable-25_05"
+>>>>>>> cad04d9 (Extracted stack files)
