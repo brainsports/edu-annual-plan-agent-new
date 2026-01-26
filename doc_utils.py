@@ -192,6 +192,17 @@ def add_table_borders(table):
     tbl.tblPr.append(tblBorders)
 
 
+def set_cell_background(cell, color_hex):
+    """Set background color for a table cell."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:fill'), color_hex)
+    tcPr.append(shd)
+
+
 def df_to_word_table(document, df: pd.DataFrame, title: str = None, table_type: str = None):
     """Convert a Pandas DataFrame to a Word table with borders.
     
@@ -202,6 +213,7 @@ def df_to_word_table(document, df: pd.DataFrame, title: str = None, table_type: 
         table_type: Type of table for column width settings
                    'feedback' -> 20:40:40 ratio (Area:Problem:Improvement)
                    'review' -> 20:80 ratio (Category:Content)
+                   'monthly' -> 15:45:30:10 ratio (Month:Activity:Safety:Note)
                    None -> default behavior
     """
     if title:
@@ -213,6 +225,7 @@ def df_to_word_table(document, df: pd.DataFrame, title: str = None, table_type: 
     header_cells = table.rows[0].cells
     for i, column in enumerate(df.columns):
         header_cells[i].text = str(column)
+        set_cell_background(header_cells[i], 'D9D9D9')
         for paragraph in header_cells[i].paragraphs:
             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
             for run in paragraph.runs:
@@ -238,12 +251,20 @@ def df_to_word_table(document, df: pd.DataFrame, title: str = None, table_type: 
         for row in table.rows:
             row.cells[0].width = Inches(1.3)
             row.cells[1].width = Inches(5.2)
+    elif table_type == 'monthly' and len(df.columns) == 4:
+        for row in table.rows:
+            row.cells[0].width = Inches(0.8)
+            row.cells[1].width = Inches(3.0)
+            row.cells[2].width = Inches(1.7)
+            row.cells[3].width = Inches(1.0)
     
-    justify_table_cells(table)
-    
-    for cell in table.rows[0].cells:
-        for paragraph in cell.paragraphs:
-            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for row_idx, row in enumerate(table.rows):
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                if row_idx == 0:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                else:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
     
     document.add_paragraph()
     
@@ -419,7 +440,7 @@ def generate_monthly_report(monthly_list: list, period: str) -> io.BytesIO:
             'note': '비고'
         }
         df = df.rename(columns=column_mapping)
-        df_to_word_table(document, df)
+        df_to_word_table(document, df, table_type='monthly')
     
     buffer = io.BytesIO()
     document.save(buffer)
@@ -566,7 +587,7 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
             'note': '비고'
         }
         df = df.rename(columns=column_mapping)
-        df_to_word_table(document, df)
+        df_to_word_table(document, df, table_type='monthly')
     
     document.add_page_break()
     
@@ -580,7 +601,7 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
             'note': '비고'
         }
         df = df.rename(columns=column_mapping)
-        df_to_word_table(document, df)
+        df_to_word_table(document, df, table_type='monthly')
     
     buffer = io.BytesIO()
     document.save(buffer)

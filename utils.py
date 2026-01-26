@@ -255,7 +255,14 @@ def get_gemini_analysis(text: str) -> dict:
   - 각 bullet point 사이에 빈 줄(\\n\\n)을 삽입하세요.
   - 이모지 사용 금지. ● 기호만 사용하세요.
 - part2_programs는 5개 카테고리(보호, 교육, 문화, 정서지원, 지역사회연계)별로 구분하여 작성하세요.
-- part3_monthly_1h는 상반기(1월~6월), part4_monthly_2h는 하반기(7월~12월) 계획입니다.
+- **월별 계획(part3_monthly_1h, part4_monthly_2h) 작성 규칙:**
+  - part3_monthly_1h는 상반기(1월~6월), part4_monthly_2h는 하반기(7월~12월) 계획입니다.
+  - 각 월별로 반드시 다음 4개 필드를 포함하세요: month, activity, safety, note
+  - **activity 필드**: 해당 월의 주요 행사 및 활동을 상세히 작성 (최소 50자 이상)
+  - **safety 필드**: 해당 월에 적합한 안전교육 내용 작성
+  - **note 필드**: 운영 관련 특이사항 기록
+  - **이모지 사용 금지**: 모든 필드에서 이모지 대신 ● 기호 또는 일반 텍스트만 사용
+  - 형식 예시: {"month": "1월", "activity": "신년맞이 행사, 겨울방학 특별 프로그램 운영", "safety": "동계 안전교육(빙판길 보행, 난방기구 사용)", "note": "방학 중 운영시간 조정"}
 """
 
     model = genai.GenerativeModel(
