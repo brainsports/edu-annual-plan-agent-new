@@ -293,6 +293,8 @@ else:
     with tab2:
         st.header("PART 2: 세부 사업 계획")
         
+        preview_mode_p2 = st.toggle("📄 문서 형태로 미리보기", key="preview_mode_p2")
+        
         categories = ["보호", "교육", "문화", "정서지원", "지역사회연계"]
         
         selected_category = st.radio(
@@ -327,23 +329,40 @@ else:
         else:
             detail_df = pd.DataFrame(columns=['세부영역', '프로그램명', '대상', '인원', '주기', '계획내용'])
         
-        edited_detail = st.data_editor(
-            detail_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key=f"p2_detail_{selected_category}"
-        )
-        
-        data['part2_programs'][selected_category]['detail_table'] = edited_detail.rename(
-            columns={
-                '세부영역': 'sub_area',
-                '프로그램명': 'program_name',
-                '대상': 'target',
-                '인원': 'count',
-                '주기': 'cycle',
-                '계획내용': 'content'
-            }
-        ).to_dict('records')
+        if preview_mode_p2:
+            for idx, row in detail_df.iterrows():
+                st.markdown(f"**{row.get('세부영역', '')} - {row.get('프로그램명', '')}**")
+                st.markdown(f"- 대상: {row.get('대상', '')} | 인원: {row.get('인원', '')} | 주기: {row.get('주기', '')}")
+                st.markdown(f"- 계획내용: {row.get('계획내용', '')}")
+                st.markdown("---")
+        else:
+            st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
+            edited_detail = st.data_editor(
+                detail_df,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "세부영역": st.column_config.TextColumn("세부영역", width="small"),
+                    "프로그램명": st.column_config.TextColumn("프로그램명", width="medium"),
+                    "대상": st.column_config.TextColumn("대상", width="small"),
+                    "인원": st.column_config.TextColumn("인원", width="small"),
+                    "주기": st.column_config.TextColumn("주기", width="small"),
+                    "계획내용": st.column_config.TextColumn("계획내용", width="large"),
+                },
+                key=f"p2_detail_{selected_category}"
+            )
+            
+            data['part2_programs'][selected_category]['detail_table'] = edited_detail.rename(
+                columns={
+                    '세부영역': 'sub_area',
+                    '프로그램명': 'program_name',
+                    '대상': 'target',
+                    '인원': 'count',
+                    '주기': 'cycle',
+                    '계획내용': 'content'
+                }
+            ).to_dict('records')
         
         st.subheader(f"📊 {selected_category} - 평가계획")
         
@@ -360,21 +379,36 @@ else:
         else:
             eval_df = pd.DataFrame(columns=['프로그램명', '평가도구', '평가방법', '평가시기'])
         
-        edited_eval = st.data_editor(
-            eval_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key=f"p2_eval_{selected_category}"
-        )
-        
-        data['part2_programs'][selected_category]['eval_table'] = edited_eval.rename(
-            columns={
-                '프로그램명': 'program_name',
-                '평가도구': 'eval_tool',
-                '평가방법': 'eval_method',
-                '평가시기': 'eval_timing'
-            }
-        ).to_dict('records')
+        if preview_mode_p2:
+            for idx, row in eval_df.iterrows():
+                st.markdown(f"**{row.get('프로그램명', '')}**")
+                st.markdown(f"- 평가도구: {row.get('평가도구', '')}")
+                st.markdown(f"- 평가방법: {row.get('평가방법', '')}")
+                st.markdown(f"- 평가시기: {row.get('평가시기', '')}")
+                st.markdown("---")
+        else:
+            edited_eval = st.data_editor(
+                eval_df,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "프로그램명": st.column_config.TextColumn("프로그램명", width="medium"),
+                    "평가도구": st.column_config.TextColumn("평가도구", width="medium"),
+                    "평가방법": st.column_config.TextColumn("평가방법", width="large"),
+                    "평가시기": st.column_config.TextColumn("평가시기", width="small"),
+                },
+                key=f"p2_eval_{selected_category}"
+            )
+            
+            data['part2_programs'][selected_category]['eval_table'] = edited_eval.rename(
+                columns={
+                    '프로그램명': 'program_name',
+                    '평가도구': 'eval_tool',
+                    '평가방법': 'eval_method',
+                    '평가시기': 'eval_timing'
+                }
+            ).to_dict('records')
         
         st.markdown("---")
         
@@ -389,6 +423,8 @@ else:
     with tab3:
         st.header("PART 3: 상반기 월별 계획 (1월~6월)")
         
+        preview_mode_p3 = st.toggle("📄 문서 형태로 미리보기", key="preview_mode_p3")
+        
         monthly_h1 = data.get('part3_monthly_1h', [])
         h1_df = pd.DataFrame(monthly_h1) if monthly_h1 else pd.DataFrame(columns=['month', 'activity', 'safety', 'note'])
         
@@ -402,16 +438,33 @@ else:
         else:
             h1_df = pd.DataFrame(columns=['월', '주요 행사 및 활동', '안전교육', '비고'])
         
-        edited_h1 = st.data_editor(
-            h1_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key="h1_editor"
-        )
-        
-        data['part3_monthly_1h'] = edited_h1.rename(
-            columns={'월': 'month', '주요 행사 및 활동': 'activity', '안전교육': 'safety', '비고': 'note'}
-        ).to_dict('records')
+        if preview_mode_p3:
+            for idx, row in h1_df.iterrows():
+                st.markdown(f"### {row.get('월', '')}")
+                st.markdown(f"**주요 행사 및 활동:** {row.get('주요 행사 및 활동', '')}")
+                st.markdown(f"**안전교육:** {row.get('안전교육', '')}")
+                if row.get('비고', ''):
+                    st.markdown(f"**비고:** {row.get('비고', '')}")
+                st.markdown("---")
+        else:
+            st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
+            edited_h1 = st.data_editor(
+                h1_df,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "월": st.column_config.TextColumn("월", width="small"),
+                    "주요 행사 및 활동": st.column_config.TextColumn("주요 행사 및 활동", width="large"),
+                    "안전교육": st.column_config.TextColumn("안전교육", width="medium"),
+                    "비고": st.column_config.TextColumn("비고", width="small"),
+                },
+                key="h1_editor"
+            )
+            
+            data['part3_monthly_1h'] = edited_h1.rename(
+                columns={'월': 'month', '주요 행사 및 활동': 'activity', '안전교육': 'safety', '비고': 'note'}
+            ).to_dict('records')
         
         st.markdown("---")
         
@@ -426,6 +479,8 @@ else:
     with tab4:
         st.header("PART 4: 하반기 월별 계획 (7월~12월)")
         
+        preview_mode_p4 = st.toggle("📄 문서 형태로 미리보기", key="preview_mode_p4")
+        
         monthly_h2 = data.get('part4_monthly_2h', [])
         h2_df = pd.DataFrame(monthly_h2) if monthly_h2 else pd.DataFrame(columns=['month', 'activity', 'safety', 'note'])
         
@@ -439,16 +494,33 @@ else:
         else:
             h2_df = pd.DataFrame(columns=['월', '주요 행사 및 활동', '안전교육', '비고'])
         
-        edited_h2 = st.data_editor(
-            h2_df,
-            num_rows="dynamic",
-            use_container_width=True,
-            key="h2_editor"
-        )
-        
-        data['part4_monthly_2h'] = edited_h2.rename(
-            columns={'월': 'month', '주요 행사 및 활동': 'activity', '안전교육': 'safety', '비고': 'note'}
-        ).to_dict('records')
+        if preview_mode_p4:
+            for idx, row in h2_df.iterrows():
+                st.markdown(f"### {row.get('월', '')}")
+                st.markdown(f"**주요 행사 및 활동:** {row.get('주요 행사 및 활동', '')}")
+                st.markdown(f"**안전교육:** {row.get('안전교육', '')}")
+                if row.get('비고', ''):
+                    st.markdown(f"**비고:** {row.get('비고', '')}")
+                st.markdown("---")
+        else:
+            st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
+            edited_h2 = st.data_editor(
+                h2_df,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "월": st.column_config.TextColumn("월", width="small"),
+                    "주요 행사 및 활동": st.column_config.TextColumn("주요 행사 및 활동", width="large"),
+                    "안전교육": st.column_config.TextColumn("안전교육", width="medium"),
+                    "비고": st.column_config.TextColumn("비고", width="small"),
+                },
+                key="h2_editor"
+            )
+            
+            data['part4_monthly_2h'] = edited_h2.rename(
+                columns={'월': 'month', '주요 행사 및 활동': 'activity', '안전교육': 'safety', '비고': 'note'}
+            ).to_dict('records')
         
         st.markdown("---")
         
