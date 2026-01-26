@@ -115,6 +115,13 @@ Preferred communication style: Simple, everyday language (Korean)
 
 ## Recent Changes
 
+- **2026-01-26**: Enhanced document readability with bold formatting
+  - Added `add_markdown_text()` function to parse **bold** markdown syntax
+  - Updated `add_justified_paragraph()` to create separate paragraphs on \n\n
+  - AI prompts updated to generate structured output with **emoji keyword**: description format
+  - Default data updated with bold-formatted examples across all major fields
+  - Bold formatting now applied in Word tables and text sections
+
 - **2025-01-26**: Major refactoring to implement granular editing UI
   - New JSON schema with detailed fields for each section
   - Expanders in PART 1 for section-by-section editing
