@@ -32,8 +32,14 @@ Preferred communication style: Simple, everyday language (Korean)
     - 5. 사업목표
   - **Tab 2 (PART 2)**: Radio buttons for 5 categories (보호, 교육, 문화, 정서지원, 지역사회연계)
     - Each category has: 세부사업내용 table + 평가계획 table
-  - **Tab 3 (PART 3)**: 상반기 월별 계획 (1월~6월)
-  - **Tab 4 (PART 4)**: 하반기 월별 계획 (7월~12월)
+  - **Tab 3 (PART 3)**: 월별 사업계획 (1월~12월)
+    - Period sub-tabs: 상반기 (1월~6월), 하반기 (7월~12월)
+    - Month radio selectors for program editing
+    - 6-column program table: 대분류, 중분류, 프로그램명, 참여자, 수행인력, 사업내용
+    - Intelligent date distribution from program frequency (연중, 여름방학, 분기, etc.)
+  - **Tab 4 (PART 4)**: 예산 및 평가
+    - 예산계획 expander with budget table (항목, 금액, 세부내용)
+    - 평가 및 환류 요약 expander with feedback summary (영역, 문제점, 개선계획)
 - **State Management**: Uses `st.session_state` for persisting analysis data between interactions
 - **Localization**: Korean language UI with appropriate font handling (NanumGothic, DejaVu Sans fallback)
 
@@ -61,8 +67,16 @@ Preferred communication style: Simple, everyday language (Korean)
     "정서지원": {"subcategories": ["상담"], "detail_table": [...], "eval_table": [...]},
     "지역사회연계": {"subcategories": ["연계"], "detail_table": [...], "eval_table": [...]}
   },
-  "part3_monthly_1h": [{"month": "String", "activity": "String", "safety": "String", "note": "String"}],
-  "part4_monthly_2h": [{"month": "String", "activity": "String", "safety": "String", "note": "String"}]
+  "part3_monthly_plan": {
+    "1월": [{"big_category": "대분류", "mid_category": "중분류", "program_name": "프로그램명", "target": "참여자", "staff": "수행인력", "content": "● **사업내용**: ..."}],
+    "2월": [...],
+    ...
+    "12월": [...]
+  },
+  "part4_budget_evaluation": {
+    "budget_table": [{"category": "항목", "amount": "금액", "details": "세부내용"}],
+    "feedback_summary": [{"area": "영역", "problem": "문제점", "plan": "개선계획"}]
+  }
 }
 ```
 
@@ -118,6 +132,16 @@ Preferred communication style: Simple, everyday language (Korean)
 - `GEMINI_API_KEY`: Google Gemini API authentication key (required)
 
 ## Recent Changes
+
+- **2026-01-26**: Implemented new Part 3/4 structure with intelligent date distribution
+  - Part 3 now uses 12-month structure with program arrays per month
+  - New 6-column monthly program table: 대분류, 중분류, 프로그램명, 참여자, 수행인력, 사업내용
+  - Intelligent date distribution rules in AI prompt (연중→all months, 여름방학→7-8월, 분기→3/6/9/12월, etc.)
+  - Part 4 restructured with budget table (항목, 금액, 세부내용) and feedback summary (영역, 문제점, 개선계획)
+  - New doc_utils functions: generate_monthly_program_report(), generate_budget_evaluation_report()
+  - New table types with column widths: monthly_program (0.6+0.6+1.0+0.7+0.7+2.9=6.5"), budget (1.2+1.5+3.8=6.5"), feedback_summary (1.3+2.2+3.0=6.5")
+  - UI updated with period sub-tabs (상반기/하반기) and month radio selectors
+  - Backward compatibility maintained for legacy part3_monthly_1h and part4_monthly_2h structures
 
 - **2026-01-26**: Implemented Part 2 fixed subcategory mapping system
   - Added nested subcategories for each category (보호: 생활/안전/가족기능강화, 교육: 성장과권리/학습/특기적성, etc.)
