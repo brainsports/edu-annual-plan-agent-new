@@ -133,11 +133,40 @@ def justify_table_cells(table):
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
 
+def add_markdown_text(paragraph, text):
+    """
+    Parses text with **bold** markers and adds runs to the paragraph.
+    Also handles \n as line breaks within the paragraph.
+    Example: "Start **Bold** End" -> Run("Start "), Run("Bold", bold=True), Run(" End")
+    """
+    if not text:
+        return
+    lines = text.split('\n')
+    for line_idx, line in enumerate(lines):
+        parts = line.split('**')
+        for i, part in enumerate(parts):
+            if part:
+                run = paragraph.add_run(part)
+                if i % 2 == 1:
+                    run.bold = True
+        if line_idx < len(lines) - 1:
+            paragraph.add_run('\n')
+
+
 def add_justified_paragraph(document, text):
-    """Add a paragraph with JUSTIFY alignment."""
-    para = document.add_paragraph(text)
-    para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    return para
+    """Add a paragraph with JUSTIFY alignment. Splits on double newlines for separate paragraphs."""
+    if not text:
+        return None
+    sections = text.split('\n\n')
+    first_para = None
+    for section in sections:
+        if section.strip():
+            para = document.add_paragraph()
+            add_markdown_text(para, section.strip())
+            para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            if first_para is None:
+                first_para = para
+    return first_para
 
 
 def add_table_borders(table):
@@ -185,7 +214,11 @@ def df_to_word_table(document, df: pd.DataFrame, title: str = None, table_type: 
     for _, row in df.iterrows():
         row_cells = table.add_row().cells
         for i, value in enumerate(row):
-            row_cells[i].text = str(value) if value is not None else ""
+            cell_text = str(value) if value is not None else ""
+            row_cells[i].text = ""
+            if row_cells[i].paragraphs:
+                p = row_cells[i].paragraphs[0]
+                add_markdown_text(p, cell_text)
     
     add_table_borders(table)
     
