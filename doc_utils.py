@@ -95,7 +95,11 @@ def generate_part1_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
         df_to_word_table(document, df, '1) 차년도 사업 환류 계획')
     
     document.add_heading('2) 총평', level=3)
-    document.add_paragraph(data_dict.get('total_review_text', ''))
+    if 'total_review_table' in data_dict and data_dict['total_review_table']:
+        df = pd.DataFrame(data_dict['total_review_table'])
+        if 'category' in df.columns:
+            df = df.rename(columns={'category': '영역', 'content': '내용'})
+        df_to_word_table(document, df, None)
     
     if chart_fig:
         insert_chart_to_doc(document, chart_fig, '3. 만족도조사')
@@ -223,7 +227,11 @@ def generate_full_report(data_dict: dict, chart_fig=None) -> io.BytesIO:
         df_to_word_table(document, df, '1) 차년도 사업 환류 계획')
     
     document.add_heading('2) 총평', level=3)
-    document.add_paragraph(part1.get('total_review_text', ''))
+    if 'total_review_table' in part1 and part1['total_review_table']:
+        df = pd.DataFrame(part1['total_review_table'])
+        if 'category' in df.columns:
+            df = df.rename(columns={'category': '영역', 'content': '내용'})
+        df_to_word_table(document, df, None)
     
     if 'satisfaction_stats' in part1 and part1['satisfaction_stats']:
         document.add_heading('3. 만족도조사', level=2)

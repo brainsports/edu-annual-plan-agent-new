@@ -160,13 +160,33 @@ else:
             ).to_dict('records')
             
             st.subheader("2) 총평")
-            total_review = st.text_area(
-                "전년도 사업평가 총평을 작성하세요",
-                value=part1.get('total_review_text', ''),
-                height=150,
-                key="p1_review_txt"
+            total_review_data = part1.get('total_review_table', [])
+            total_review_df = pd.DataFrame(total_review_data) if total_review_data else pd.DataFrame(columns=['category', 'content'])
+            
+            if not total_review_df.empty and 'category' in total_review_df.columns:
+                total_review_df = total_review_df.rename(columns={'category': '영역', 'content': '내용'})
+            else:
+                total_review_df = pd.DataFrame(columns=['영역', '내용'])
+            
+            target_review_order = ["운영평가", "아동평가", "프로그램평가", "후원활동측면", "환류방안"]
+            if not total_review_df.empty and '영역' in total_review_df.columns:
+                total_review_df['영역'] = pd.Categorical(total_review_df['영역'], categories=target_review_order, ordered=True)
+                total_review_df = total_review_df.sort_values('영역').reset_index(drop=True)
+            
+            edited_review = st.data_editor(
+                total_review_df,
+                num_rows="fixed",
+                use_container_width=True,
+                column_config={
+                    "영역": st.column_config.TextColumn("영역", width="small", disabled=True),
+                    "내용": st.column_config.TextColumn("내용", width="large"),
+                },
+                key="p1_review_tbl"
             )
-            data['part1_general']['total_review_text'] = total_review
+            
+            data['part1_general']['total_review_table'] = edited_review.rename(
+                columns={'영역': 'category', '내용': 'content'}
+            ).to_dict('records')
         
         with st.expander("3. 만족도조사", expanded=True):
             satisfaction_stats = part1.get('satisfaction_stats', [])

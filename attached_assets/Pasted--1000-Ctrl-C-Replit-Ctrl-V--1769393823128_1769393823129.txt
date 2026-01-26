@@ -1,0 +1,65 @@
+💎 [대규모 업데이트] 총평 섹션 테이블화 및 1000자 서술 프롬프트
+아래 박스 내용을 복사(Ctrl+C)하여 Replit 에이전트 채팅창에 붙여넣기(Ctrl+V) 하세요.
+
+Markdown
+# Major Task: Refactor "Total Review" (Part 1 - 2) into a Detailed Table
+
+The user wants to completely change the "Total Review" (총평) section. Instead of a single text box, it must be a **Detailed Table** with 5 specific categories, and each category requires extensive text (approx. 1000 characters).
+
+# 1. Update Data Structure (`utils.py`)
+- Change `part1_general` -> `total_review_text` (String) to **`total_review_table` (List of Objects)**.
+- Schema:
+  ```json
+  "total_review_table": [
+    {"category": "운영평가", "content": "String (Very detailed, ~1000 chars)"},
+    {"category": "아동평가", "content": "String (Very detailed, ~1000 chars)"},
+    {"category": "프로그램평가", "content": "String (Very detailed, ~1000 chars)"},
+    {"category": "후원활동측면", "content": "String (Very detailed, ~1000 chars)"},
+    {"category": "환류방안", "content": "String (Very detailed, ~1000 chars)"}
+  ]
+2. Update AI System Instruction (utils.py)
+Instruct Gemini to analyze the uploaded files and generate the "Total Review" in this specific table format.
+
+Strict Content Requirements:
+
+Fixed Categories: MUST generate rows for exactly these 5 items: ["운영평가", "아동평가", "프로그램평가", "후원활동측면", "환류방안"].
+
+Length: Each "content" cell must be approximately 1000 Korean characters long. Do not summarize; be exhaustive.
+
+Source: Use the uploaded PDF context to fill these details accurately.
+
+3. Update Frontend UI (main.py)
+In the "Part 1" tab, under the "2) 총평" Expander:
+
+Remove the old st.text_area.
+
+Implement st.data_editor linked to st.session_state['part1_general']['total_review_table'].
+
+Column Configuration:
+
+"category" (영역): Set to disabled=True (User cannot change category names), width="small".
+
+"content" (내용): Set to st.column_config.TextColumn with width="large" (or 600px) to make reading long text easier.
+
+4. Update Word Generation (doc_utils.py)
+Modify the document generator to handle total_review_table.
+
+Instead of writing a paragraph, create a Word Table with 2 columns: [영역, 내용].
+
+Populate the table with the 5 rows and their long content. ensure text wrapping is enabled.
+
+Action
+Apply these changes to utils.py, main.py, and doc_utils.py immediately.
+
+
+---
+
+### ✅ 적용 후 확인 포인트
+
+1.  **[샘플 데이터 로드]**를 클릭해 보세요.
+2.  **Part 1 > 2) 총평** 메뉴를 펼쳤을 때, 이제는 글상자가 아니라 **표(Table)**가 나오는지 확인하세요.
+3.  **표의 행(Row)**이 정확히 5개(`운영평가`, `아동평가`, `프로그램평가`, `후원활동측면`, `환류방안`)인지 확인하세요.
+4.  **내용 길이:** 표 안에 들어있는 글자가 아주 빽빽하게(1000자 분량) 채워져 있는지 확인하세요.
+5.  **수정:** 내용을 클릭했을 때 편집이 잘 되는지 확인하세요.
+
+이제 총평도 완벽하게 전문가 수준의 보고서 형태를 갖추게 됩니다! 🚀
