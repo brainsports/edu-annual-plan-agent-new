@@ -1,0 +1,132 @@
+🧬 Replit Agent용 초정밀 마스터 프롬프트 (Ultra-Detailed Prompt)
+사용법: 아래 박스 안의 내용을 모두 복사(Ctrl+A -> Ctrl+C)하여 레플릿 채팅창에 붙여넣으세요.
+
+Markdown
+# Project Goal
+Build a Streamlit web application named "Annual Program Evaluator" that uses Google Gemini 1.5 Pro to analyze uploaded program documents and generates a structured Word(.docx) report. The app must be container-ready for Google Cloud Run deployment.
+
+# Context & Role
+You are a Senior Python Full-Stack Developer specialized in Streamlit, AI integration, and DevOps. You write clean, modular, and error-proof code.
+
+# 1. Project File Structure
+Create the following files explicitly:
+- `main.py`: The main Streamlit application logic.
+- `utils.py`: Helper functions for Gemini API calls and JSON parsing.
+- `doc_utils.py`: Helper functions for generating Word documents.
+- `requirements.txt`: Python dependencies.
+- `Dockerfile`: Configuration for Cloud Run deployment.
+
+# 2. Detailed Implementation Requirements
+
+## A. Environment & Dependencies (`requirements.txt`)
+Include exactly these versions or compatible ones:
+streamlit
+google-generativeai
+pandas
+matplotlib
+python-docx
+openpyxl
+
+## B. Cloud Run Configuration (`Dockerfile`)
+The Dockerfile MUST handle Korean fonts to prevent broken text in charts.
+- Base Image: `python:3.9-slim`
+- System Dependencies: `RUN apt-get update && apt-get install -y fonts-nanum`
+- Working Directory: `/app`
+- Copy & Install: Copy files and run `pip install -r requirements.txt`
+- Expose Port: `8080`
+- Command: `CMD streamlit run main.py --server.port=8080 --server.address=0.0.0.0`
+
+## C. Backend Logic (`utils.py`)
+1. **API Key Safety**: Use `os.environ.get('GEMINI_API_KEY')`. If missing, show a specific `st.error` instructing the user to add it in Replit Secrets.
+2. **Robust JSON Parser**: Implement a function `get_gemini_analysis(text)` that:
+   - Removes markdown code blocks (```json ... ```) from the Gemini response string before parsing.
+   - Uses `json.loads()` inside a `try-except` block.
+   - Returns a Python dictionary.
+3. **Prompt Engineering**: The System Instruction sent to Gemini must demand this EXACT JSON structure (enforce this schema):
+   ```json
+   {
+     "part1": {
+       "total_review": "String (Summary of performance)",
+       "future_plan": "String (Plans for next year)",
+       "feedback_table": [ {"area": "String", "problem": "String", "improvement": "String"} ],
+       "satisfaction_stats": [ {"category": "String", "very_satisfied": Int, "satisfied": Int, "normal": Int, "dissatisfied": Int} ]
+     },
+     "part2_programs": [
+       {"area": "String", "program_name": "String", "effect": "String", "target": "String", "count": "String", "cycle": "String", "content": "String"}
+     ],
+     "part3_monthly": [ {"month": "String", "activity": "String", "safety": "String", "note": "String"} ],
+     "part4_monthly": [ {"month": "String", "activity": "String", "safety": "String", "note": "String"} ]
+   }
+D. Word Generation Logic (doc_utils.py)
+Create a function generate_word_report(data_dict):
+
+Use python-docx.
+
+Heading Styles: Use appropriate heading levels for each part.
+
+Table Generation: Write a helper to convert Pandas DataFrames into Word tables with borders enabled (Table Grid style).
+
+Chart Insertion: Accept a Matplotlib figure object, save it to io.BytesIO, and insert it into the Word doc.
+
+E. Frontend Logic (main.py)
+Layout:
+
+Title: "2025 연간 사업 평가서 생성기 (AI Powered)"
+
+Sidebar: File uploader (accept .txt, .csv for prototype, but assume text content is passed to AI).
+
+Session State: Use st.session_state to persist the analyzed JSON data so it doesn't disappear when the user interacts with widgets.
+
+Tabs Interface:
+
+Tab 1 (총괄/환류):
+
+st.text_area for 'total_review' and 'future_plan'.
+
+st.data_editor for 'feedback_table'.
+
+Chart: A Pie chart for 'satisfaction_stats' (Use plt.rc('font', family='NanumGothic') to support Korean).
+
+Download Button for Part 1.
+
+Tab 2 (세부사업):
+
+st.data_editor for 'part2_programs' (Allow adding/deleting rows).
+
+Download Button for Part 2.
+
+Tab 3 (상반기) & Tab 4 (하반기):
+
+st.data_editor for monthly plans.
+
+Download Buttons for each.
+
+Action Plan
+Generate the full code for all 5 files mentioned above. Ensure the code is production-ready and handles the specific JSON structure defined.
+
+
+---
+
+### 💡 이 프롬프트가 '초정밀'인 이유 (차별점)
+
+1.  **파일의 분리 (`Project File Structure`)**:
+    * 이전에는 `main.py` 하나에 다 때려 넣었지만, 이번에는 `utils.py`(AI 통신), `doc_utils.py`(워드 생성)로 **기능을 쪼개달라고 명시**했습니다. 이렇게 해야 코드가 길어져도 에러 찾기가 쉽고, AI가 코드를 짤 때도 헷갈리지 않습니다.
+
+2.  **Dockerfile의 한글 설정 강제 (`fonts-nanum`)**:
+    * 가장 중요한 부분입니다. 클라우드 런에 배포했을 때 그래프의 한글이 'ㅁㅁㅁ'으로 깨지는 것을 막기 위해 `apt-get install fonts-nanum` 명령어를 **Docker 설정에 콕 집어 넣었습니다.**
+
+3.  **JSON 스키마의 구체화**:
+    * AI에게 "알아서 JSON 줘"가 아니라, `part1`, `part2_programs` 등 **키(Key) 이름과 데이터 타입(String, Int)까지 지정**했습니다. 이렇게 하면 Streamlit 화면과 데이터가 어긋날 일이 없습니다.
+
+4.  **세션 상태(Session State) 관리 명시**:
+    * Streamlit의 고질적인 문제인 "버튼 누르면 데이터 날아가는 현상"을 막기 위해 `st.session_state`를 반드시 사용하라고 지시했습니다.
+
+### 🏃‍♂️ 실행 방법
+
+1.  **Replit**에서 새 Python 프로젝트를 엽니다.
+2.  하단이나 우측의 **Agent(AI)** 창을 엽니다.
+3.  위의 영어로 된 프롬프트를 그대로 붙여넣습니다.
+4.  Agent가 파일을 다 만들고 나면, **[Run]** 버튼을 눌러 테스트합니다.
+5.  잘 작동하면 우측 상단의 **[Deploy]** -> **[Google Cloud Run]**을 선택하거나, 깃허브를 통해 배포합니다.
+
+이 프롬프트라면 레플릿 에이전트가 "이 사람은 고수다"라고 인식하고, 대충 짜는 코드가 아니라 실무 수준의 코드를 작성해 줄 것입니다.
