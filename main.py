@@ -89,6 +89,7 @@ else:
     
     with tab1:
         st.header("PART 1: 총괄 및 기획")
+        view_mode_p1 = st.toggle("📄 문서 형태로 미리보기", key="view_mode_p1")
         
         part1 = data.get('part1_general', {})
         
@@ -143,23 +144,30 @@ else:
                 feedback_df['영역'] = pd.Categorical(feedback_df['영역'], categories=target_order, ordered=True)
                 feedback_df = feedback_df.sort_values('영역').reset_index(drop=True)
             
-            st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
-            edited_feedback = st.data_editor(
-                feedback_df,
-                num_rows="dynamic",
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "영역": st.column_config.TextColumn("영역", width="small"),
-                    "문제점": st.column_config.TextColumn("문제점", width="large"),
-                    "개선방안": st.column_config.TextColumn("개선방안", width="large"),
-                },
-                key="p1_feedback_tbl"
-            )
-            
-            data['part1_general']['feedback_table'] = edited_feedback.rename(
-                columns={'영역': 'area', '문제점': 'problem', '개선방안': 'improvement'}
-            ).to_dict('records')
+            if view_mode_p1:
+                for idx, row in feedback_df.iterrows():
+                    st.markdown(f"### {row.get('영역', '')}")
+                    st.markdown(f"**문제점:**\n{row.get('문제점', '')}")
+                    st.markdown(f"**개선방안:**\n{row.get('개선방안', '')}")
+                    st.markdown("---")
+            else:
+                st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
+                edited_feedback = st.data_editor(
+                    feedback_df,
+                    num_rows="dynamic",
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "영역": st.column_config.TextColumn("영역", width=100),
+                        "문제점": st.column_config.TextColumn("문제점", width=350),
+                        "개선방안": st.column_config.TextColumn("개선방안", width=350),
+                    },
+                    key="p1_feedback_tbl"
+                )
+                
+                data['part1_general']['feedback_table'] = edited_feedback.rename(
+                    columns={'영역': 'area', '문제점': 'problem', '개선방안': 'improvement'}
+                ).to_dict('records')
             
             st.subheader("2) 총평")
             total_review_data = part1.get('total_review_table', [])
@@ -175,22 +183,28 @@ else:
                 total_review_df['영역'] = pd.Categorical(total_review_df['영역'], categories=target_review_order, ordered=True)
                 total_review_df = total_review_df.sort_values('영역').reset_index(drop=True)
             
-            st.caption("💡 총평 내용은 더블클릭하면 팝업창에서 편하게 긴 글을 수정할 수 있습니다.")
-            edited_review = st.data_editor(
-                total_review_df,
-                num_rows="fixed",
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "영역": st.column_config.TextColumn("영역", width="medium", disabled=True),
-                    "내용": st.column_config.TextColumn("내용", width=600),
-                },
-                key="p1_review_tbl"
-            )
-            
-            data['part1_general']['total_review_table'] = edited_review.rename(
-                columns={'영역': 'category', '내용': 'content'}
-            ).to_dict('records')
+            if view_mode_p1:
+                for idx, row in total_review_df.iterrows():
+                    st.markdown(f"### {row.get('영역', '')}")
+                    st.markdown(row.get('내용', ''))
+                    st.markdown("---")
+            else:
+                st.caption("💡 총평 내용은 더블클릭하면 팝업창에서 편하게 긴 글을 수정할 수 있습니다.")
+                edited_review = st.data_editor(
+                    total_review_df,
+                    num_rows="fixed",
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "영역": st.column_config.TextColumn("영역", width=150, disabled=True),
+                        "내용": st.column_config.TextColumn("내용", width=700),
+                    },
+                    key="p1_review_tbl"
+                )
+                
+                data['part1_general']['total_review_table'] = edited_review.rename(
+                    columns={'영역': 'category', '내용': 'content'}
+                ).to_dict('records')
         
         with st.expander("3. 만족도조사", expanded=True):
             satisfaction_stats = part1.get('satisfaction_stats', [])
@@ -454,10 +468,10 @@ else:
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "월": st.column_config.TextColumn("월", width="small"),
-                    "주요 행사 및 활동": st.column_config.TextColumn("주요 행사 및 활동", width="large"),
-                    "안전교육": st.column_config.TextColumn("안전교육", width="medium"),
-                    "비고": st.column_config.TextColumn("비고", width="small"),
+                    "월": st.column_config.TextColumn("월", width=80),
+                    "주요 행사 및 활동": st.column_config.TextColumn("주요 행사 및 활동", width=600),
+                    "안전교육": st.column_config.TextColumn("안전교육", width=150),
+                    "비고": st.column_config.TextColumn("비고", width=100),
                 },
                 key="h1_editor"
             )
@@ -510,10 +524,10 @@ else:
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "월": st.column_config.TextColumn("월", width="small"),
-                    "주요 행사 및 활동": st.column_config.TextColumn("주요 행사 및 활동", width="large"),
-                    "안전교육": st.column_config.TextColumn("안전교육", width="medium"),
-                    "비고": st.column_config.TextColumn("비고", width="small"),
+                    "월": st.column_config.TextColumn("월", width=80),
+                    "주요 행사 및 활동": st.column_config.TextColumn("주요 행사 및 활동", width=600),
+                    "안전교육": st.column_config.TextColumn("안전교육", width=150),
+                    "비고": st.column_config.TextColumn("비고", width=100),
                 },
                 key="h2_editor"
             )
