@@ -1,0 +1,41 @@
+# Content Generation Task: "Business Purpose & Goals" Expansion
+
+The user wants to generate professional "Business Purpose" and "Business Goals" sections based on the uploaded text (Section 4 & 5 of the PDF).
+We need to **Expand** the short bullet points into lengthy, persuasive narratives.
+
+# 1. Update AI Instructions (`utils.py`)
+
+Create or Update the prompt logic for `part2_business_plan` (or specifically the Purpose/Goals section).
+
+## A. Business Purpose (사업목적)
+- **Source**: Based on "4. 사업목적" from the uploaded text.
+- **Constraint**: Write a **Single, Cohesive Paragraph** of approximately **500 Korean characters**.
+- **Content Direction**:
+  - Combine the concepts of "Vulnerable Children (Man 18)", "Supplementing Family Functions", "Social Safety Net", and "Non-discriminatory Growth".
+  - Use formal, proposal-style language (e.g., "본 사업은 ~함을 목적으로 한다.").
+
+## B. Business Goals (사업목표)
+- **Source**: Based on "5. 사업목표" items (1) to (5) in the text.
+- **Structure**: Create **5 Distinct Bullet Points** corresponding to the 5 main goals in the source.
+- **Format**: `● **[Keyword/Theme]**: [Detailed Narrative...]`
+- **Length Constraint**: Each bullet point MUST be **at least 300 Korean characters**.
+- **Expansion Logic**:
+  - **Goal 1 (Health & Safety)**: Combine hygiene, meals, human rights, and child participation. Explain *why* these are crucial for basic rights.
+  - **Goal 2 (Holistic Growth)**: Combine academic support, literacy, arts/sports, and positive reinforcement. Focus on "reducing educational gaps".
+  - **Goal 3 (Cultural Experience)**: Combine camps and experiential activities. Focus on "sociality and emotional relief".
+  - **Goal 4 (Emotional Support)**: Combine counseling, case management, and family support. Focus on "psychological stability and family function recovery".
+  - **Goal 5 (Community & Ops)**: Combine volunteer/sponsor management and transparency. Focus on "sustainable operation and local network".
+
+## C. Example Output Format
+(Instruct Gemini to follow this style strictly)
+
+**[사업목적]**
+지역사회 내 돌봄이 필요한 만 18세 미만 아동, 특히 취약계층 가정 아동을 대상으로 가정의 기능을 보완하고... (continues to 500 chars)
+
+**[사업목표]**
+● **건강하고 안전한 권리 기반 돌봄 환경 조성**: (300 chars...) 일상생활 및 위생 관리 교육을 정례화하여 아동 스스로... 균형 잡힌 급식을 통해... 아동 권리 헌장에 기반한 인권 교육을 실시하고...
+● **전인적 성장을 위한 맞춤형 교육 지원**: (300 chars...) 기초 학습 지도를 넘어 문해력 향상을 위한 독서 지도...
+(Continue for all 5 goals)
+
+# Action
+Update the system prompt in `utils.py` to implement this logic for the "Business Purpose & Goals" generation immediately.
