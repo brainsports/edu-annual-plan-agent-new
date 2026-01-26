@@ -19,21 +19,21 @@ except:
     pass
 
 st.set_page_config(
-    page_title="2025 연간 사업 평가서 생성기",
+    page_title="AI 연간 사업계획 통합 에이전트",
     page_icon="📊",
     layout="wide"
 )
 
-st.title("2025 연간 사업 평가서 생성기 (AI Powered)")
+st.title("AI 연간 사업계획 통합 에이전트")
 st.markdown("---")
 
 if 'analysis_data' not in st.session_state:
     st.session_state.analysis_data = None
 
 with st.sidebar:
-    st.header("문서 업로드")
+    st.header("사업계획 수립 도우미")
     uploaded_files = st.file_uploader(
-        "분석할 평가서 파일들을 모두 선택하여 업로드하세요 (복수 선택 가능)",
+        "평가서 및 실적 보고서 업로드 (연도 무관)",
         type=['pdf', 'docx', 'hwp', 'txt', 'csv'],
         accept_multiple_files=True,
         help="파일당 최대 200MB • PDF, DOCX, TXT, CSV 지원"
@@ -309,7 +309,7 @@ else:
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: gray;'>"
-    "Google Gemini 1.5 Pro 기반 | Streamlit으로 제작"
+    "AI 연간 사업계획 통합 에이전트 / 정보광장"
     "</div>",
     unsafe_allow_html=True
 )
