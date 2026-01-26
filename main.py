@@ -275,32 +275,16 @@ else:
                 color_map = ['#4184F3', '#7CB342', '#FF8F00', '#FF5722', '#AC4ABC']
                 scale_order = ['5점', '4점', '3점', '2점', '1점']
                 
-                col_chart1, col_chart2 = st.columns([6, 3])
+                col_chart1, col_chart2 = st.columns([1, 1])
                 
                 with col_chart1:
-                    st.caption("응답 분포 (인원수)")
-                    stacked_chart = alt.Chart(chart_df).mark_bar().encode(
-                        y=alt.Y('문항:N', sort=None, title='문항'),
-                        x=alt.X('인원수:Q', title='응답 인원수 (명)', stack='zero'),
-                        color=alt.Color('척도:N', 
-                            scale=alt.Scale(domain=scale_order, range=color_map),
-                            legend=alt.Legend(title='척도', orient='right')
-                        ),
-                        order=alt.Order('척도:N', sort='descending'),
-                        tooltip=['문항:N', '척도:N', '인원수:Q']
-                    ).properties(
-                        height=400
-                    )
-                    st.altair_chart(stacked_chart, use_container_width=True)
-                
-                with col_chart2:
-                    st.caption("문항별 평균 점수")
+                    st.caption("항목별 평균 점수")
                     avg_data = edited_survey[['문항', '평균점수']].copy()
-                    avg_data['문항_short'] = avg_data['문항'].apply(lambda x: x[:15] + '...' if len(x) > 15 else x)
+                    avg_data['문항_short'] = avg_data['문항'].apply(lambda x: x[:20] + '...' if len(x) > 20 else x)
                     
                     avg_bar = alt.Chart(avg_data).mark_bar(color='#4184F3').encode(
                         y=alt.Y('문항_short:N', sort=None, title='문항'),
-                        x=alt.X('평균점수:Q', scale=alt.Scale(domain=[0, 5]), title='평균 점수'),
+                        x=alt.X('평균점수:Q', scale=alt.Scale(domain=[0, 5]), title='점수'),
                         tooltip=['문항:N', alt.Tooltip('평균점수:Q', format='.2f')]
                     ).properties(
                         height=400
@@ -316,6 +300,22 @@ else:
                     )
                     
                     st.altair_chart(avg_bar + avg_text, use_container_width=True)
+                
+                with col_chart2:
+                    st.caption("응답 분포 (인원수)")
+                    stacked_chart = alt.Chart(chart_df).mark_bar().encode(
+                        y=alt.Y('문항:N', sort=None, title='문항'),
+                        x=alt.X('인원수:Q', title='인원(명)', stack='zero'),
+                        color=alt.Color('척도:N', 
+                            scale=alt.Scale(domain=scale_order, range=color_map),
+                            legend=alt.Legend(title='척도', orient='right')
+                        ),
+                        order=alt.Order('척도:N', sort='descending'),
+                        tooltip=['문항:N', '척도:N', '인원수:Q']
+                    ).properties(
+                        height=400
+                    )
+                    st.altair_chart(stacked_chart, use_container_width=True)
                 
                 st.markdown("---")
                 

@@ -1,0 +1,40 @@
+# Visual Polish Task: Reorder Charts, Equal Widths, and Korean Labels in Word
+
+The user wants to refine the layout of the Satisfaction Survey charts in both the Web UI and the generated Word document.
+
+# 1. Update Frontend UI (`main.py`)
+- **Layout Change**:
+  - Switch the column ratio to **50% : 50%**. Use `col1, col2 = st.columns([1, 1])`.
+- **Order Swap**:
+  - **Left Column (col1)**: Display the **"Average Score Chart"** (평균 점수).
+  - **Right Column (col2)**: Display the **"Respondent Distribution Chart"** (응답 분포 - Stacked Bar).
+- **Visuals**:
+  - Ensure both charts fill the column width (`use_container_width=True`).
+
+# 2. Update Word Generation (`doc_utils.py`) - Matplotlib Chart
+The Word document chart needs to mirror the UI changes and fix language issues.
+
+## A. Layout & Size
+- Create a `matplotlib` figure with **1 Row, 2 Columns**.
+- **Figure Size**: Increase the total size to utilize the full page width.
+  - Suggestion: `plt.subplots(1, 2, figsize=(12, 5))` (Wide aspect ratio).
+- **Subplot Order**:
+  - **Ax1 (Left)**: Average Score Bar Chart.
+  - **Ax2 (Right)**: Stacked Bar Chart (Distribution).
+
+## B. Language: English -> Korean (CRITICAL)
+- You MUST replace all English labels with Korean.
+  - Title/Labels: "Average Score" -> **"항목별 평균 점수"**
+  - X-axis Label: "Score" -> **"점수"**
+  - Legend/Stack Labels: "Count" -> **"인원(명)"**
+  - Y-axis: Ensure the Questions (문항) represent the Korean text extracted from the PDF.
+- **Font Handling**:
+  - Attempt to use a Korean-compatible font (e.g., 'NanumGothic', 'Malgun Gothic') to prevent '□□□' errors.
+  - If a specific Korean font file is available in the project, load it using `font_manager`.
+
+## C. Chart Styling
+- **Colors**: Maintain the user's specific hex palette (`#4184F3`, `#7CB342`...) exactly as defined in the UI.
+- **Layout**: Use `plt.tight_layout()` to ensure labels don't get cut off.
+
+# Action
+Apply the "Left-Average / Right-Distribution" layout with equal widths to both `main.py` and `doc_utils.py`. Ensure strictly Korean labels in the generated image.
