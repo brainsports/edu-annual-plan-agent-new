@@ -51,11 +51,15 @@ Preferred communication style: Simple, everyday language (Korean)
     "goals_text": "String"
   },
   "part2_programs": {
-    "보호": {"detail_table": [...], "eval_table": [...]},
-    "교육": {"detail_table": [...], "eval_table": [...]},
-    "문화": {"detail_table": [...], "eval_table": [...]},
-    "정서지원": {"detail_table": [...], "eval_table": [...]},
-    "지역사회연계": {"detail_table": [...], "eval_table": [...]}
+    "보호": {
+      "subcategories": ["생활", "안전", "가족기능강화"],
+      "detail_table": [{"sub_area": "생활", "program_name": "위생관리", "expected_effect": "기대효과", "target": "대상", "count": "인원", "cycle": "주기", "content": "● **세부내용**: 상세설명"}],
+      "eval_table": [{"program_name": "프로그램명", "eval_tool": "평가도구", "eval_method": "평가방법", "eval_timing": "평가시기"}]
+    },
+    "교육": {"subcategories": ["성장과권리", "학습", "특기적성"], "detail_table": [...], "eval_table": [...]},
+    "문화": {"subcategories": ["체험활동"], "detail_table": [...], "eval_table": [...]},
+    "정서지원": {"subcategories": ["상담"], "detail_table": [...], "eval_table": [...]},
+    "지역사회연계": {"subcategories": ["연계"], "detail_table": [...], "eval_table": [...]}
   },
   "part3_monthly_1h": [{"month": "String", "activity": "String", "safety": "String", "note": "String"}],
   "part4_monthly_2h": [{"month": "String", "activity": "String", "safety": "String", "note": "String"}]
@@ -115,12 +119,25 @@ Preferred communication style: Simple, everyday language (Korean)
 
 ## Recent Changes
 
+- **2026-01-26**: Implemented Part 2 fixed subcategory mapping system
+  - Added nested subcategories for each category (보호: 생활/안전/가족기능강화, 교육: 성장과권리/학습/특기적성, etc.)
+  - New 7-column detail_table format with `expected_effect` (기대효과) field
+  - AI prompt classification logic to map programs into fixed subcategories
+  - Updated Word table widths: part2_detail (0.7"/0.8"/1.2"/0.6"/0.5"/0.5"/2.2"), part2_eval (1.0"/1.5"/2.5"/1.5")
+  - Gray background headers with center alignment, left-aligned content rows
+  - Comprehensive default data with sample programs for all subcategories
+
+- **2026-01-26**: Global formatting standardization across all Parts
+  - Standard 1.0" margins, 6.5" usable width
+  - Monthly tables (Part 3/4) with proper column widths: Month 0.8", Activity 3.0", Safety 1.7", Note 1.0"
+  - `set_cell_background()` function for gray table headers
+  - All emojis replaced with ● Black Circle bullets for professional style
+
 - **2026-01-26**: Enhanced document readability with bold formatting
   - Added `add_markdown_text()` function to parse **bold** markdown syntax
   - Updated `add_justified_paragraph()` to create separate paragraphs on \n\n
-  - AI prompts updated to generate structured output with **emoji keyword**: description format
+  - AI prompts updated to generate structured output with **● keyword**: description format
   - Default data updated with bold-formatted examples across all major fields
-  - Bold formatting now applied in Word tables and text sections
 
 - **2025-01-26**: Major refactoring to implement granular editing UI
   - New JSON schema with detailed fields for each section
