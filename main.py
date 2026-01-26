@@ -412,25 +412,28 @@ else:
         st.subheader(f"📋 {selected_category} - 세부사업내용")
         
         detail_data = category_data.get('detail_table', [])
-        detail_df = pd.DataFrame(detail_data) if detail_data else pd.DataFrame(columns=['sub_area', 'program_name', 'target', 'count', 'cycle', 'content'])
+        detail_df = pd.DataFrame(detail_data) if detail_data else pd.DataFrame(columns=['sub_area', 'program_name', 'expected_effect', 'target', 'count', 'cycle', 'content'])
         
         if not detail_df.empty and 'sub_area' in detail_df.columns:
             detail_df = detail_df.rename(columns={
                 'sub_area': '세부영역',
                 'program_name': '프로그램명',
+                'expected_effect': '기대효과',
                 'target': '대상',
                 'count': '인원',
                 'cycle': '주기',
                 'content': '계획내용'
             })
         else:
-            detail_df = pd.DataFrame(columns=['세부영역', '프로그램명', '대상', '인원', '주기', '계획내용'])
+            detail_df = pd.DataFrame(columns=['세부영역', '프로그램명', '기대효과', '대상', '인원', '주기', '계획내용'])
         
         if preview_mode_p2:
             for idx, row in detail_df.iterrows():
-                st.markdown(f"**{row.get('세부영역', '')} - {row.get('프로그램명', '')}**")
-                st.markdown(f"- 대상: {row.get('대상', '')} | 인원: {row.get('인원', '')} | 주기: {row.get('주기', '')}")
-                st.markdown(f"- 계획내용: {row.get('계획내용', '')}")
+                st.markdown(f"#### 📄 {row.get('세부영역', '')} > {row.get('프로그램명', '')}")
+                exp_effect = row.get('기대효과', '기대효과 내용이 없습니다.')
+                st.info(f"**🎯 기대효과**: {exp_effect}")
+                st.markdown(f"**대상**: {row.get('대상', '')} | **인원**: {row.get('인원', '')} | **주기**: {row.get('주기', '')}")
+                st.markdown(row.get('계획내용', ''))
                 st.markdown("---")
         else:
             st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
@@ -442,6 +445,7 @@ else:
                 column_config={
                     "세부영역": st.column_config.TextColumn("세부영역", width="small"),
                     "프로그램명": st.column_config.TextColumn("프로그램명", width="medium"),
+                    "기대효과": st.column_config.TextColumn("기대효과", width="large"),
                     "대상": st.column_config.TextColumn("대상", width="small"),
                     "인원": st.column_config.TextColumn("인원", width="small"),
                     "주기": st.column_config.TextColumn("주기", width="small"),
@@ -454,6 +458,7 @@ else:
                 columns={
                     '세부영역': 'sub_area',
                     '프로그램명': 'program_name',
+                    '기대효과': 'expected_effect',
                     '대상': 'target',
                     '인원': 'count',
                     '주기': 'cycle',
