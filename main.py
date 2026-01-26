@@ -143,10 +143,12 @@ else:
                 feedback_df['영역'] = pd.Categorical(feedback_df['영역'], categories=target_order, ordered=True)
                 feedback_df = feedback_df.sort_values('영역').reset_index(drop=True)
             
+            st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
             edited_feedback = st.data_editor(
                 feedback_df,
                 num_rows="dynamic",
                 use_container_width=True,
+                hide_index=True,
                 column_config={
                     "영역": st.column_config.TextColumn("영역", width="small"),
                     "문제점": st.column_config.TextColumn("문제점", width="large"),
@@ -173,13 +175,15 @@ else:
                 total_review_df['영역'] = pd.Categorical(total_review_df['영역'], categories=target_review_order, ordered=True)
                 total_review_df = total_review_df.sort_values('영역').reset_index(drop=True)
             
+            st.caption("💡 총평 내용은 더블클릭하면 팝업창에서 편하게 긴 글을 수정할 수 있습니다.")
             edited_review = st.data_editor(
                 total_review_df,
                 num_rows="fixed",
                 use_container_width=True,
+                hide_index=True,
                 column_config={
-                    "영역": st.column_config.TextColumn("영역", width="small", disabled=True),
-                    "내용": st.column_config.TextColumn("내용", width="large"),
+                    "영역": st.column_config.TextColumn("영역", width="medium", disabled=True),
+                    "내용": st.column_config.TextColumn("내용", width=600),
                 },
                 key="p1_review_tbl"
             )
