@@ -1,4 +1,6 @@
 import io
+import os
+import requests
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
@@ -13,25 +15,35 @@ from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
 
 
-def setup_korean_font():
-    """Setup Korean font for matplotlib, fallback to English labels if unavailable."""
-    korean_fonts = ['NanumGothic', 'Malgun Gothic', 'AppleGothic', 'Noto Sans CJK KR', 'DejaVu Sans']
-    available_fonts = [f.name for f in fm.fontManager.ttflist]
-    
-    for font in korean_fonts:
-        if font in available_fonts:
-            plt.rcParams['font.family'] = font
-            plt.rcParams['axes.unicode_minus'] = False
-            return True
-    
-    plt.rcParams['font.family'] = 'DejaVu Sans'
-    plt.rcParams['axes.unicode_minus'] = False
-    return False
+def ensure_korean_font():
+    """Ensures NanumGothic.ttf is available and returns FontProperties."""
+    font_filename = "NanumGothic.ttf"
+    font_url = "https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf"
+
+    if not os.path.exists(font_filename):
+        try:
+            print(f"Downloading {font_filename}...")
+            response = requests.get(font_url, timeout=10)
+            response.raise_for_status()
+            with open(font_filename, "wb") as f:
+                f.write(response.content)
+            print("Font downloaded successfully.")
+        except Exception as e:
+            print(f"Failed to download font: {e}. Korean text may break.")
+            return None
+
+    try:
+        prop = fm.FontProperties(fname=font_filename)
+        return prop
+    except Exception as e:
+        print(f"Failed to load font: {e}")
+        return None
 
 
 def generate_satisfaction_chart_image(survey_data, total_respondents):
     """Generate satisfaction survey charts as an image for Word document."""
-    has_korean = setup_korean_font()
+    kor_font = ensure_korean_font()
+    plt.rcParams['axes.unicode_minus'] = False
     
     df = pd.DataFrame(survey_data)
     
@@ -43,7 +55,7 @@ def generate_satisfaction_chart_image(survey_data, total_respondents):
     
     df['평균'] = df.apply(calc_avg, axis=1).round(2)
     
-    questions = [q[:15] + '...' if len(q) > 15 else q for q in df['문항'].tolist()]
+    questions = [q[:18] + '...' if len(q) > 18 else q for q in df['문항'].tolist()]
     
     color_map = {
         '5점': '#4184F3',
@@ -53,22 +65,27 @@ def generate_satisfaction_chart_image(survey_data, total_respondents):
         '1점': '#AC4ABC'
     }
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
     
     y_pos = np.arange(len(questions))
     
     avg_scores = df['평균'].tolist()
     bars = ax1.barh(y_pos, avg_scores, color='#4184F3', height=0.6)
     ax1.set_yticks(y_pos)
-    ax1.set_yticklabels(questions)
-    ax1.set_xlabel('점수')
-    ax1.set_title('항목별 평균 점수')
+    if kor_font:
+        ax1.set_yticklabels(questions, fontproperties=kor_font)
+        ax1.set_xlabel('점수', fontproperties=kor_font, fontsize=12)
+        ax1.set_title('항목별 평균 점수', fontproperties=kor_font, fontsize=14)
+    else:
+        ax1.set_yticklabels(questions)
+        ax1.set_xlabel('점수', fontsize=12)
+        ax1.set_title('항목별 평균 점수', fontsize=14)
     ax1.set_xlim(0, 5)
     ax1.invert_yaxis()
     
     for i, (bar, score) in enumerate(zip(bars, avg_scores)):
         ax1.text(bar.get_width() + 0.1, bar.get_y() + bar.get_height()/2, 
-                 f'{score:.2f}', va='center', fontsize=9)
+                 f'{score:.2f}', va='center', fontsize=10)
     
     left = np.zeros(len(questions))
     for scale in ['5점', '4점', '3점', '2점', '1점']:
@@ -77,10 +94,16 @@ def generate_satisfaction_chart_image(survey_data, total_respondents):
         left += np.array(values)
     
     ax2.set_yticks(y_pos)
-    ax2.set_yticklabels(questions)
-    ax2.set_xlabel('인원(명)')
-    ax2.set_title('응답 분포')
-    ax2.legend(loc='lower right', fontsize=8)
+    if kor_font:
+        ax2.set_yticklabels(questions, fontproperties=kor_font)
+        ax2.set_xlabel('인원(명)', fontproperties=kor_font, fontsize=12)
+        ax2.set_title('응답 분포', fontproperties=kor_font, fontsize=14)
+        ax2.legend(loc='lower right', fontsize=10, prop=kor_font)
+    else:
+        ax2.set_yticklabels(questions)
+        ax2.set_xlabel('인원(명)', fontsize=12)
+        ax2.set_title('응답 분포', fontsize=14)
+        ax2.legend(loc='lower right', fontsize=10)
     ax2.invert_yaxis()
     
     plt.tight_layout()
@@ -263,7 +286,7 @@ def generate_part1_report(data_dict: dict) -> io.BytesIO:
         
         try:
             chart_img = generate_satisfaction_chart_image(survey_data, total_respondents)
-            document.add_picture(chart_img, width=Inches(6))
+            document.add_picture(chart_img, width=Inches(7.5))
             document.add_paragraph()
         except Exception as e:
             add_justified_paragraph(document, f"(차트 생성 오류: {str(e)})")
@@ -428,7 +451,7 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
         
         try:
             chart_img = generate_satisfaction_chart_image(survey_data, total_respondents)
-            document.add_picture(chart_img, width=Inches(6))
+            document.add_picture(chart_img, width=Inches(7.5))
             document.add_paragraph()
         except Exception as e:
             add_justified_paragraph(document, f"(차트 생성 오류: {str(e)})")

@@ -1,0 +1,93 @@
+[최종 마스터] 한글 폰트 강제 적용 & 차트 최대화
+아래 박스 내용을 복사(Ctrl+C)하여 Replit 에이전트 채팅창에 붙여넣기(Ctrl+V) 하세요.
+
+Markdown
+# FINAL CRITICAL FIX: Force Korean Font & Maximize Chart Width in Word
+
+The user requires two final corrections for the generated Word document chart:
+1.  **Guarantee Korean Fonts**: Implement a robust "Download & Load" strategy for a Korean font to prevent mojibake (tofu characters) in any server environment (Replit, Cloud Run).
+2.  **Maximize Width**: The chart image must span the entire usable width of the page (approx 7.5 inches).
+
+# 1. Update `doc_utils.py`: Add Font Downloader
+
+Insert this helper function at the top of `doc_utils.py` to ensure a Korean font is always available.
+
+```python
+import os
+import requests
+import matplotlib.font_manager as fm
+
+def ensure_korean_font():
+    """Ensures NanumGothic.ttf is available and returns FontProperties."""
+    font_filename = "NanumGothic.ttf"
+    # Use a reliable raw URL for the font file
+    font_url = "[https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf](https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf)"
+
+    # 1. Download if file doesn't exist locally
+    if not os.path.exists(font_filename):
+        try:
+            print(f"Downloading {font_filename}...")
+            response = requests.get(font_url, timeout=10)
+            response.raise_for_status()
+            with open(font_filename, "wb") as f:
+                f.write(response.content)
+            print("Font downloaded successfully.")
+        except Exception as e:
+            print(f"Failed to download font: {e}. Korean text may break.")
+            return None # Fallback to default if download fails
+
+    # 2. Load the font and return FontProperties object
+    try:
+        prop = fm.FontProperties(fname=font_filename)
+        return prop
+    except Exception as e:
+        print(f"Failed to load font: {e}")
+        return None
+2. Update generate_satisfaction_chart_image in doc_utils.py
+Rewrite the chart generation function to use this font and maximize size.
+
+Step 1: Get Font: Call kor_font = ensure_korean_font().
+
+Step 2: Maximize Canvas: Set figsize=(16, 7) (High resolution, wide aspect ratio).
+
+Step 3: Apply Font Explicitly: You MUST pass fontproperties=kor_font to EVERY text element plotting command:
+
+Titles: ax1.set_title("...", fontproperties=kor_font, fontsize=14)
+
+Labels: ax1.set_xlabel("...", fontproperties=kor_font)
+
+Ticks: ax1.set_yticklabels(labels, fontproperties=kor_font)
+
+Legend: ax2.legend(prop=kor_font)
+
+Bar Labels: ax1.text(..., fontproperties=kor_font)
+
+Step 4: Maintain Layout & Colors:
+
+Left: Average Score, Right: Distribution (Stacked).
+
+Colors: Strictly use the user's hex codes (#4184F3 for 5, etc.).
+
+3. Update Word Insertion Logic in doc_utils.py
+In the main create_word_document function:
+
+When adding the chart picture:
+
+Crucial Change: Use doc.add_picture(image_stream, width=Inches(7.5))
+
+Reasoning: With 0.5-inch margins on left/right, 7.5 inches fills the page width perfectly.
+
+Action
+Implement the font downloading logic and overwrite the chart generation code to strictly enforce the Korean font application and maximum image width insertion.
+
+
+---
+
+### ✅ 적용 후 확인 포인트
+
+1.  **최초 실행 시:** 처음 다운로드 버튼을 누르면 서버가 폰트를 받느라 1~2초 정도 딜레이가 있을 수 있습니다. (정상입니다!)
+2.  **워드 파일 확인:**
+    * 그래프의 **모든 글씨(제목, 축, 범례)**가 깨지지 않고 선명한 한글로 나오는지 확인하세요.
+    * 그래프가 종이의 양쪽 여백 끝까지 닿을 정도로 **시원하게 커졌는지** 확인하세요.
+
+이것으로 완벽한 보고서 시스템 구축이 완료되었습니다! 축하드립니다! 🎉
