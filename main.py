@@ -210,60 +210,85 @@ else:
         with st.expander("3. 만족도조사", expanded=True):
             satisfaction_survey = part1.get('satisfaction_survey', {})
             
-            if satisfaction_survey and satisfaction_survey.get('questions_list'):
-                questions_list = satisfaction_survey.get('questions_list', [])
-                survey_df = pd.DataFrame(questions_list)
+            if satisfaction_survey and satisfaction_survey.get('survey_data'):
+                st.subheader("응답자 설정")
+                col_resp, col_btn = st.columns([2, 1])
+                with col_resp:
+                    total_respondents = st.number_input(
+                        "총 응답 인원 (명)",
+                        min_value=1,
+                        value=satisfaction_survey.get('total_respondents', 30),
+                        key="p1_total_resp"
+                    )
+                    data['part1_general']['satisfaction_survey']['total_respondents'] = total_respondents
                 
-                if not survey_df.empty and 'question' in survey_df.columns:
-                    survey_df = survey_df.rename(columns={'question': '문항', 'score': '점수'})
+                survey_data = satisfaction_survey.get('survey_data', [])
+                survey_df = pd.DataFrame(survey_data)
                 
-                st.subheader("문항별 만족도 결과")
+                st.subheader("문항별 응답 분포")
+                st.caption("각 문항의 척도별 응답 인원수 (수정 가능)")
                 
-                chart_df = survey_df.copy()
-                chart_df['문항_short'] = chart_df['문항'].apply(lambda x: x[:25] + '...' if len(x) > 25 else x)
+                edited_survey = st.data_editor(
+                    survey_df,
+                    num_rows="fixed",
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "문항": st.column_config.TextColumn("문항", width="large"),
+                        "5점": st.column_config.NumberColumn("5점(명)", min_value=0, step=1),
+                        "4점": st.column_config.NumberColumn("4점(명)", min_value=0, step=1),
+                        "3점": st.column_config.NumberColumn("3점(명)", min_value=0, step=1),
+                        "2점": st.column_config.NumberColumn("2점(명)", min_value=0, step=1),
+                        "1점": st.column_config.NumberColumn("1점(명)", min_value=0, step=1),
+                    },
+                    key="p1_survey_tbl"
+                )
                 
-                bar_chart = alt.Chart(chart_df).mark_bar(color='#3498db').encode(
-                    x=alt.X('점수:Q', scale=alt.Scale(domain=[0, 5]), title='점수 (5점 만점)'),
-                    y=alt.Y('문항_short:N', sort='-x', title='문항'),
-                    tooltip=['문항:N', '점수:Q']
+                data['part1_general']['satisfaction_survey']['survey_data'] = edited_survey.to_dict('records')
+                
+                def calculate_weighted_avg(row):
+                    total = row['5점'] + row['4점'] + row['3점'] + row['2점'] + row['1점']
+                    if total == 0:
+                        return 0
+                    return (5*row['5점'] + 4*row['4점'] + 3*row['3점'] + 2*row['2점'] + 1*row['1점']) / total
+                
+                edited_survey['평균점수'] = edited_survey.apply(calculate_weighted_avg, axis=1)
+                overall_avg = edited_survey['평균점수'].mean()
+                
+                st.metric("전체 평균 만족도", f"{overall_avg:.2f}점 (5점 만점)")
+                
+                st.markdown("---")
+                st.subheader("만족도 분포 차트")
+                
+                chart_data = []
+                for _, row in edited_survey.iterrows():
+                    question = row['문항'][:20] + '...' if len(row['문항']) > 20 else row['문항']
+                    for scale in ['5점', '4점', '3점', '2점', '1점']:
+                        chart_data.append({
+                            '문항': question,
+                            '척도': scale,
+                            '인원수': row[scale]
+                        })
+                
+                chart_df = pd.DataFrame(chart_data)
+                
+                pastel_colors = ['#AEC6CF', '#77DD77', '#FDFD96', '#FFB347', '#FF6961']
+                scale_order = ['5점', '4점', '3점', '2점', '1점']
+                
+                stacked_chart = alt.Chart(chart_df).mark_bar().encode(
+                    y=alt.Y('문항:N', sort=None, title='문항'),
+                    x=alt.X('인원수:Q', title='응답 인원수 (명)', stack='zero'),
+                    color=alt.Color('척도:N', 
+                        scale=alt.Scale(domain=scale_order, range=pastel_colors),
+                        legend=alt.Legend(title='척도', orient='right')
+                    ),
+                    order=alt.Order('척도:N', sort='descending'),
+                    tooltip=['문항:N', '척도:N', '인원수:Q']
                 ).properties(
                     height=400
                 )
                 
-                text = bar_chart.mark_text(
-                    align='left',
-                    baseline='middle',
-                    dx=3
-                ).encode(
-                    text=alt.Text('점수:Q', format='.1f')
-                )
-                
-                st.altair_chart(bar_chart + text, use_container_width=True)
-                
-                col_table, col_avg = st.columns([3, 1])
-                
-                with col_table:
-                    st.caption("문항별 점수 (수정 가능)")
-                    edited_survey = st.data_editor(
-                        survey_df,
-                        num_rows="dynamic",
-                        use_container_width=True,
-                        hide_index=True,
-                        column_config={
-                            "문항": st.column_config.TextColumn("문항", width="large"),
-                            "점수": st.column_config.NumberColumn("점수", min_value=0.0, max_value=5.0, step=0.1, format="%.1f"),
-                        },
-                        key="p1_survey_tbl"
-                    )
-                    
-                    data['part1_general']['satisfaction_survey']['questions_list'] = edited_survey.rename(
-                        columns={'문항': 'question', '점수': 'score'}
-                    ).to_dict('records')
-                
-                with col_avg:
-                    avg_score = survey_df['점수'].mean()
-                    st.metric("평균 만족도", f"{avg_score:.2f}점", delta=None)
-                    st.caption("5점 만점 기준")
+                st.altair_chart(stacked_chart, use_container_width=True)
                 
                 st.markdown("---")
                 
@@ -297,7 +322,8 @@ else:
                 st.info("만족도 조사 데이터가 없습니다.")
                 if 'satisfaction_survey' not in data['part1_general']:
                     data['part1_general']['satisfaction_survey'] = {
-                        'questions_list': [],
+                        'total_respondents': 30,
+                        'survey_data': [],
                         'subjective_question': '',
                         'subjective_analysis': '',
                         'overall_suggestion': ''

@@ -156,14 +156,25 @@ def generate_part1_report(data_dict: dict) -> io.BytesIO:
     document.add_heading('3. 만족도조사', level=2)
     satisfaction_survey = data_dict.get('satisfaction_survey', {})
     
-    if satisfaction_survey and satisfaction_survey.get('questions_list'):
-        questions_list = satisfaction_survey.get('questions_list', [])
-        survey_df = pd.DataFrame(questions_list)
-        if 'question' in survey_df.columns:
-            survey_df = survey_df.rename(columns={'question': '문항', 'score': '점수'})
+    if satisfaction_survey and satisfaction_survey.get('survey_data'):
+        total_respondents = satisfaction_survey.get('total_respondents', 30)
+        survey_data = satisfaction_survey.get('survey_data', [])
+        survey_df = pd.DataFrame(survey_data)
         
-        avg_score = survey_df['점수'].mean() if not survey_df.empty else 0
-        add_justified_paragraph(document, f"전체 평균 만족도: {avg_score:.2f}점 (5점 만점)")
+        def calc_avg(row):
+            total = row['5점'] + row['4점'] + row['3점'] + row['2점'] + row['1점']
+            if total == 0:
+                return 0
+            return (5*row['5점'] + 4*row['4점'] + 3*row['3점'] + 2*row['2점'] + 1*row['1점']) / total
+        
+        if not survey_df.empty:
+            survey_df['평균'] = survey_df.apply(calc_avg, axis=1).round(2)
+            overall_avg = survey_df['평균'].mean()
+        else:
+            overall_avg = 0
+        
+        add_justified_paragraph(document, f"총 응답 인원: {total_respondents}명")
+        add_justified_paragraph(document, f"전체 평균 만족도: {overall_avg:.2f}점 (5점 만점)")
         
         df_to_word_table(document, survey_df, '문항별 만족도 결과')
         
@@ -303,14 +314,25 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
     document.add_heading('3. 만족도조사', level=2)
     satisfaction_survey = part1.get('satisfaction_survey', {})
     
-    if satisfaction_survey and satisfaction_survey.get('questions_list'):
-        questions_list = satisfaction_survey.get('questions_list', [])
-        survey_df = pd.DataFrame(questions_list)
-        if 'question' in survey_df.columns:
-            survey_df = survey_df.rename(columns={'question': '문항', 'score': '점수'})
+    if satisfaction_survey and satisfaction_survey.get('survey_data'):
+        total_respondents = satisfaction_survey.get('total_respondents', 30)
+        survey_data = satisfaction_survey.get('survey_data', [])
+        survey_df = pd.DataFrame(survey_data)
         
-        avg_score = survey_df['점수'].mean() if not survey_df.empty else 0
-        add_justified_paragraph(document, f"전체 평균 만족도: {avg_score:.2f}점 (5점 만점)")
+        def calc_avg(row):
+            total = row['5점'] + row['4점'] + row['3점'] + row['2점'] + row['1점']
+            if total == 0:
+                return 0
+            return (5*row['5점'] + 4*row['4점'] + 3*row['3점'] + 2*row['2점'] + 1*row['1점']) / total
+        
+        if not survey_df.empty:
+            survey_df['평균'] = survey_df.apply(calc_avg, axis=1).round(2)
+            overall_avg = survey_df['평균'].mean()
+        else:
+            overall_avg = 0
+        
+        add_justified_paragraph(document, f"총 응답 인원: {total_respondents}명")
+        add_justified_paragraph(document, f"전체 평균 만족도: {overall_avg:.2f}점 (5점 만점)")
         
         df_to_word_table(document, survey_df, '문항별 만족도 결과')
         

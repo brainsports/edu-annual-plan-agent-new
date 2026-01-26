@@ -1,0 +1,50 @@
+# Master Task: Upgrade Satisfaction Survey with "Respondent Count Logic" & "Pastel Charts"
+
+The user wants a highly professional survey analysis system. Instead of simple scores, we need to manage **"Response Counts" (N people)** for each scale (5~1) and visualize it with a **Pastel Stacked Bar Chart**.
+
+# 1. Update Data Structure (`utils.py`)
+- **Inputs**:
+  - `total_respondents`: Integer (Default 30 or extracted from PDF).
+  - `survey_data`: List of dictionaries.
+    ```json
+    [
+      {"문항": "1. 프로그램 내용", "5점": 15, "4점": 10, "3점": 3, "2점": 1, "1점": 1},
+      ... (10 questions total)
+    ]
+    ```
+- **Logic**:
+  - Instruct Gemini to distribute the `total_respondents` realistically across the 5 scales (mostly 4s and 5s for a good report) for all 10 extracted questions.
+
+# 2. Update Frontend UI (`main.py`)
+
+## A. Configuration Section
+- Add a Number Input: `total_respondents = st.number_input("총 응답 인원 (명)", value=30)`
+- Add a Button: `if st.button("AI 자동 채움 (샘플 데이터)"): ...` (This triggers the count distribution logic).
+
+## B. Editable Data Table
+- Use `st.data_editor` for the counts.
+- **Columns**: "문항" (Fixed), "5점(명)", "4점(명)", "3점(명)", "2점(명)", "1점(명)".
+- **Config**: Allow users to manually adjust the numbers.
+
+## C. Visualization: Pastel Stacked Bar Chart (Altair)
+- **CRITICAL**: Use `altair` library for custom pastel colors.
+- **Chart Type**: Horizontal Stacked Bar Chart.
+  - **Y-axis**: Question (문항)
+  - **X-axis**: Count (인원수) or Percentage.
+  - **Color**: Map 5~1 to a **Pastel Palette**.
+    - 5점: `#AEC6CF` (Pastel Blue)
+    - 4점: `#77DD77` (Pastel Green)
+    - 3점: `#FDFD96` (Pastel Yellow)
+    - 2점: `#FFB347` (Pastel Orange)
+    - 1점: `#FF6961` (Pastel Red)
+- **Tooltip**: Show the exact count when hovering.
+
+## D. Analysis Text
+- Keep the existing `subjective_analysis` and `overall_suggestion` (500 chars) logic.
+
+# 3. Validation Logic
+- Calculate the "Average Score" (Weighted Average) from the table data to use in the text analysis.
+- Formula: `(5*N5 + 4*N4 + 3*N3 + 2*N2 + 1*N1) / Total`
+
+# Action
+Apply these changes to `utils.py` and `main.py`. Ensure the chart looks visually pleasing with the specified pastel hex codes.
