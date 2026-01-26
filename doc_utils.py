@@ -1,11 +1,97 @@
 import io
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+import numpy as np
 from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
+
+
+def setup_korean_font():
+    """Setup Korean font for matplotlib, fallback to English labels if unavailable."""
+    korean_fonts = ['NanumGothic', 'Malgun Gothic', 'AppleGothic', 'Noto Sans CJK KR', 'DejaVu Sans']
+    available_fonts = [f.name for f in fm.fontManager.ttflist]
+    
+    for font in korean_fonts:
+        if font in available_fonts:
+            plt.rcParams['font.family'] = font
+            plt.rcParams['axes.unicode_minus'] = False
+            return True
+    
+    plt.rcParams['font.family'] = 'DejaVu Sans'
+    plt.rcParams['axes.unicode_minus'] = False
+    return False
+
+
+def generate_satisfaction_chart_image(survey_data, total_respondents):
+    """Generate satisfaction survey charts as an image for Word document."""
+    setup_korean_font()
+    
+    df = pd.DataFrame(survey_data)
+    
+    def calc_avg(row):
+        total = row['5점'] + row['4점'] + row['3점'] + row['2점'] + row['1점']
+        if total == 0:
+            return 0
+        return (5*row['5점'] + 4*row['4점'] + 3*row['3점'] + 2*row['2점'] + 1*row['1점']) / total
+    
+    df['평균'] = df.apply(calc_avg, axis=1).round(2)
+    
+    questions = [q[:18] + '...' if len(q) > 18 else q for q in df['문항'].tolist()]
+    questions_short = [f"Q{i+1}" for i in range(len(questions))]
+    
+    color_map = {
+        '5점': '#4184F3',
+        '4점': '#7CB342',
+        '3점': '#FF8F00',
+        '2점': '#FF5722',
+        '1점': '#AC4ABC'
+    }
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    
+    y_pos = np.arange(len(questions_short))
+    
+    left = np.zeros(len(questions_short))
+    for scale in ['5점', '4점', '3점', '2점', '1점']:
+        values = df[scale].tolist()
+        ax1.barh(y_pos, values, left=left, color=color_map[scale], label=scale, height=0.6)
+        left += np.array(values)
+    
+    ax1.set_yticks(y_pos)
+    ax1.set_yticklabels(questions_short)
+    ax1.set_xlabel('Respondents')
+    ax1.set_title('Response Distribution')
+    ax1.legend(loc='lower right', fontsize=8)
+    ax1.invert_yaxis()
+    
+    avg_scores = df['평균'].tolist()
+    bars = ax2.barh(y_pos, avg_scores, color='#4184F3', height=0.6)
+    ax2.set_yticks(y_pos)
+    ax2.set_yticklabels(questions_short)
+    ax2.set_xlabel('Average Score (5-point scale)')
+    ax2.set_title('Average Scores by Question')
+    ax2.set_xlim(0, 5)
+    ax2.invert_yaxis()
+    
+    for i, (bar, score) in enumerate(zip(bars, avg_scores)):
+        ax2.text(bar.get_width() + 0.1, bar.get_y() + bar.get_height()/2, 
+                 f'{score:.2f}', va='center', fontsize=9)
+    
+    plt.tight_layout()
+    
+    img_buffer = io.BytesIO()
+    plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    img_buffer.seek(0)
+    
+    return img_buffer
 
 
 def set_narrow_margins(document):
@@ -176,6 +262,13 @@ def generate_part1_report(data_dict: dict) -> io.BytesIO:
         add_justified_paragraph(document, f"총 응답 인원: {total_respondents}명")
         add_justified_paragraph(document, f"전체 평균 만족도: {overall_avg:.2f}점 (5점 만점)")
         
+        try:
+            chart_img = generate_satisfaction_chart_image(survey_data, total_respondents)
+            document.add_picture(chart_img, width=Inches(6))
+            document.add_paragraph()
+        except Exception as e:
+            add_justified_paragraph(document, f"(차트 생성 오류: {str(e)})")
+        
         df_to_word_table(document, survey_df, '문항별 만족도 결과')
         
         subjective_q = satisfaction_survey.get('subjective_question', '')
@@ -333,6 +426,13 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
         
         add_justified_paragraph(document, f"총 응답 인원: {total_respondents}명")
         add_justified_paragraph(document, f"전체 평균 만족도: {overall_avg:.2f}점 (5점 만점)")
+        
+        try:
+            chart_img = generate_satisfaction_chart_image(survey_data, total_respondents)
+            document.add_picture(chart_img, width=Inches(6))
+            document.add_paragraph()
+        except Exception as e:
+            add_justified_paragraph(document, f"(차트 생성 오류: {str(e)})")
         
         df_to_word_table(document, survey_df, '문항별 만족도 결과')
         

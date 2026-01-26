@@ -1,0 +1,46 @@
+# Comprehensive Task: Upgrade Satisfaction Survey (UI & Word Output)
+
+The user wants to finalize the "Satisfaction Survey" with:
+1.  **UI**: A side-by-side view of "Respondent Distribution" (Stacked Bar) and "Average Score" (Bar Chart) with specific colors.
+2.  **Word Output**: Crucially, these charts MUST be generated as images and inserted into the downloaded Word document.
+
+# 1. Update Frontend UI (`main.py`) - Interactive Charts
+
+## A. Color Palette & Logic
+- **Color Mapping** (Strictly apply based on Score 5->1):
+  - **5점**: `#4184F3` (Blue)
+  - **4점**: `#7CB342` (Green)
+  - **3점**: `#FF8F00` (Amber)
+  - **2점**: `#FF5722` (Orange Red)
+  - **1점**: `#AC4ABC` (Purple)
+
+## B. Visualization (Altair)
+- **Left Chart**: Horizontal Stacked Bar (Count of respondents per score). Tooltip enabled.
+- **Right Chart**: Horizontal Bar (Weighted Average Score). Show the number (e.g., "4.5") on the bar.
+- **Layout**: Use `col1, col2 = st.columns([6, 3])` to display them side-by-side.
+
+# 2. Update Word Generation (`doc_utils.py`) - Static Image Generation
+
+The Word generator cannot see the Streamlit UI. You must regenerate the charts using `matplotlib` inside `doc_utils.py`.
+
+## A. Korean Font Handling (CRITICAL)
+- Replit servers often lack Korean fonts. Add a helper function to:
+  - Check for available fonts (e.g., `NanumGothic`, `Malgun Gothic`, `AppleGothic`).
+  - If no Korean font is found, **fallback to English labels** (e.g., "Q1", "Q2") or install/download a font file dynamically if possible to avoid "□□□" (tofu) errors.
+  - *Best Effort*: Try `matplotlib.rc('font', family='NanumGothic')`.
+
+## B. Chart Generation Logic
+- Create a function `generate_satisfaction_chart_image(data)`:
+  - Uses `matplotlib.pyplot`.
+  - Creates a figure with 2 subplots (Left: Stacked Bar, Right: Average Bar).
+  - **Styles**: Must match the Hex colors used in the UI (`#4184F3`, etc.).
+  - Saves the figure to a `BytesIO` buffer.
+
+## C. Insert into Word
+- In the `create_word_document` function:
+  - Call `generate_satisfaction_chart_image`.
+  - Use `doc.add_picture(image_stream, width=Inches(6))` to insert the chart image under the "3. 만족도조사" section.
+  - Ensure the table of data (Questions | Scores) is also added below the chart.
+
+# Action
+Apply these changes to `main.py` (for UI) and `doc_utils.py` (for Word generation) immediately. Ensure visual consistency between the web app and the Word file.
