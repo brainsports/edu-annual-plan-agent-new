@@ -105,8 +105,6 @@ def get_gemini_analysis(text: str) -> dict:
     if not api_key:
         return None
     
-    genai.configure(api_key=api_key)
-    
     system_instruction = """당신은 연간 사업 평가 문서를 분석하는 전문가입니다.
 주어진 문서를 분석하여 반드시 아래의 정확한 JSON 구조로 응답해주세요.
 다른 텍스트 없이 오직 JSON만 반환하세요.
