@@ -382,13 +382,7 @@ def get_gemini_analysis(text: str) -> dict:
         st.error("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
         return None
     
-    model_name = get_working_model(api_key)
-    if not model_name:
-        st.error("사용 가능한 Gemini 모델을 찾을 수 없습니다.")
-        return None
-    
-    url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
-    print(f"[DEBUG] Using model: {model_name}, URL: {url}")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     prompt = f"""{system_instruction}
 
