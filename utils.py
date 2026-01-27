@@ -89,33 +89,74 @@ def get_api_key():
     return api_key
 
 
-def parse_json_response(response_text: str) -> dict:
-    """Parse JSON from Gemini response, removing markdown code blocks if present."""
-    cleaned_text = response_text.strip()
+def _extract_json_from_text(raw: str) -> dict:
+    """Extract and parse JSON from raw text, handling code blocks and malformed responses."""
+    if not raw or not raw.strip():
+        return None
     
-    json_pattern = r'```(?:json)?\s*([\s\S]*?)```'
-    match = re.search(json_pattern, cleaned_text)
+    text = raw.strip()
+    
+    code_block_pattern = r'```(?:json)?\s*([\s\S]*?)```'
+    match = re.search(code_block_pattern, text)
     if match:
-        cleaned_text = match.group(1).strip()
+        text = match.group(1).strip()
+    
+    first_brace = text.find('{')
+    first_bracket = text.find('[')
+    
+    if first_brace == -1 and first_bracket == -1:
+        return None
+    
+    if first_brace != -1 and (first_bracket == -1 or first_brace < first_bracket):
+        start_idx = first_brace
+    else:
+        start_idx = first_bracket
     
     try:
-        return json.loads(cleaned_text)
-    except json.JSONDecodeError as e:
-        st.error(f"JSON 파싱 오류: {str(e)}")
-        return None
+        return json.loads(text[start_idx:])
+    except json.JSONDecodeError:
+        pass
+    
+    json_patterns = [
+        r'\{[\s\S]*\}',
+        r'\[[\s\S]*\]'
+    ]
+    
+    for pattern in json_patterns:
+        matches = re.findall(pattern, text)
+        if matches:
+            matches.sort(key=len, reverse=True)
+            for candidate in matches:
+                try:
+                    return json.loads(candidate)
+                except json.JSONDecodeError:
+                    continue
+    
+    return None
+
+
+def parse_json_response(response_text: str) -> dict:
+    """Parse JSON from Gemini response, removing markdown code blocks if present."""
+    return _extract_json_from_text(response_text)
 
 
 def get_gemini_analysis(text: str) -> dict:
     """Analyze text using Gemini and return structured JSON data."""
     if not GEMINI_API_KEY:
         st.error("GEMINI_API_KEY가 설정되지 않았습니다. Replit Secrets에 GEMINI_API_KEY를 추가하세요.")
-        return {"error": "GEMINI_API_KEY가 설정되지 않았습니다."}
+        return None
     
     print(f"[Gemini] model={GEMINI_MODEL}")
     
     system_instruction = """당신은 연간 사업 평가 문서를 분석하는 전문가입니다.
+
+**절대 규칙**: 
+- 반드시 JSON만 출력하세요
+- 설명문, 코드블록(```), 마크다운 서식을 사용하지 마세요
+- 첫 문자는 반드시 '{' 이어야 합니다
+- JSON 외 어떤 텍스트도 포함하지 마세요
+
 주어진 문서를 분석하여 반드시 아래의 정확한 JSON 구조로 응답해주세요.
-다른 텍스트 없이 오직 JSON만 반환하세요.
 
 **중요: 모든 내용, 요약, 테이블 값은 반드시 한국어(한글)로 작성해야 합니다.**
 **문체: 전문적이고 공식적인 행정 문서 스타일의 한국어를 사용하세요.**
@@ -353,14 +394,31 @@ def get_gemini_analysis(text: str) -> dict:
     
     try:
         response = model.generate_content(
-            f"다음 문서를 분석하고 지정된 JSON 형식으로 결과를 반환해주세요:\n\n{text}"
+            f"다음 문서를 분석하고 지정된 JSON 형식으로 결과를 반환해주세요. JSON만 출력하고 다른 텍스트는 포함하지 마세요:\n\n{text}"
         )
         
-        if response.text:
-            return parse_json_response(response.text)
-        else:
-            st.error("Gemini로부터 응답을 받지 못했습니다.")
+        raw_text = response.text if response.text else ""
+        
+        preview = raw_text[:500] if raw_text else "(EMPTY)"
+        print(f"[Gemini raw preview] {preview}")
+        
+        if not raw_text.strip():
+            st.error("Gemini 응답이 비었습니다. API 키, 쿼터, 또는 일시적 오류일 수 있습니다. 잠시 후 다시 시도하세요.")
             return None
+        
+        parsed = _extract_json_from_text(raw_text)
+        
+        if parsed is None:
+            st.error("JSON 파싱에 실패했습니다. Gemini 응답이 올바른 JSON 형식이 아닙니다.")
+            st.code(raw_text[:1200], language="text")
+            return None
+        
+        parsed.setdefault("part1_general", {})
+        parsed.setdefault("part2_programs", {})
+        parsed.setdefault("part3_monthly_plan", {})
+        parsed.setdefault("part4_budget_evaluation", {})
+        
+        return parsed
             
     except Exception as e:
         error_msg = str(e)
