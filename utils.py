@@ -99,6 +99,45 @@ def parse_json_response(response_text: str) -> dict:
         return None
 
 
+def get_working_model(api_key: str) -> str:
+    """Auto-detect an available Gemini model that supports generateContent."""
+    try:
+        list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+        response = requests.get(list_url, timeout=30)
+        
+        if response.status_code != 200:
+            print(f"[DEBUG] Failed to list models: {response.status_code} - {response.text}")
+            return None
+        
+        models_data = response.json()
+        models = models_data.get("models", [])
+        
+        preferred_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-1.0-pro"]
+        
+        for preferred in preferred_models:
+            for model in models:
+                model_name = model.get("name", "")
+                supported_methods = model.get("supportedGenerationMethods", [])
+                
+                if preferred in model_name and "generateContent" in supported_methods:
+                    print(f"[DEBUG] Found working model: {model_name}")
+                    return model_name
+        
+        for model in models:
+            model_name = model.get("name", "")
+            supported_methods = model.get("supportedGenerationMethods", [])
+            if "generateContent" in supported_methods and "gemini" in model_name.lower():
+                print(f"[DEBUG] Using fallback model: {model_name}")
+                return model_name
+        
+        print("[DEBUG] No suitable model found")
+        return None
+        
+    except Exception as e:
+        print(f"[DEBUG] Error detecting model: {str(e)}")
+        return None
+
+
 def get_gemini_analysis(text: str) -> dict:
     """Analyze text using Gemini and return structured JSON data."""
     api_key = get_api_key()
@@ -343,7 +382,13 @@ def get_gemini_analysis(text: str) -> dict:
         st.error("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
         return None
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
+    model_name = get_working_model(api_key)
+    if not model_name:
+        st.error("사용 가능한 Gemini 모델을 찾을 수 없습니다.")
+        return None
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
+    print(f"[DEBUG] Using model: {model_name}, URL: {url}")
     
     prompt = f"""{system_instruction}
 
