@@ -343,7 +343,7 @@ def get_gemini_analysis(text: str) -> dict:
         st.error("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
         return None
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
     
     prompt = f"""{system_instruction}
 
