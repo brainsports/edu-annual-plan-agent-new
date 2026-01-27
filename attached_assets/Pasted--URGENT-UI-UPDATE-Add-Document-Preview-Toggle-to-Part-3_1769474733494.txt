@@ -1,0 +1,40 @@
+# URGENT UI UPDATE: Add "Document Preview Toggle" to Part 3 & 4
+
+The user noticed that **Part 3 (First Half)** and **Part 4 (Second Half)** are missing the **"Preview in Document Format" (문서 형태로 미리보기)** toggle button, which exists in Part 2.
+We need to implement this toggle to switch between "Data Editor Mode" and "Clean Report View Mode".
+
+# 1. Update `main.py`
+
+Modify the sections for `tab3` (Part 3) and `tab4` (Part 4).
+
+## A. Implement Toggle Logic for Part 3 (Jan-Jun)
+- Inside `with tab3:`:
+    1.  Add toggle: `is_preview_p3 = st.toggle("📄 문서 형태로 미리보기", key="toggle_p3")`
+    2.  **Condition**:
+        - **If `is_preview_p3` is True**:
+            - Render a **Clean Markdown View**.
+            - Loop through months 1-6.
+            - Display "## N월 사업계획서".
+            - Convert the monthly data (DataFrame) into a Markdown Table (or HTML table) for display.
+            - *Tip*: Use `st.markdown(df.to_markdown(index=False))` or a similar clean format.
+        - **If `is_preview_p3` is False (Default)**:
+            - Show the existing **Editable Mode** (`st.data_editor`).
+            - Keep the "Save" logic if applicable.
+
+## B. Implement Toggle Logic for Part 4 (Jul-Dec)
+- Inside `with tab4:`:
+    1.  Add toggle: `is_preview_p4 = st.toggle("📄 문서 형태로 미리보기", key="toggle_p4")`
+    2.  **Condition**:
+        - **If `is_preview_p4` is True**:
+            - Render a **Clean Markdown View** for months 7-12.
+            - Display "## N월 사업계획서".
+            - Display the table read-only.
+        - **If `is_preview_p4` is False (Default)**:
+            - Show the existing **Editable Mode** (`st.data_editor`).
+
+# 2. Refine Preview Layout
+- When in "Preview Mode", ensure the tables look professional (e.g., proper headers).
+- The table columns should match the standard: `[대분류, 중분류, 프로그램명, 참여자, 수행인력, 사업내용]`.
+
+# Action
+Apply this UI update immediately so the user can toggle between editing and viewing the monthly plans in a document-like format.
