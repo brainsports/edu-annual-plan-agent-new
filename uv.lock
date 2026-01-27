@@ -1683,27 +1683,33 @@ name = "repl-nix-workspace"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "altair" },
     { name = "docx" },
     { name = "google-generativeai" },
     { name = "matplotlib" },
+    { name = "numpy" },
     { name = "openpyxl" },
     { name = "pandas" },
     { name = "pdfplumber" },
     { name = "pypdf" },
     { name = "python-docx" },
+    { name = "requests" },
     { name = "streamlit" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "altair", specifier = ">=6.0.0" },
     { name = "docx", specifier = ">=0.2.4" },
     { name = "google-generativeai", specifier = ">=0.8.6" },
     { name = "matplotlib", specifier = ">=3.10.8" },
+    { name = "numpy", specifier = ">=2.4.1" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pdfplumber", specifier = ">=0.11.9" },
     { name = "pypdf", specifier = ">=6.6.1" },
     { name = "python-docx", specifier = ">=1.2.0" },
+    { name = "requests", specifier = ">=2.32.5" },
     { name = "streamlit", specifier = ">=1.53.1" },
 ]
 
