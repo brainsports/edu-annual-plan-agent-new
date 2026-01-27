@@ -341,14 +341,16 @@ def get_gemini_analysis(text: str) -> dict:
 """
 
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=system_instruction
+        model_name="gemini-pro"
     )
     
     try:
-        response = model.generate_content(
-            f"다음 문서를 분석하고 지정된 JSON 형식으로 결과를 반환해주세요:\n\n{text}"
-        )
+        prompt = f"""{system_instruction}
+
+다음 문서를 분석하고 지정된 JSON 형식으로 결과를 반환해주세요:
+
+{text}"""
+        response = model.generate_content(prompt)
         
         if response.text:
             return parse_json_response(response.text)
