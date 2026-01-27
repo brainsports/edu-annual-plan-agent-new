@@ -107,15 +107,17 @@ def _extract_json_from_text(raw: str) -> dict:
     if first_brace == -1 and first_bracket == -1:
         return None
     
-    if first_brace != -1 and (first_bracket == -1 or first_brace < first_bracket):
-        start_idx = first_brace
-    else:
-        start_idx = first_bracket
+    if first_brace != -1:
+        try:
+            return json.loads(text[first_brace:])
+        except json.JSONDecodeError:
+            pass
     
-    try:
-        return json.loads(text[start_idx:])
-    except json.JSONDecodeError:
-        pass
+    if first_bracket != -1:
+        try:
+            return json.loads(text[first_bracket:])
+        except json.JSONDecodeError:
+            pass
     
     json_patterns = [
         r'\{[\s\S]*\}',
@@ -150,11 +152,12 @@ def get_gemini_analysis(text: str) -> dict:
     
     system_instruction = """당신은 연간 사업 평가 문서를 분석하는 전문가입니다.
 
-**절대 규칙**: 
-- 반드시 JSON만 출력하세요
-- 설명문, 코드블록(```), 마크다운 서식을 사용하지 마세요
-- 첫 문자는 반드시 '{' 이어야 합니다
-- JSON 외 어떤 텍스트도 포함하지 마세요
+**절대 규칙 (반드시 준수)**: 
+- 출력은 반드시 JSON 객체({}) 1개로만 한다
+- 절대 배열([])로 시작하지 않는다
+- 설명문, 마크다운, 코드블록(```) 금지
+- 첫 문자는 반드시 '{' 이어야 한다
+- JSON 외 어떤 텍스트도 포함하지 않는다
 
 주어진 문서를 분석하여 반드시 아래의 정확한 JSON 구조로 응답해주세요.
 
@@ -411,6 +414,19 @@ def get_gemini_analysis(text: str) -> dict:
         if parsed is None:
             st.error("JSON 파싱에 실패했습니다. Gemini 응답이 올바른 JSON 형식이 아닙니다.")
             st.code(raw_text[:1200], language="text")
+            return None
+        
+        if isinstance(parsed, list):
+            if len(parsed) == 1 and isinstance(parsed[0], dict):
+                parsed = parsed[0]
+            else:
+                st.error("Gemini가 최상위 JSON을 배열([])로 반환했습니다. 객체({})가 필요합니다.")
+                st.code(str(parsed)[:1200], language="text")
+                return None
+        
+        if not isinstance(parsed, dict):
+            st.error("JSON 객체(dict)가 아닌 형식이 반환되었습니다.")
+            st.code(str(parsed)[:1200], language="text")
             return None
         
         parsed.setdefault("part1_general", {})
