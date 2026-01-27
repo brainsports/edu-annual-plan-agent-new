@@ -1,0 +1,50 @@
+[목표]
+Streamlit 앱에서 “Gemini API 오류 404: models/gemini-1.5-flash … not found / not supported”가 발생한다.
+원인은 코드 어딘가에서 여전히 gemini-1.5-flash(또는 models/gemini-1.5-flash)를 generateContent로 호출하기 때문이다.
+프로젝트 전체에서 구형 모델명을 완전히 제거하고, 기본 모델을 gemini-2.0-flash로 통일해 정상 분석이 되게 수정하라.
+
+[반드시 지킬 것]
+1) main.py는 수정하지 않는다. (현재 UI/탭/버튼 로직 유지)
+2) doc_utils.py도 수정하지 않는다. (이미 문서 생성 함수들은 정상)
+3) 수정은 utils.py를 중심으로 하되, 프로젝트 전체 검색으로 ‘gemini-1.5’ / ‘1.5-flash’ / ‘models/gemini-1.5-flash’를 찾아 모두 제거/교체한다.
+4) 모델 호출 방식은 google.generativeai(genai) SDK 방식으로 통일한다. (requests로 직접 URL 호출이 있으면 SDK로 바꾸거나, 최소한 모델명만 최신으로 교체)
+5) 모델명 표기는 기본적으로 "gemini-2.0-flash"를 사용한다. (models/ 접두어를 붙이지 않는다)
+6) 환경변수 GEMINI_API_KEY가 없으면 사용자에게 안내 메시지를 반환하도록 예외 처리한다.
+
+[구체 수정 지시]
+A) utils.py 상단 또는 적절한 위치에 다음을 추가/정리한다:
+- import os
+- import google.generativeai as genai
+- GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+- GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+- genai.configure(api_key=GEMINI_API_KEY)  (키가 있을 때만)
+- model = genai.GenerativeModel(GEMINI_MODEL) (키가 있을 때만)
+
+B) utils.py의 get_gemini_analysis(text) 내부를 점검해 다음을 보장한다:
+1) GEMINI_API_KEY가 없으면 {"error": "GEMINI_API_KEY가 설정되지 않았습니다. Replit Secrets에 GEMINI_API_KEY를 추가하세요."} 같은 형태로 반환하거나,
+   현재 코드 흐름에 맞는 에러 문자열을 반환한다.
+2) model.generate_content(...)로 호출한다.
+3) 모델 호출 실패 시(예: 404/권한/쿼터) 예외를 잡고, 사용자에게 “모델명/키/쿼터”를 점검하라는 메시지를 명확히 표시한다.
+4) 기존에 URL에 models/gemini-1.5-flash:generateContent 같은 하드코딩이 있으면 전부 제거한다.
+
+C) 프로젝트 전체에서 아래 문자열을 찾아 교체한다:
+- "gemini-1.5-flash"  -> "gemini-2.0-flash"
+- "models/gemini-1.5-flash" -> "gemini-2.0-flash"
+- "gemini-1.5-pro" / "models/gemini-1.5-pro" 가 있으면 동일하게 "gemini-2.0-flash"로 교체한다
+(목표는 ‘1.5’ 계열이 코드에 남지 않게 한다)
+
+D) 디버그 로그(필수):
+- get_gemini_analysis 호출 시, 현재 사용 중인 모델명(GEMINI_MODEL)을 콘솔에 1회 출력(print)하거나,
+  Streamlit UI에 작은 캡션으로 표시하는 옵션을 추가한다(과도한 출력 금지).
+예: print(f"[Gemini] model={GEMINI_MODEL}")
+
+E) 최종 확인:
+- “AI 분석 시작” 버튼을 눌렀을 때 404가 더 이상 나오지 않아야 한다.
+- 성공 시 분석 결과가 st.session_state.analysis_data에 저장되어 탭 UI로 정상 진행되어야 한다.
+
+[산출물]
+1) 수정된 utils.py 전체 코드(또는 변경된 부분이 확실히 적용된 상태)
+2) 어떤 문자열을 무엇으로 교체했는지 요약
+3) 실행 후 확인 방법 2줄 안내(Secrets에 GEMINI_API_KEY 확인 + Run 재시작)
+
+지금 바로 적용 가능한 형태로 수정하라.

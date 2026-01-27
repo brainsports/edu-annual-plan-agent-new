@@ -5,6 +5,12 @@ import io
 import streamlit as st
 import google.generativeai as genai
 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
 
 def read_pdf(file) -> str:
     """Extract text from PDF file using pdfplumber."""
@@ -101,11 +107,11 @@ def parse_json_response(response_text: str) -> dict:
 
 def get_gemini_analysis(text: str) -> dict:
     """Analyze text using Gemini and return structured JSON data."""
-    api_key = get_api_key()
-    if not api_key:
-        return None
+    if not GEMINI_API_KEY:
+        st.error("GEMINI_API_KEY가 설정되지 않았습니다. Replit Secrets에 GEMINI_API_KEY를 추가하세요.")
+        return {"error": "GEMINI_API_KEY가 설정되지 않았습니다."}
     
-    genai.configure(api_key=api_key)
+    print(f"[Gemini] model={GEMINI_MODEL}")
     
     system_instruction = """당신은 연간 사업 평가 문서를 분석하는 전문가입니다.
 주어진 문서를 분석하여 반드시 아래의 정확한 JSON 구조로 응답해주세요.
@@ -341,7 +347,7 @@ def get_gemini_analysis(text: str) -> dict:
 """
 
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name=GEMINI_MODEL,
         system_instruction=system_instruction
     )
     
@@ -357,7 +363,15 @@ def get_gemini_analysis(text: str) -> dict:
             return None
             
     except Exception as e:
-        st.error(f"Gemini API 오류: {str(e)}")
+        error_msg = str(e)
+        if "404" in error_msg:
+            st.error(f"Gemini API 오류: 모델 '{GEMINI_MODEL}'을 찾을 수 없습니다. GEMINI_MODEL 환경변수를 확인하세요.")
+        elif "403" in error_msg or "permission" in error_msg.lower():
+            st.error("Gemini API 오류: API 키 권한을 확인하세요.")
+        elif "429" in error_msg or "quota" in error_msg.lower():
+            st.error("Gemini API 오류: API 쿼터를 초과했습니다. 잠시 후 다시 시도하세요.")
+        else:
+            st.error(f"Gemini API 오류: {error_msg}")
         return None
 
 
