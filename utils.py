@@ -2,6 +2,7 @@ import os
 import json
 import re
 import io
+import ast
 import streamlit as st
 import google.generativeai as genai
 
@@ -89,17 +90,56 @@ def get_api_key():
     return api_key
 
 
+def _remove_code_blocks(text: str) -> str:
+    """Remove markdown code blocks from text."""
+    text = re.sub(r'```json\s*', '', text)
+    text = re.sub(r'```\s*', '', text)
+    return text.strip()
+
+
+def _extract_balanced_json(text: str, start_char: str) -> str:
+    """Extract balanced JSON starting from start_char ({ or [)."""
+    if start_char == '{':
+        open_char, close_char = '{', '}'
+    else:
+        open_char, close_char = '[', ']'
+    
+    start_idx = text.find(start_char)
+    if start_idx == -1:
+        return None
+    
+    depth = 0
+    in_string = False
+    escape_next = False
+    
+    for i, ch in enumerate(text[start_idx:], start=start_idx):
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == '\\':
+            escape_next = True
+            continue
+        if ch == '"' and not escape_next:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == open_char:
+            depth += 1
+        elif ch == close_char:
+            depth -= 1
+            if depth == 0:
+                return text[start_idx:i+1]
+    
+    return text[start_idx:]
+
+
 def _extract_json_from_text(raw: str) -> dict:
-    """Extract and parse JSON from raw text, handling code blocks and malformed responses."""
+    """Extract and parse JSON from raw text with robust handling."""
     if not raw or not raw.strip():
         return None
     
-    text = raw.strip()
-    
-    code_block_pattern = r'```(?:json)?\s*([\s\S]*?)```'
-    match = re.search(code_block_pattern, text)
-    if match:
-        text = match.group(1).strip()
+    text = _remove_code_blocks(raw.strip())
     
     first_brace = text.find('{')
     first_bracket = text.find('[')
@@ -108,22 +148,30 @@ def _extract_json_from_text(raw: str) -> dict:
         return None
     
     if first_brace != -1:
-        try:
-            return json.loads(text[first_brace:])
-        except json.JSONDecodeError:
-            pass
+        json_str = _extract_balanced_json(text, '{')
+        if json_str:
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                pass
+            try:
+                return ast.literal_eval(json_str)
+            except:
+                pass
     
     if first_bracket != -1:
-        try:
-            return json.loads(text[first_bracket:])
-        except json.JSONDecodeError:
-            pass
+        json_str = _extract_balanced_json(text, '[')
+        if json_str:
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                pass
+            try:
+                return ast.literal_eval(json_str)
+            except:
+                pass
     
-    json_patterns = [
-        r'\{[\s\S]*\}',
-        r'\[[\s\S]*\]'
-    ]
-    
+    json_patterns = [r'\{[\s\S]*\}', r'\[[\s\S]*\]']
     for pattern in json_patterns:
         matches = re.findall(pattern, text)
         if matches:
@@ -135,6 +183,36 @@ def _extract_json_from_text(raw: str) -> dict:
                     continue
     
     return None
+
+
+def _ensure_dict(parsed) -> dict:
+    """Ensure parsed result is a dict, unwrapping single-item lists."""
+    if parsed is None:
+        return None
+    if isinstance(parsed, dict):
+        return parsed
+    if isinstance(parsed, list):
+        if len(parsed) == 1 and isinstance(parsed[0], dict):
+            return parsed[0]
+        return None
+    return None
+
+
+def normalize_table_rows(rows, columns: list, fill_value: str = "") -> list:
+    """Normalize table rows to ensure all columns exist."""
+    if not isinstance(rows, list):
+        return []
+    
+    normalized = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        normalized_row = {}
+        for col in columns:
+            normalized_row[col] = row.get(col, fill_value)
+        normalized.append(normalized_row)
+    
+    return normalized
 
 
 def parse_json_response(response_text: str) -> dict:
@@ -395,44 +473,72 @@ def get_gemini_analysis(text: str) -> dict:
         system_instruction=system_instruction
     )
     
+    prompt = f"다음 문서를 분석하고 지정된 JSON 형식으로 결과를 반환해주세요. JSON 객체({{}}) 1개만 출력하고 다른 텍스트는 포함하지 마세요:\n\n{text}"
+    repair_prompt = "이전 응답이 유효한 JSON 객체가 아니었습니다. 반드시 JSON 객체({}) 1개만 출력하세요. 설명문/마크다운/코드블록(```) 금지. 배열([])로 시작 금지. 첫 문자는 반드시 '{'."
+    
+    def _try_generate(attempt_prompt: str, attempt_num: int = 0) -> str:
+        """Generate content and return raw text."""
+        try:
+            response = model.generate_content(attempt_prompt)
+            return response.text if response.text else ""
+        except Exception as e:
+            error_msg = str(e)
+            if "404" in error_msg:
+                st.error(f"Gemini API 오류: 모델 '{GEMINI_MODEL}'을 찾을 수 없습니다.")
+            elif "403" in error_msg or "permission" in error_msg.lower():
+                st.error("Gemini API 오류: API 키 권한을 확인하세요.")
+            elif "429" in error_msg or "quota" in error_msg.lower():
+                st.error("Gemini API 오류: API 쿼터를 초과했습니다.")
+            else:
+                st.error(f"Gemini API 오류: {error_msg}")
+            return ""
+    
+    def _parse_and_validate(raw: str) -> dict:
+        """Parse raw text and validate it's a dict."""
+        if not raw or not raw.strip():
+            return None
+        parsed = _extract_json_from_text(raw)
+        return _ensure_dict(parsed)
+    
     try:
-        response = model.generate_content(
-            f"다음 문서를 분석하고 지정된 JSON 형식으로 결과를 반환해주세요. JSON만 출력하고 다른 텍스트는 포함하지 마세요:\n\n{text}"
-        )
-        
-        raw_text = response.text if response.text else ""
-        
+        raw_text = _try_generate(prompt, 0)
         preview = raw_text[:500] if raw_text else "(EMPTY)"
         print(f"[Gemini raw preview] {preview}")
         
-        if not raw_text.strip():
-            st.error("Gemini 응답이 비었습니다. API 키, 쿼터, 또는 일시적 오류일 수 있습니다. 잠시 후 다시 시도하세요.")
-            return None
+        parsed = _parse_and_validate(raw_text)
         
-        parsed = _extract_json_from_text(raw_text)
+        for retry in range(1, 3):
+            if parsed is not None:
+                break
+            print(f"[Gemini repair#{retry}] Retrying...")
+            raw_text = _try_generate(f"{repair_prompt}\n\n원본 문서:\n{text[:5000]}", retry)
+            preview = raw_text[:500] if raw_text else "(EMPTY)"
+            print(f"[Gemini repair#{retry} preview] {preview}")
+            parsed = _parse_and_validate(raw_text)
         
         if parsed is None:
-            st.error("JSON 파싱에 실패했습니다. Gemini 응답이 올바른 JSON 형식이 아닙니다.")
-            st.code(raw_text[:1200], language="text")
-            return None
-        
-        if isinstance(parsed, list):
-            if len(parsed) == 1 and isinstance(parsed[0], dict):
-                parsed = parsed[0]
-            else:
-                st.error("Gemini가 최상위 JSON을 배열([])로 반환했습니다. 객체({})가 필요합니다.")
-                st.code(str(parsed)[:1200], language="text")
-                return None
-        
-        if not isinstance(parsed, dict):
-            st.error("JSON 객체(dict)가 아닌 형식이 반환되었습니다.")
-            st.code(str(parsed)[:1200], language="text")
+            st.error("JSON 파싱에 실패했습니다. Gemini 응답이 올바른 JSON 객체 형식이 아닙니다.")
+            if raw_text:
+                st.code(raw_text[:1200], language="text")
             return None
         
         parsed.setdefault("part1_general", {})
         parsed.setdefault("part2_programs", {})
         parsed.setdefault("part3_monthly_plan", {})
-        parsed.setdefault("part4_budget_evaluation", {})
+        parsed.setdefault("part4_budget_evaluation", {"budget_table": [], "feedback_summary": []})
+        
+        if "part1_general" in parsed and isinstance(parsed["part1_general"], dict):
+            p1 = parsed["part1_general"]
+            if "feedback_table" in p1:
+                p1["feedback_table"] = normalize_table_rows(
+                    p1["feedback_table"], 
+                    ["area", "problem", "improvement"]
+                )
+            if "total_review_table" in p1:
+                p1["total_review_table"] = normalize_table_rows(
+                    p1["total_review_table"], 
+                    ["category", "content"]
+                )
         
         return parsed
             
