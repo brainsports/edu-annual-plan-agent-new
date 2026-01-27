@@ -9,7 +9,6 @@ from doc_utils import (
     generate_part2_report,
     generate_monthly_report,
     generate_monthly_program_report,
-    generate_budget_evaluation_report,
     generate_full_report
 )
 
@@ -88,7 +87,7 @@ else:
     if 'part4_budget_evaluation' not in data:
         data['part4_budget_evaluation'] = {"budget_table": [], "feedback_summary": []}
     
-    tab1, tab2, tab3, tab4 = st.tabs(["📋 PART 1 (총괄/기획)", "📑 PART 2 (세부사업)", "📅 PART 3 (월별계획)", "💰 PART 4 (예산/평가)"])
+    tab1, tab2, tab3, tab4 = st.tabs(["PART 1: 총괄/기획", "PART 2: 세부사업", "PART 3: 상반기(1~6월)", "PART 4: 하반기(7~12월)"])
     
     with tab1:
         st.header("PART 1: 총괄 및 기획")
@@ -523,27 +522,15 @@ else:
         )
     
     with tab3:
-        st.header("PART 3: 월별 사업계획 (1월~12월)")
-        
-        preview_mode_p3 = st.toggle("📄 문서 형태로 미리보기", key="preview_mode_p3")
+        st.title("PART 3: 상반기 월별 사업계획 (1월~6월)")
         
         monthly_plan = data.get('part3_monthly_plan', {})
-        
-        all_months = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
         h1_months = ["1월", "2월", "3월", "4월", "5월", "6월"]
-        h2_months = ["7월", "8월", "9월", "10월", "11월", "12월"]
         
-        period_tab1, period_tab2 = st.tabs(["상반기 (1월~6월)", "하반기 (7월~12월)"])
-        
-        with period_tab1:
-            selected_month_h1 = st.radio(
-                "월 선택",
-                options=h1_months,
-                horizontal=True,
-                key="month_h1_selector"
-            )
+        for month in h1_months:
+            st.markdown(f"## {month} 사업계획서")
             
-            month_programs = monthly_plan.get(selected_month_h1, [])
+            month_programs = monthly_plan.get(month, [])
             month_df = pd.DataFrame(month_programs) if month_programs else pd.DataFrame(
                 columns=['big_category', 'mid_category', 'program_name', 'target', 'staff', 'content']
             )
@@ -560,57 +547,60 @@ else:
             else:
                 month_df = pd.DataFrame(columns=['대분류', '중분류', '프로그램명', '참여자', '수행인력', '사업내용'])
             
-            if preview_mode_p3:
-                st.subheader(f"{selected_month_h1} 사업계획서")
-                for idx, row in month_df.iterrows():
-                    st.markdown(f"**[{row.get('대분류', '')} > {row.get('중분류', '')}] {row.get('프로그램명', '')}**")
-                    st.markdown(f"- 참여자: {row.get('참여자', '')} | 수행인력: {row.get('수행인력', '')}")
-                    st.markdown(f"- 사업내용: {row.get('사업내용', '')}")
-                    st.markdown("---")
-            else:
-                st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
-                edited_month = st.data_editor(
-                    month_df,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "대분류": st.column_config.SelectboxColumn("대분류", options=["보호", "교육", "문화", "정서지원", "지역사회연계"], width="small"),
-                        "중분류": st.column_config.TextColumn("중분류", width="small"),
-                        "프로그램명": st.column_config.TextColumn("프로그램명", width="medium"),
-                        "참여자": st.column_config.TextColumn("참여자", width="small"),
-                        "수행인력": st.column_config.TextColumn("수행인력", width="small"),
-                        "사업내용": st.column_config.TextColumn("사업내용", width="large"),
-                    },
-                    key=f"month_editor_{selected_month_h1}"
-                )
-                
-                data['part3_monthly_plan'][selected_month_h1] = edited_month.rename(
-                    columns={
-                        '대분류': 'big_category',
-                        '중분류': 'mid_category',
-                        '프로그램명': 'program_name',
-                        '참여자': 'target',
-                        '수행인력': 'staff',
-                        '사업내용': 'content'
-                    }
-                ).to_dict('records')
-        
-        with period_tab2:
-            selected_month_h2 = st.radio(
-                "월 선택",
-                options=h2_months,
-                horizontal=True,
-                key="month_h2_selector"
+            st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
+            edited_month = st.data_editor(
+                month_df,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "대분류": st.column_config.SelectboxColumn("대분류", options=["보호", "교육", "문화", "정서지원", "지역사회연계"], width="small"),
+                    "중분류": st.column_config.TextColumn("중분류", width="small"),
+                    "프로그램명": st.column_config.TextColumn("프로그램명", width="medium"),
+                    "참여자": st.column_config.TextColumn("참여자", width="small"),
+                    "수행인력": st.column_config.TextColumn("수행인력", width="small"),
+                    "사업내용": st.column_config.TextColumn("사업내용", width="large"),
+                },
+                key=f"month_editor_h1_{month}"
             )
             
-            month_programs_h2 = monthly_plan.get(selected_month_h2, [])
-            month_df_h2 = pd.DataFrame(month_programs_h2) if month_programs_h2 else pd.DataFrame(
+            data['part3_monthly_plan'][month] = edited_month.rename(
+                columns={
+                    '대분류': 'big_category',
+                    '중분류': 'mid_category',
+                    '프로그램명': 'program_name',
+                    '참여자': 'target',
+                    '수행인력': 'staff',
+                    '사업내용': 'content'
+                }
+            ).to_dict('records')
+            
+            st.markdown("---")
+        
+        h1_report = generate_monthly_program_report(data['part3_monthly_plan'], h1_months)
+        st.download_button(
+            label="📥 상반기 사업계획서 다운로드 (Word)",
+            data=h1_report,
+            file_name="Part3_상반기계획.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    
+    with tab4:
+        st.title("PART 4: 하반기 월별 사업계획 (7월~12월)")
+        
+        monthly_plan = data.get('part3_monthly_plan', {})
+        h2_months = ["7월", "8월", "9월", "10월", "11월", "12월"]
+        
+        for month in h2_months:
+            st.markdown(f"## {month} 사업계획서")
+            
+            month_programs = monthly_plan.get(month, [])
+            month_df = pd.DataFrame(month_programs) if month_programs else pd.DataFrame(
                 columns=['big_category', 'mid_category', 'program_name', 'target', 'staff', 'content']
             )
             
-            if not month_df_h2.empty and 'big_category' in month_df_h2.columns:
-                month_df_h2 = month_df_h2.rename(columns={
+            if not month_df.empty and 'big_category' in month_df.columns:
+                month_df = month_df.rename(columns={
                     'big_category': '대분류',
                     'mid_category': '중분류',
                     'program_name': '프로그램명',
@@ -619,156 +609,43 @@ else:
                     'content': '사업내용'
                 })
             else:
-                month_df_h2 = pd.DataFrame(columns=['대분류', '중분류', '프로그램명', '참여자', '수행인력', '사업내용'])
+                month_df = pd.DataFrame(columns=['대분류', '중분류', '프로그램명', '참여자', '수행인력', '사업내용'])
             
-            if preview_mode_p3:
-                st.subheader(f"{selected_month_h2} 사업계획서")
-                for idx, row in month_df_h2.iterrows():
-                    st.markdown(f"**[{row.get('대분류', '')} > {row.get('중분류', '')}] {row.get('프로그램명', '')}**")
-                    st.markdown(f"- 참여자: {row.get('참여자', '')} | 수행인력: {row.get('수행인력', '')}")
-                    st.markdown(f"- 사업내용: {row.get('사업내용', '')}")
-                    st.markdown("---")
-            else:
-                st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
-                edited_month_h2 = st.data_editor(
-                    month_df_h2,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "대분류": st.column_config.SelectboxColumn("대분류", options=["보호", "교육", "문화", "정서지원", "지역사회연계"], width="small"),
-                        "중분류": st.column_config.TextColumn("중분류", width="small"),
-                        "프로그램명": st.column_config.TextColumn("프로그램명", width="medium"),
-                        "참여자": st.column_config.TextColumn("참여자", width="small"),
-                        "수행인력": st.column_config.TextColumn("수행인력", width="small"),
-                        "사업내용": st.column_config.TextColumn("사업내용", width="large"),
-                    },
-                    key=f"month_editor_{selected_month_h2}"
-                )
-                
-                data['part3_monthly_plan'][selected_month_h2] = edited_month_h2.rename(
-                    columns={
-                        '대분류': 'big_category',
-                        '중분류': 'mid_category',
-                        '프로그램명': 'program_name',
-                        '참여자': 'target',
-                        '수행인력': 'staff',
-                        '사업내용': 'content'
-                    }
-                ).to_dict('records')
-        
-        st.markdown("---")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            h1_report = generate_monthly_program_report(data['part3_monthly_plan'], h1_months)
-            st.download_button(
-                label="상반기 다운로드 (Word)",
-                data=h1_report,
-                file_name="Part3_상반기계획.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-        with col2:
-            h2_report = generate_monthly_program_report(data['part3_monthly_plan'], h2_months)
-            st.download_button(
-                label="하반기 다운로드 (Word)",
-                data=h2_report,
-                file_name="Part3_하반기계획.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-    
-    with tab4:
-        st.header("PART 4: 예산 및 평가")
-        
-        preview_mode_p4 = st.toggle("📄 문서 형태로 미리보기", key="preview_mode_p4")
-        
-        budget_eval = data.get('part4_budget_evaluation', {"budget_table": [], "feedback_summary": []})
-        
-        with st.expander("1. 예산계획", expanded=True):
-            budget_data = budget_eval.get('budget_table', [])
-            budget_df = pd.DataFrame(budget_data) if budget_data else pd.DataFrame(
-                columns=['category', 'amount', 'details']
+            st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
+            edited_month = st.data_editor(
+                month_df,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "대분류": st.column_config.SelectboxColumn("대분류", options=["보호", "교육", "문화", "정서지원", "지역사회연계"], width="small"),
+                    "중분류": st.column_config.TextColumn("중분류", width="small"),
+                    "프로그램명": st.column_config.TextColumn("프로그램명", width="medium"),
+                    "참여자": st.column_config.TextColumn("참여자", width="small"),
+                    "수행인력": st.column_config.TextColumn("수행인력", width="small"),
+                    "사업내용": st.column_config.TextColumn("사업내용", width="large"),
+                },
+                key=f"month_editor_h2_{month}"
             )
             
-            if not budget_df.empty and 'category' in budget_df.columns:
-                budget_df = budget_df.rename(columns={
-                    'category': '항목',
-                    'amount': '금액',
-                    'details': '세부내용'
-                })
-            else:
-                budget_df = pd.DataFrame(columns=['항목', '금액', '세부내용'])
+            data['part3_monthly_plan'][month] = edited_month.rename(
+                columns={
+                    '대분류': 'big_category',
+                    '중분류': 'mid_category',
+                    '프로그램명': 'program_name',
+                    '참여자': 'target',
+                    '수행인력': 'staff',
+                    '사업내용': 'content'
+                }
+            ).to_dict('records')
             
-            if preview_mode_p4:
-                for idx, row in budget_df.iterrows():
-                    st.markdown(f"**{row.get('항목', '')}**: {row.get('금액', '')}")
-                    st.markdown(f"{row.get('세부내용', '')}")
-                    st.markdown("---")
-            else:
-                st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
-                edited_budget = st.data_editor(
-                    budget_df,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "항목": st.column_config.TextColumn("항목", width="small"),
-                        "금액": st.column_config.TextColumn("금액", width="small"),
-                        "세부내용": st.column_config.TextColumn("세부내용", width="large"),
-                    },
-                    key="budget_editor"
-                )
-                
-                data['part4_budget_evaluation']['budget_table'] = edited_budget.rename(
-                    columns={'항목': 'category', '금액': 'amount', '세부내용': 'details'}
-                ).to_dict('records')
+            st.markdown("---")
         
-        with st.expander("2. 평가 및 환류 요약", expanded=True):
-            feedback_data = budget_eval.get('feedback_summary', [])
-            feedback_df = pd.DataFrame(feedback_data) if feedback_data else pd.DataFrame(
-                columns=['area', 'problem', 'plan']
-            )
-            
-            if not feedback_df.empty and 'area' in feedback_df.columns:
-                feedback_df = feedback_df.rename(columns={
-                    'area': '영역',
-                    'problem': '문제점',
-                    'plan': '개선계획'
-                })
-            else:
-                feedback_df = pd.DataFrame(columns=['영역', '문제점', '개선계획'])
-            
-            if preview_mode_p4:
-                for idx, row in feedback_df.iterrows():
-                    st.markdown(f"### {row.get('영역', '')}")
-                    st.markdown(f"**문제점:** {row.get('문제점', '')}")
-                    st.markdown(f"**개선계획:** {row.get('개선계획', '')}")
-                    st.markdown("---")
-            else:
-                edited_feedback = st.data_editor(
-                    feedback_df,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "영역": st.column_config.SelectboxColumn("영역", options=["보호", "교육", "문화", "정서지원", "지역사회연계"], width="small"),
-                        "문제점": st.column_config.TextColumn("문제점", width="medium"),
-                        "개선계획": st.column_config.TextColumn("개선계획", width="large"),
-                    },
-                    key="feedback_editor"
-                )
-                
-                data['part4_budget_evaluation']['feedback_summary'] = edited_feedback.rename(
-                    columns={'영역': 'area', '문제점': 'problem', '개선계획': 'plan'}
-                ).to_dict('records')
-        
-        st.markdown("---")
-        
-        budget_report = generate_budget_evaluation_report(data['part4_budget_evaluation'])
+        h2_report = generate_monthly_program_report(data['part3_monthly_plan'], h2_months)
         st.download_button(
-            label="PART 4 다운로드 (Word)",
-            data=budget_report,
-            file_name="Part4_예산평가.docx",
+            label="📥 하반기 사업계획서 다운로드 (Word)",
+            data=h2_report,
+            file_name="Part4_하반기계획.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
 

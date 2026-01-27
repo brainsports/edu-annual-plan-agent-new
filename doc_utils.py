@@ -568,8 +568,6 @@ def generate_monthly_program_report(monthly_plan: dict, months: list = None) -> 
                 document.add_page_break()
             first_month = False
             
-            create_approval_box(document)
-            
             add_left_aligned_heading(document, f'{month} 사업계획서', level=2)
             
             df = pd.DataFrame(programs)
@@ -796,8 +794,6 @@ def generate_full_report(data_dict: dict) -> io.BytesIO:
                 if not first_month:
                     document.add_page_break()
                 first_month = False
-                
-                create_approval_box(document)
                 
                 add_left_aligned_heading(document, f'{month} 사업계획서', level=2)
                 
