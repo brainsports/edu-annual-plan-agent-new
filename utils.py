@@ -2,8 +2,8 @@ import os
 import json
 import re
 import io
-import requests
 import streamlit as st
+import google.generativeai as genai
 
 
 def read_pdf(file) -> str:
@@ -104,6 +104,8 @@ def get_gemini_analysis(text: str) -> dict:
     api_key = get_api_key()
     if not api_key:
         return None
+    
+    genai.configure(api_key=api_key)
     
     system_instruction = """당신은 연간 사업 평가 문서를 분석하는 전문가입니다.
 주어진 문서를 분석하여 반드시 아래의 정확한 JSON 구조로 응답해주세요.
@@ -338,56 +340,22 @@ def get_gemini_analysis(text: str) -> dict:
     - 5대 영역별(보호, 교육, 문화, 정서지원, 지역사회연계) 환류 요약
 """
 
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        st.error("GEMINI_API_KEY 환경변수가 설정되지 않았습니다.")
-        return None
-    
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
-    print(f"DEBUG: Requesting URL -> {url}")
-    
-    prompt = f"""{system_instruction}
-
-다음 문서를 분석하고 지정된 JSON 형식으로 결과를 반환해주세요:
-
-{text}"""
-    
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": prompt}
-                ]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 8192
-        }
-    }
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction=system_instruction
+    )
     
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        response = model.generate_content(
+            f"다음 문서를 분석하고 지정된 JSON 형식으로 결과를 반환해주세요:\n\n{text}"
+        )
         
-        if response.status_code == 200:
-            result = response.json()
-            if "candidates" in result and len(result["candidates"]) > 0:
-                text_response = result["candidates"][0]["content"]["parts"][0]["text"]
-                return parse_json_response(text_response)
-            else:
-                st.error("Gemini로부터 응답을 받지 못했습니다.")
-                return None
+        if response.text:
+            return parse_json_response(response.text)
         else:
-            st.error(f"Gemini API 오류: {response.status_code} - {response.text}")
+            st.error("Gemini로부터 응답을 받지 못했습니다.")
             return None
             
-    except requests.exceptions.Timeout:
-        st.error("API 요청 시간이 초과되었습니다. 다시 시도해주세요.")
-        return None
     except Exception as e:
         st.error(f"Gemini API 오류: {str(e)}")
         return None
