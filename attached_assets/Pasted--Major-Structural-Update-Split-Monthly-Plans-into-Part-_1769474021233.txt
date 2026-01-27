@@ -1,0 +1,53 @@
+# Major Structural Update: Split Monthly Plans into Part 3 (First Half) & Part 4 (Second Half)
+
+The user wants to restructure the application tabs and logic.
+- **Old Structure**: Part 3 (Monthly), Part 4 (Budget/Eval).
+- **New Structure**: 
+  - **Part 3**: First Half Monthly Plans (Jan-Jun).
+  - **Part 4**: Second Half Monthly Plans (Jul-Dec).
+- **Format**: Both parts share the EXACT same table structure.
+- **Word Output**: Remove the "Approval Box" (Sanction Line).
+
+# 1. Update `main.py` (UI & Tabs)
+
+## A. Tab Renaming
+- Change the `st.tabs` definition to:
+  `["PART 1: 총괄/기획", "PART 2: 세부사업", "PART 3: 상반기(1~6월)", "PART 4: 하반기(7~12월)"]`
+
+## B. Implement "PART 3: 상반기" (Tab 2)
+- **Header**: `st.title("PART 3: 상반기 월별 사업계획 (1월~6월)")`
+- **Loop**: Iterate through months 1 to 6.
+- **Style**:
+  - Use `st.markdown(f"## {month}월 사업계획서")` (H2 Header) for large, left-aligned titles.
+  - Render the table for that month.
+  - Add `st.markdown("---")` (Divider) between months.
+- **Download Button**:
+  - Place ONE button at the bottom: `"📥 상반기 사업계획서 다운로드 (Word)"`.
+  - Pass argument `months=[1,2,3,4,5,6]` to the Word generator.
+
+## C. Implement "PART 4: 하반기" (Tab 3)
+- **Header**: `st.title("PART 4: 하반기 월별 사업계획 (7월~12월)")`
+- **Logic**: EXACTLY the same as Part 3, but iterate through months **7 to 12**.
+- **Download Button**:
+  - Place ONE button at the bottom: `"📥 하반기 사업계획서 다운로드 (Word)"`.
+  - Pass argument `months=[7,8,9,10,11,12]` to the Word generator.
+
+# 2. Update `doc_utils.py` (Word Generation)
+
+## A. Remove Approval Box
+- **Delete** (or comment out) the `create_approval_box(doc)` function call.
+- The user specifically requested to remove the sanction/signature box.
+
+## B. Update `create_monthly_tables`
+- Modify the function signature to accept a `target_months` list.
+  - `def create_monthly_tables(doc, data, target_months=None):`
+- **Logic**:
+  - If `target_months` is provided (e.g., `[1,2,3,4,5,6]`), ONLY generate tables for those months.
+  - **Page Break**: Ensure `doc.add_page_break()` is called before each month (except the very first one in the doc, if needed).
+
+# 3. Data Handling (`utils.py`)
+- Ensure `part3_monthly_plan` prompt generates data for **ALL 12 Months** (Jan-Dec) in one go.
+- `main.py` will handle the splitting (filtering) of this data for display and download.
+
+# Action
+Apply these changes to split the Monthly Plans into Part 3 (1st Half) and Part 4 (2nd Half), remove the approval box, and fix the UI headers.
