@@ -842,30 +842,331 @@ def generate_part4(compact_text: str, month_bucket: dict = None, guideline_rules
         return None
 
 
-def apply_guideline_validation(part1_data: dict, guideline_rules: dict) -> dict:
-    """Part1 데이터에 guideline_rules를 적용하여 글자수를 검증하고 초과 시 자동 보정."""
-    if not part1_data or not guideline_rules:
-        return part1_data
+def _is_bullet_format(text: str) -> bool:
+    """텍스트가 불릿 형식인지 확인합니다."""
+    if not text:
+        return False
+    lines = [l.strip() for l in text.strip().split('\n') if l.strip()]
+    if not lines:
+        return False
+    bullet_lines = sum(1 for l in lines if l.startswith('•') or l.startswith('●'))
+    return bullet_lines >= len(lines) * 0.5
+
+
+def _ensure_bullet_prefix(text: str) -> str:
+    """모든 줄이 '• '로 시작하도록 강제합니다."""
+    if not text:
+        return text
+    lines = text.strip().split('\n')
+    result = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        line = line.lstrip('•●-* ')
+        result.append(f"• {line}")
+    return '\n'.join(result)
+
+
+def _ensure_bullet_count(text: str, target_count: int) -> str:
+    """불릿 개수를 target_count에 맞춥니다."""
+    if not text or target_count <= 0:
+        return text
+    
+    lines = [l.strip() for l in text.strip().split('\n') if l.strip()]
+    
+    if len(lines) > target_count:
+        lines = lines[:target_count]
+    elif len(lines) < target_count:
+        while len(lines) < target_count:
+            lines.append("• (추가 내용 필요)")
+    
+    return '\n'.join(lines)
+
+
+def _truncate_to_max_no_space(text: str, max_chars: int) -> str:
+    """공백 제외 글자수 기준으로 자릅니다."""
+    if not text or max_chars <= 0:
+        return text
+    
+    if count_chars_no_space(text) <= max_chars:
+        return text
+    
+    is_bullet = _is_bullet_format(text)
+    
+    if is_bullet:
+        lines = text.strip().split('\n')
+        result_lines = []
+        current_count = 0
+        for line in lines:
+            line_count = count_chars_no_space(line)
+            if current_count + line_count <= max_chars:
+                result_lines.append(line)
+                current_count += line_count
+            else:
+                remaining = max_chars - current_count
+                if remaining > 10:
+                    truncated = _truncate_line_to_chars(line, remaining)
+                    result_lines.append(truncated)
+                break
+        return '\n'.join(result_lines)
+    else:
+        return smart_truncate(text, max_chars)
+
+
+def _truncate_line_to_chars(line: str, max_chars: int) -> str:
+    """한 줄을 공백 제외 max_chars 이내로 자릅니다."""
+    if count_chars_no_space(line) <= max_chars:
+        return line
+    
+    chars_counted = 0
+    cut_idx = len(line)
+    for i, ch in enumerate(line):
+        if ch not in ' \n\t':
+            chars_counted += 1
+        if chars_counted >= max_chars:
+            cut_idx = i + 1
+            break
+    
+    return line[:cut_idx].rstrip() + "..."
+
+
+def _pad_to_min_chars(text: str, min_chars: int, is_bullet: bool = False) -> str:
+    """min_chars 미달 시 문장을 보강합니다."""
+    if not text or min_chars <= 0:
+        return text
+    
+    current = count_chars_no_space(text)
+    if current >= min_chars:
+        return text
+    
+    if is_bullet:
+        lines = text.strip().split('\n')
+        while count_chars_no_space('\n'.join(lines)) < min_chars and lines:
+            for i in range(len(lines)):
+                lines[i] = lines[i].rstrip() + " (상세 내용 추가 필요)"
+                if count_chars_no_space('\n'.join(lines)) >= min_chars:
+                    break
+        return '\n'.join(lines)
+    else:
+        while count_chars_no_space(text) < min_chars:
+            text = text.rstrip() + " (상세 내용 추가 필요)"
+        return text
+
+
+def _apply_text_rule(text: str, rule: dict, field_name: str = "") -> dict:
+    """텍스트 필드에 규칙을 적용합니다. 적용 결과와 로그를 반환합니다."""
+    if not text:
+        return {"text": "", "log": f"{field_name}: 빈 텍스트"}
+    
+    original_count = count_chars_no_space(text)
+    
+    fmt = rule.get('format', 'paragraph')
+    bullet_count = rule.get('bullet_count', 0)
+    max_chars = rule.get('max_chars_no_space', 0)
+    min_chars = rule.get('min_chars_no_space', 0)
+    
+    result = text
+    
+    if fmt == 'bullet' and bullet_count > 0:
+        result = _ensure_bullet_prefix(result)
+        result = _ensure_bullet_count(result, bullet_count)
+    
+    if max_chars > 0:
+        result = _truncate_to_max_no_space(result, max_chars)
+    
+    if min_chars > 0:
+        result = _pad_to_min_chars(result, min_chars, is_bullet=(fmt == 'bullet'))
+    
+    if fmt == 'bullet' and bullet_count > 0:
+        result = _ensure_bullet_prefix(result)
+    
+    final_count = count_chars_no_space(result)
+    bullet_lines = len([l for l in result.split('\n') if l.strip().startswith('•')]) if fmt == 'bullet' else 0
+    
+    log = f"{field_name}: {original_count}→{final_count}자"
+    if fmt == 'bullet':
+        log += f", 불릿:{bullet_lines}/{bullet_count}"
+    
+    return {"text": result, "log": log}
+
+
+def _apply_table_rule(table: list, rule: dict, table_name: str = "") -> dict:
+    """테이블에 규칙을 적용합니다."""
+    if not table or not isinstance(table, list):
+        return {"table": [], "log": f"{table_name}: 빈 테이블"}
+    
+    max_rows = rule.get('max_rows', rule.get('max_rows_per_category', 100))
+    columns = rule.get('columns', {})
+    
+    if len(table) > max_rows:
+        table = table[:max_rows]
+    
+    for row in table:
+        if isinstance(row, dict):
+            for col_name, col_rule in columns.items():
+                if col_name in row and row[col_name]:
+                    cell_max = col_rule.get('max_chars_no_space', 0)
+                    cell_min = col_rule.get('min_chars_no_space', 0)
+                    cell_bullet = col_rule.get('bullet_count', 0)
+                    
+                    cell_text = str(row[col_name])
+                    
+                    if cell_bullet > 0:
+                        cell_text = _ensure_bullet_prefix(cell_text)
+                        cell_text = _ensure_bullet_count(cell_text, cell_bullet)
+                    
+                    if cell_max > 0:
+                        cell_text = _truncate_to_max_no_space(cell_text, cell_max)
+                    
+                    if cell_min > 0:
+                        cell_text = _pad_to_min_chars(cell_text, cell_min, is_bullet=(cell_bullet > 0))
+                    
+                    if cell_bullet > 0:
+                        cell_text = _ensure_bullet_prefix(cell_text)
+                    
+                    row[col_name] = cell_text
+    
+    log = f"{table_name}: {len(table)}행 (max:{max_rows})"
+    return {"table": table, "log": log}
+
+
+def apply_guidelines_to_analysis(data: dict, guideline_rules: dict) -> tuple:
+    """분석 결과 전체에 작성지침을 강제 적용합니다. (data, logs) 튜플 반환."""
+    if not data or not guideline_rules:
+        return data, ["규칙 또는 데이터 없음"]
+    
+    logs = []
     
     p1_rules = guideline_rules.get('part1', {})
+    part1 = data.get('part1_general', {})
     
     text_fields = ['need_1_user_desire', 'need_2_1_regional', 'need_2_2_environment', 
                    'need_2_3_educational', 'purpose_text', 'goals_text']
     
     for field in text_fields:
-        if field in part1_data and part1_data[field]:
-            rule = p1_rules.get(field, {})
-            max_chars = rule.get('max_chars_no_space', 0)
-            if max_chars > 0:
-                validated = validate_and_fix_text(
-                    part1_data[field], 
-                    max_chars, 
-                    field_name=field,
-                    max_retries=1
-                )
-                part1_data[field] = validated
+        if field in p1_rules:
+            text = part1.get(field, '')
+            result = _apply_text_rule(text, p1_rules[field], field)
+            part1[field] = result['text']
+            logs.append(f"[Part1] {result['log']}")
     
-    return part1_data
+    for table_name in ['feedback_table', 'total_review_table']:
+        if table_name in p1_rules and table_name in part1:
+            result = _apply_table_rule(part1[table_name], p1_rules[table_name], table_name)
+            part1[table_name] = result['table']
+            logs.append(f"[Part1] {result['log']}")
+    
+    data['part1_general'] = part1
+    
+    p2_rules = guideline_rules.get('part2', {})
+    part2 = data.get('part2_programs', {})
+    
+    for category, cat_data in part2.items():
+        if isinstance(cat_data, dict):
+            for table_name in ['detail_table', 'eval_table']:
+                if table_name in p2_rules and table_name in cat_data:
+                    result = _apply_table_rule(cat_data[table_name], p2_rules[table_name], f"{category}/{table_name}")
+                    cat_data[table_name] = result['table']
+                    logs.append(f"[Part2] {result['log']}")
+    
+    data['part2_programs'] = part2
+    
+    p3_rules = guideline_rules.get('part3', {})
+    part3 = data.get('part3_monthly_plan', {})
+    monthly_rule = p3_rules.get('monthly_program', {})
+    max_per_month = monthly_rule.get('max_programs_per_month', 8)
+    columns = monthly_rule.get('columns', {})
+    
+    for month_key, programs in part3.items():
+        if isinstance(programs, list):
+            if len(programs) > max_per_month:
+                programs = programs[:max_per_month]
+            
+            for prog in programs:
+                if isinstance(prog, dict):
+                    for col_name, col_rule in columns.items():
+                        if col_name in prog and prog[col_name]:
+                            cell_max = col_rule.get('max_chars_no_space', 0)
+                            cell_min = col_rule.get('min_chars_no_space', 0)
+                            cell_bullet = col_rule.get('bullet_count', 0)
+                            cell_text = str(prog[col_name])
+                            
+                            if cell_bullet > 0:
+                                cell_text = _ensure_bullet_prefix(cell_text)
+                                cell_text = _ensure_bullet_count(cell_text, cell_bullet)
+                            
+                            if cell_max > 0:
+                                cell_text = _truncate_to_max_no_space(cell_text, cell_max)
+                            
+                            if cell_min > 0:
+                                cell_text = _pad_to_min_chars(cell_text, cell_min, is_bullet=(cell_bullet > 0))
+                            
+                            if cell_bullet > 0:
+                                cell_text = _ensure_bullet_prefix(cell_text)
+                            
+                            prog[col_name] = cell_text
+            
+            part3[month_key] = programs
+            logs.append(f"[Part3] {month_key}: {len(programs)}개 (max:{max_per_month})")
+    
+    data['part3_monthly_plan'] = part3
+    
+    p4_rules = guideline_rules.get('part4', {})
+    part4_monthly = data.get('part4_monthly_plan', {})
+    monthly_rule_p4 = p4_rules.get('monthly_program', {})
+    max_per_month_p4 = monthly_rule_p4.get('max_programs_per_month', 8)
+    columns_p4 = monthly_rule_p4.get('columns', {})
+    
+    for month_key, programs in part4_monthly.items():
+        if isinstance(programs, list):
+            if len(programs) > max_per_month_p4:
+                programs = programs[:max_per_month_p4]
+            
+            for prog in programs:
+                if isinstance(prog, dict):
+                    for col_name, col_rule in columns_p4.items():
+                        if col_name in prog and prog[col_name]:
+                            cell_max = col_rule.get('max_chars_no_space', 0)
+                            cell_min = col_rule.get('min_chars_no_space', 0)
+                            cell_bullet = col_rule.get('bullet_count', 0)
+                            cell_text = str(prog[col_name])
+                            
+                            if cell_bullet > 0:
+                                cell_text = _ensure_bullet_prefix(cell_text)
+                                cell_text = _ensure_bullet_count(cell_text, cell_bullet)
+                            
+                            if cell_max > 0:
+                                cell_text = _truncate_to_max_no_space(cell_text, cell_max)
+                            
+                            if cell_min > 0:
+                                cell_text = _pad_to_min_chars(cell_text, cell_min, is_bullet=(cell_bullet > 0))
+                            
+                            if cell_bullet > 0:
+                                cell_text = _ensure_bullet_prefix(cell_text)
+                            
+                            prog[col_name] = cell_text
+            
+            part4_monthly[month_key] = programs
+            logs.append(f"[Part4] {month_key}: {len(programs)}개 (max:{max_per_month_p4})")
+    
+    data['part4_monthly_plan'] = part4_monthly
+    
+    budget_eval = data.get('part4_budget_evaluation', {})
+    
+    if 'budget_table' in p4_rules and 'budget_table' in budget_eval:
+        result = _apply_table_rule(budget_eval['budget_table'], p4_rules['budget_table'], 'budget_table')
+        budget_eval['budget_table'] = result['table']
+        logs.append(f"[Part4] {result['log']}")
+    
+    if 'feedback_summary' in p4_rules and 'feedback_summary' in budget_eval:
+        result = _apply_table_rule(budget_eval['feedback_summary'], p4_rules['feedback_summary'], 'feedback_summary')
+        budget_eval['feedback_summary'] = result['table']
+        logs.append(f"[Part4] {result['log']}")
+    
+    data['part4_budget_evaluation'] = budget_eval
+    
+    return data, logs
 
 
 def get_partitioned_analysis(compact_text: str, progress_callback=None, month_bucket: dict = None, guideline_rules: dict = None) -> dict:
@@ -876,17 +1177,14 @@ def get_partitioned_analysis(compact_text: str, progress_callback=None, month_bu
         "part3_monthly_plan": {},
         "part4_monthly_plan": {},
         "part4_budget_evaluation": {"budget_table": [], "feedback_summary": []},
-        "_failed_parts": []
+        "_failed_parts": [],
+        "_guideline_logs": []
     }
     
     if progress_callback:
         progress_callback("Part 1 (총괄/기획) 생성 중...")
     part1 = generate_part1(compact_text)
     if part1:
-        if guideline_rules:
-            if progress_callback:
-                progress_callback("Part 1 글자수 검증 중...")
-            part1 = apply_guideline_validation(part1, guideline_rules)
         result["part1_general"] = part1
     else:
         result["_failed_parts"].append("part1")
@@ -919,6 +1217,12 @@ def get_partitioned_analysis(compact_text: str, progress_callback=None, month_bu
             result["part4_budget_evaluation"]["feedback_summary"] = part4["feedback_summary"]
     else:
         result["_failed_parts"].append("part4")
+    
+    if guideline_rules:
+        if progress_callback:
+            progress_callback("작성지침 강제 적용 중...")
+        result, guideline_logs = apply_guidelines_to_analysis(result, guideline_rules)
+        result["_guideline_logs"] = guideline_logs
     
     return result
 

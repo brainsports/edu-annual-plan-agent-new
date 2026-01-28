@@ -1,0 +1,79 @@
+목표: 분석 결과는 채워지지만 “작성지침(글자수/불릿 개수/표 행수)”이 맞지 않는다.
+현재 상태를 유지하면서, 결과가 반드시 규칙을 만족하도록 강제 적용을 고친다.
+
+[현상]
+- PART1 텍스트 항목에서 공백 제외 글자수(min/max)가 맞지 않음.
+- bullet_count가 지정된 항목인데 불릿 개수/형식이 맞지 않거나, 문단 형태로 들어감.
+- (추정) guidelines_template.json 로드/키 매핑 문제 또는 apply_guidelines_to_analysis의 적용 누락/불완전.
+
+[필수 수정 범위]
+1) utils.py의 load_guideline_rules / apply_guidelines_to_analysis / _apply_text_rule / _apply_table_rule / get_partitioned_analysis를 점검 및 수정
+2) main.py는 로직 유지(버튼/세션 흐름 유지). 다만 디버그 출력은 보강 가능.
+
+[반드시 해결해야 하는 핵심]
+A. guideline_rules가 실제로 로드되고 있는지 확인
+- main.py 또는 utils.py에 디버그를 추가하여
+  - guidelines_template.json 존재 여부
+  - 로드된 rules의 part1 키 목록
+  - sample 규칙값(예: part1.need_1_user_desire의 min/max/bullet_count)
+  를 화면(st.expander "디버그 정보")에 출력한다.
+- rules가 비거나 기본값으로만 가면, 파일 경로/인코딩/예외 처리 원인을 수정한다.
+
+B. 키 불일치 자동 보정(중요)
+- skeleton 키(need_1_user_desire 등)와 rules 키가 1:1로 맞아야 한다.
+- 만약 rules 키가 다르면(예: need_1_user_needs 등) 적용이 안 된다.
+- apply_guidelines_to_analysis에 “없는 키는 스킵”이 아니라,
+  - skeleton 기준으로 강제 생성하고,
+  - rules에 없는 키는 기본 규칙(문단, max만)이라도 적용하도록 안전장치를 넣는다.
+- 또한 analysis 결과에 누락 키가 있으면 skeleton 기반으로 키를 채운 다음 rules 적용한다.
+
+C. bullet 규칙 강제 적용을 ‘항상’ 만족하도록 강화
+- _apply_text_rule에서 bullet 형식일 경우:
+  1) _ensure_bullet_count로 줄 수 맞추기
+  2) 모든 줄이 반드시 "• "로 시작하도록 강제
+  3) min_chars_no_space 미달이면 각 불릿에 문장을 덧붙여 min을 채움(현재 로직 유지하되 안정화)
+  4) max 초과 시 _truncate_to_max_no_space로 자르기
+- 최종적으로 _is_bullet_format 검사 통과를 보장한다.
+
+D. 글자수(min/max) 강제 적용을 ‘정확히’ 맞추기
+- count_chars_no_space 기준으로 min/max 판정
+- min 미달이면 “문단/불릿 각각”을 반복적으로 보강해서 min 이상으로 맞춘다.
+- max 초과면 공백 포함 길이가 아니라 “공백 제외 max” 기준으로 자른다.
+- 적용 전/후 글자수를 디버그에 함께 출력해 검증 가능하게 한다.
+
+E. 테이블 규칙(행 수/셀 글자수/셀 불릿 수) 강제
+- _apply_table_rule에서:
+  - max_rows 정확히 적용
+  - 각 셀 max_chars_no_space 정확히 자르기
+  - bullet_count 있는 셀은 불릿 개수 강제 + "• " 접두 강제
+- category별 dict 테이블(detail_table/eval_table)의 경우에도 동일하게 적용되도록 보장
+
+F. “월별 프로그램(Part3/Part4)” 구조 일관성 보장
+- part3.monthly_program / part4.monthly_program은 dict(월 → list) 구조다.
+- apply_guidelines_to_analysis가 이 구조를 제대로 처리하고 있는지 점검한다.
+- 월별 리스트에 대해 max_programs_per_month를 정확히 제한하고,
+  각 row는 table columns 규칙을 적용한다.
+
+G. 최종 검증용 디버그 출력 추가(간단하지만 필수)
+- main.py에서 AI 분석 후에:
+  - part1 주요 필드별 공백제외 글자수 표시
+  - bullet_count 필드별 불릿 줄 수 표시
+  - 테이블 행 수 표시
+  를 st.expander("규칙 검증")에 출력한다.
+=> 사용자가 화면에서 바로 “규칙 충족 여부”를 확인할 수 있게 한다.
+
+[테스트 절차]
+1) PDF 1~3개 업로드 → AI 분석 시작
+2) 디버그에서 rules 로드 여부 확인
+3) 규칙 검증 expander에서:
+   - need_1_user_desire: bullet 3개 + 300~500(공백제외)
+   - need_2_*: bullet 3개 + 200~400(공백제외)
+   - purpose_text: 문단 + 200~350(공백제외)
+   - goals_text: bullet 5개 + 400~800(공백제외)
+   - feedback_table / total_review_table: max_rows 준수 + 셀 글자수/불릿 준수
+4) 월별 프로그램: 월별 max 8개, content는 bullet 2개, 각 셀 max 준수
+5) 통과하면 커밋/체크포인트 생성
+
+[주의]
+- 기존 UI/흐름(업로드→분석→미리보기)은 유지한다.
+- 규칙 적용은 “분석 결과를 바꾸는 후처리 단계”에서만 수행한다(즉 Gemini 출력 자체에 의존하지 않도록).
