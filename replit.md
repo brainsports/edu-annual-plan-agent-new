@@ -133,20 +133,44 @@ Preferred communication style: Simple, everyday language (Korean)
 
 ## Recent Changes
 
+- **2026-01-28**: Comprehensive Guideline Rules Enforcement System
+  - **Helper functions for text formatting:**
+    - `_is_bullet_format()`: Checks if text uses bullet format
+    - `_ensure_bullet_prefix()`: Forces all lines to start with "• "
+    - `_ensure_bullet_count()`: Adjusts bullet count to target
+    - `_truncate_to_max_no_space()`: Truncates based on max_chars (excluding spaces)
+    - `_pad_to_min_chars()`: Pads text to meet minimum character count
+    - `_apply_text_rule()`: Applies all text rules (format, bullet, min/max chars)
+    - `_apply_table_rule()`: Applies table rules (max_rows, column min/max/bullet)
+  - **`apply_guidelines_to_analysis()` function:**
+    - Enforces rules for Part1 text fields (need_1, need_2_*, purpose, goals)
+    - Enforces rules for Part1 tables (feedback_table, total_review_table)
+    - Enforces rules for Part2 tables (detail_table, eval_table per category)
+    - Enforces rules for Part3/Part4 monthly programs (max_programs_per_month, column limits)
+    - Enforces rules for Part4 budget_table and feedback_summary
+    - Returns (data, logs) tuple for debugging
+  - **`get_partitioned_analysis()` updated:**
+    - Calls apply_guidelines_to_analysis() as post-processing step
+    - Stores guideline_logs in result for UI display
+  - **Debug UI - "규칙 검증 결과" expander:**
+    - Shows guideline application logs
+    - Part1 text field validation (char count, bullet count, status)
+    - Part1/Part2 table row counts and validation status
+    - Part3/Part4 monthly program counts
+    - Part4 budget/feedback table validation
+  - Bullet format guaranteed (all lines start with "• ") after all transformations
+  - Min/max character counts (excluding spaces) enforced across all parts
+  - Table max_rows enforced and logged
+
 - **2026-01-28**: Guideline Rules JSON System and Month Distribution
   - Added `guidelines_template.json` with writing rules (max_chars_no_space, bullet_count, max_rows)
   - `st.session_state["guideline_rules"]` initialized and preserved during upload analysis
   - `load_guideline_rules()`: Loads rules from JSON file
   - `count_chars_no_space()`: Counts characters excluding spaces for validation
-  - `validate_and_fix_text()`: Auto-validates and rewrites text via Gemini (max 2 retries) + smart sentence truncation
-  - `smart_truncate()`: Sentence-based truncation when Gemini rewrite fails
   - Month extraction: `extract_months_from_text()`, `extract_months_from_cycle()`, `CYCLE_TO_MONTHS` mapping
   - `bucket_programs_by_month()`: Extracts program dates and buckets by month (1-12)
-  - `generate_part3/part4` now accept `month_bucket` and `guideline_rules` parameters
   - Empty months automatically filled with default template ("일상생활지도")
   - UI shows character count (공백 제외 글자수) below text areas with color coding
-  - Sample data load also initializes guideline_rules
-  - Sidebar expander shows current guideline rules JSON
 
 - **2026-01-28**: Major refactoring to fix JSON parsing failures with truncated responses
   - Upload limits: MAX_FILES=30, MAX_TOTAL_SIZE_MB=3 with button disable when exceeded
