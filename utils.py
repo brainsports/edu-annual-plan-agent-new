@@ -41,6 +41,239 @@ LABEL_PATTERNS = [
     (r'(?:영역|분류|카테고리)[:\s]*([^\n]{2,30})', 'category'),
 ]
 
+MONTH_PATTERNS = [
+    (r'(\d{1,2})월', 'month_num'),
+    (r'(1|2|3|4|5|6|7|8|9|10|11|12)\s*월', 'month_num'),
+    (r'(일|이|삼|사|오|육|칠|팔|구|십|십일|십이)\s*월', 'month_korean'),
+]
+
+KOREAN_MONTH_MAP = {
+    '일': 1, '이': 2, '삼': 3, '사': 4, '오': 5, '육': 6,
+    '칠': 7, '팔': 8, '구': 9, '십': 10, '십일': 11, '십이': 12
+}
+
+CYCLE_TO_MONTHS = {
+    '연중': list(range(1, 13)),
+    '매월': list(range(1, 13)),
+    '주1회': list(range(1, 13)),
+    '주2회': list(range(1, 13)),
+    '주3회': list(range(1, 13)),
+    '주4회': list(range(1, 13)),
+    '주5회': list(range(1, 13)),
+    '상시': list(range(1, 13)),
+    '여름방학': [7, 8],
+    '겨울방학': [1, 2, 12],
+    '방학': [1, 2, 7, 8, 12],
+    '분기': [3, 6, 9, 12],
+    '분기1회': [3, 6, 9, 12],
+    '반기': [6, 12],
+    '연2회': [1, 7],
+    '연1회': [6],
+}
+
+
+def load_guideline_rules() -> dict:
+    """guidelines_template.json에서 작성지침 규칙을 로드합니다."""
+    try:
+        with open('guidelines_template.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError:
+        return {}
+
+
+def count_chars_no_space(text: str) -> int:
+    """공백을 제외한 글자수를 계산합니다."""
+    if not text:
+        return 0
+    return len(text.replace(' ', '').replace('\n', '').replace('\t', ''))
+
+
+def smart_truncate(text: str, max_chars_no_space: int) -> str:
+    """문장 단위로 스마트하게 자릅니다 (마침표 기준)."""
+    if count_chars_no_space(text) <= max_chars_no_space:
+        return text
+    
+    sentences = re.split(r'(?<=[.!?。])\s*', text)
+    result = ""
+    for sentence in sentences:
+        test = result + sentence
+        if count_chars_no_space(test) > max_chars_no_space:
+            break
+        result = test + " "
+    
+    if not result.strip():
+        chars_counted = 0
+        cut_idx = 0
+        for i, ch in enumerate(text):
+            if ch not in ' \n\t':
+                chars_counted += 1
+            if chars_counted >= max_chars_no_space:
+                cut_idx = i
+                break
+        result = text[:cut_idx+1]
+    
+    return result.strip()
+
+
+def validate_and_fix_text(text: str, max_chars_no_space: int, field_name: str = "", max_retries: int = 2) -> str:
+    """
+    텍스트 글자수 검사 및 자동 보정.
+    1) 공백 제외 글자수 검사
+    2) 초과 시 Gemini에 재작성 요청 (최대 2회)
+    3) 그래도 초과면 스마트 컷
+    """
+    if not text:
+        return text
+    
+    current_count = count_chars_no_space(text)
+    
+    if current_count <= max_chars_no_space:
+        return text
+    
+    if not GEMINI_API_KEY:
+        return smart_truncate(text, max_chars_no_space)
+    
+    result_text = text
+    
+    for attempt in range(max_retries):
+        current_count = count_chars_no_space(result_text)
+        if current_count <= max_chars_no_space:
+            return result_text
+        
+        try:
+            rewrite_prompt = f"""다음 텍스트를 공백 제외 {max_chars_no_space}자 이내로 줄여주세요.
+현재 글자수: {current_count}자 (공백 제외)
+목표 글자수: {max_chars_no_space}자 이내 (공백 제외)
+
+핵심 내용은 유지하면서 간결하게 요약해주세요.
+● 불릿 형식은 유지하세요.
+마크다운이나 설명 없이 수정된 텍스트만 출력하세요.
+
+원문:
+{result_text}"""
+            
+            model = genai.GenerativeModel(
+                model_name=GEMINI_MODEL,
+                generation_config=genai.GenerationConfig(temperature=0.3, max_output_tokens=2048)
+            )
+            response = model.generate_content(rewrite_prompt)
+            if response.text:
+                result_text = response.text.strip()
+                print(f"[validate_text] Retry {attempt+1}: {current_count} -> {count_chars_no_space(result_text)} chars")
+        except Exception as e:
+            print(f"[validate_text] Gemini rewrite error: {e}")
+            break
+    
+    if count_chars_no_space(result_text) > max_chars_no_space:
+        result_text = smart_truncate(result_text, max_chars_no_space)
+        print(f"[validate_text] Smart truncated to {count_chars_no_space(result_text)} chars")
+    
+    return result_text
+
+
+def extract_months_from_text(text: str) -> list:
+    """텍스트에서 월 정보를 추출합니다."""
+    months = set()
+    
+    for pattern, ptype in MONTH_PATTERNS:
+        matches = re.findall(pattern, text)
+        for match in matches:
+            if ptype == 'month_num':
+                try:
+                    m = int(match)
+                    if 1 <= m <= 12:
+                        months.add(m)
+                except ValueError:
+                    pass
+            elif ptype == 'month_korean':
+                m = KOREAN_MONTH_MAP.get(match)
+                if m:
+                    months.add(m)
+    
+    return sorted(list(months))
+
+
+def extract_months_from_cycle(cycle: str) -> list:
+    """주기 문자열에서 해당 월 목록을 추출합니다."""
+    if not cycle:
+        return list(range(1, 13))
+    
+    cycle_clean = cycle.strip().replace(' ', '')
+    
+    for key, months in CYCLE_TO_MONTHS.items():
+        if key in cycle_clean:
+            return months
+    
+    extracted = extract_months_from_text(cycle)
+    if extracted:
+        return extracted
+    
+    range_match = re.search(r'(\d{1,2})월?\s*[~\-]\s*(\d{1,2})월?', cycle)
+    if range_match:
+        start, end = int(range_match.group(1)), int(range_match.group(2))
+        if 1 <= start <= 12 and 1 <= end <= 12:
+            if start <= end:
+                return list(range(start, end + 1))
+            else:
+                return list(range(start, 13)) + list(range(1, end + 1))
+    
+    return list(range(1, 13))
+
+
+def bucket_programs_by_month(file_summaries: list) -> dict:
+    """파일 요약에서 프로그램을 월별로 분류합니다."""
+    month_bucket = {m: [] for m in range(1, 13)}
+    
+    for summary in file_summaries:
+        labels = summary.get('labels', {})
+        program_names = labels.get('program_name', [])
+        dates = labels.get('date', [])
+        cycles = labels.get('cycle', [])
+        targets = labels.get('target', [])
+        staffs = labels.get('staff', [])
+        
+        for i, prog_name in enumerate(program_names):
+            date_str = dates[i] if i < len(dates) else ""
+            cycle_str = cycles[i] if i < len(cycles) else ""
+            target_str = targets[i] if i < len(targets) else "전체아동"
+            staff_str = staffs[i] if i < len(staffs) else "돌봄교사"
+            
+            months_from_date = extract_months_from_text(date_str)
+            months_from_cycle = extract_months_from_cycle(cycle_str)
+            
+            if months_from_date:
+                target_months = months_from_date
+            else:
+                target_months = months_from_cycle
+            
+            program_info = {
+                "program_name": prog_name,
+                "target": target_str,
+                "staff": staff_str,
+                "cycle": cycle_str,
+                "date": date_str,
+                "source_file": summary.get('filename', '')
+            }
+            
+            for m in target_months:
+                month_bucket[m].append(program_info)
+    
+    return month_bucket
+
+
+def get_default_monthly_template() -> dict:
+    """빈 월에 채울 정기운영 템플릿을 반환합니다."""
+    return {
+        "big_category": "보호",
+        "mid_category": "생활",
+        "program_name": "일상생활지도",
+        "target": "전체아동",
+        "staff": "돌봄교사",
+        "content": "● **정기운영**: 일상생활 및 위생관리 지도"
+    }
+
 
 def extract_labels_from_text(text: str) -> dict:
     """규칙 기반으로 텍스트에서 라벨별 값을 추출 (정규식 활용)."""
@@ -465,8 +698,35 @@ def generate_part2(compact_text: str) -> dict:
         return None
 
 
-def generate_part3(compact_text: str) -> dict:
-    """Part3 상반기 월별계획 (1~6월) 생성."""
+def generate_part3(compact_text: str, month_bucket: dict = None, guideline_rules: dict = None) -> dict:
+    """Part3 상반기 월별계획 (1~6월) 생성. month_bucket이 있으면 해당 월에 배치."""
+    
+    rules = guideline_rules.get('part3', {}).get('monthly_program', {}) if guideline_rules else {}
+    max_programs = rules.get('max_programs_per_month', 8)
+    content_max = rules.get('columns', {}).get('content', {}).get('max_chars_no_space', 200)
+    
+    pre_bucketed = {}
+    if month_bucket:
+        for m in range(1, 7):
+            month_key = f"{m}월"
+            programs = month_bucket.get(m, [])[:max_programs]
+            pre_bucketed[month_key] = [
+                {
+                    "program_name": p.get('program_name', ''),
+                    "target": p.get('target', '전체아동'),
+                    "staff": p.get('staff', '돌봄교사'),
+                    "cycle": p.get('cycle', '')
+                } for p in programs
+            ]
+    
+    pre_bucket_info = ""
+    if pre_bucketed:
+        pre_bucket_info = "\n[월별 프로그램 배치 정보 - 반드시 이 월에 해당 프로그램을 배치하세요]:\n"
+        for month, progs in pre_bucketed.items():
+            if progs:
+                prog_names = ", ".join([p['program_name'] for p in progs])
+                pre_bucket_info += f"  {month}: {prog_names}\n"
+    
     system_instruction = """당신은 사업계획 일정 전문가입니다.
 한국어, 이모지 금지, ● 기호만 사용.
 출력: 오직 JSON 객체 1개만."""
@@ -474,6 +734,7 @@ def generate_part3(compact_text: str) -> dict:
     prompt = f"""다음 파일 요약을 기반으로 Part3 (상반기 1~6월) 월별계획 JSON을 생성하세요.
 
 {compact_text}
+{pre_bucket_info}
 
 출력 스키마:
 {{
@@ -487,16 +748,55 @@ def generate_part3(compact_text: str) -> dict:
   "6월": [...]
 }}
 
-[중요] 각 월당 프로그램 5개 이내, 각 content 200자 이내."""
+[중요] 
+- 각 월당 프로그램 {max_programs}개 이내
+- 각 content {content_max}자 (공백 제외) 이내
+- 빈 월이 있으면 "일상생활지도" 등 정기운영 프로그램 1개 이상 포함"""
     
     try:
-        return safe_gemini_json(prompt, system_instruction, max_retries=2)
+        result = safe_gemini_json(prompt, system_instruction, max_retries=2)
+        if result:
+            for m in range(1, 7):
+                month_key = f"{m}월"
+                if month_key not in result or not result[month_key]:
+                    result[month_key] = [get_default_monthly_template()]
+        return result
     except ValueError:
         return None
 
 
-def generate_part4(compact_text: str) -> dict:
-    """Part4 하반기 월별계획 (7~12월) + 예산/평가 생성."""
+def generate_part4(compact_text: str, month_bucket: dict = None, guideline_rules: dict = None) -> dict:
+    """Part4 하반기 월별계획 (7~12월) + 예산/평가 생성. month_bucket이 있으면 해당 월에 배치."""
+    
+    rules = guideline_rules.get('part4', {}) if guideline_rules else {}
+    monthly_rules = rules.get('monthly_program', {})
+    max_programs = monthly_rules.get('max_programs_per_month', 8)
+    content_max = monthly_rules.get('columns', {}).get('content', {}).get('max_chars_no_space', 200)
+    budget_max = rules.get('budget_table', {}).get('max_rows', 10)
+    feedback_max = rules.get('feedback_summary', {}).get('max_rows', 5)
+    
+    pre_bucketed = {}
+    if month_bucket:
+        for m in range(7, 13):
+            month_key = f"{m}월"
+            programs = month_bucket.get(m, [])[:max_programs]
+            pre_bucketed[month_key] = [
+                {
+                    "program_name": p.get('program_name', ''),
+                    "target": p.get('target', '전체아동'),
+                    "staff": p.get('staff', '돌봄교사'),
+                    "cycle": p.get('cycle', '')
+                } for p in programs
+            ]
+    
+    pre_bucket_info = ""
+    if pre_bucketed:
+        pre_bucket_info = "\n[월별 프로그램 배치 정보 - 반드시 이 월에 해당 프로그램을 배치하세요]:\n"
+        for month, progs in pre_bucketed.items():
+            if progs:
+                prog_names = ", ".join([p['program_name'] for p in progs])
+                pre_bucket_info += f"  {month}: {prog_names}\n"
+    
     system_instruction = """당신은 사업계획 일정 및 예산 전문가입니다.
 한국어, 이모지 금지, ● 기호만 사용.
 출력: 오직 JSON 객체 1개만."""
@@ -504,6 +804,7 @@ def generate_part4(compact_text: str) -> dict:
     prompt = f"""다음 파일 요약을 기반으로 Part4 (하반기 7~12월 + 예산/평가) JSON을 생성하세요.
 
 {compact_text}
+{pre_bucket_info}
 
 출력 스키마:
 {{
@@ -523,16 +824,52 @@ def generate_part4(compact_text: str) -> dict:
   ]
 }}
 
-[중요] 각 월당 프로그램 5개, budget 5행, feedback 5행 이내."""
+[중요] 
+- 각 월당 프로그램 {max_programs}개 이내
+- 각 content {content_max}자 (공백 제외) 이내
+- budget {budget_max}행, feedback {feedback_max}행 이내
+- 빈 월이 있으면 "일상생활지도" 등 정기운영 프로그램 1개 이상 포함"""
     
     try:
-        return safe_gemini_json(prompt, system_instruction, max_retries=2)
+        result = safe_gemini_json(prompt, system_instruction, max_retries=2)
+        if result and "monthly_plan" in result:
+            for m in range(7, 13):
+                month_key = f"{m}월"
+                if month_key not in result["monthly_plan"] or not result["monthly_plan"][month_key]:
+                    result["monthly_plan"][month_key] = [get_default_monthly_template()]
+        return result
     except ValueError:
         return None
 
 
-def get_partitioned_analysis(compact_text: str, progress_callback=None) -> dict:
-    """파트별로 나눠서 Gemini 분석 수행. 부분 실패 허용."""
+def apply_guideline_validation(part1_data: dict, guideline_rules: dict) -> dict:
+    """Part1 데이터에 guideline_rules를 적용하여 글자수를 검증하고 초과 시 자동 보정."""
+    if not part1_data or not guideline_rules:
+        return part1_data
+    
+    p1_rules = guideline_rules.get('part1', {})
+    
+    text_fields = ['need_1_user_desire', 'need_2_1_regional', 'need_2_2_environment', 
+                   'need_2_3_educational', 'purpose_text', 'goals_text']
+    
+    for field in text_fields:
+        if field in part1_data and part1_data[field]:
+            rule = p1_rules.get(field, {})
+            max_chars = rule.get('max_chars_no_space', 0)
+            if max_chars > 0:
+                validated = validate_and_fix_text(
+                    part1_data[field], 
+                    max_chars, 
+                    field_name=field,
+                    max_retries=1
+                )
+                part1_data[field] = validated
+    
+    return part1_data
+
+
+def get_partitioned_analysis(compact_text: str, progress_callback=None, month_bucket: dict = None, guideline_rules: dict = None) -> dict:
+    """파트별로 나눠서 Gemini 분석 수행. 부분 실패 허용. month_bucket과 guideline_rules 적용."""
     result = {
         "part1_general": {},
         "part2_programs": {},
@@ -546,6 +883,10 @@ def get_partitioned_analysis(compact_text: str, progress_callback=None) -> dict:
         progress_callback("Part 1 (총괄/기획) 생성 중...")
     part1 = generate_part1(compact_text)
     if part1:
+        if guideline_rules:
+            if progress_callback:
+                progress_callback("Part 1 글자수 검증 중...")
+            part1 = apply_guideline_validation(part1, guideline_rules)
         result["part1_general"] = part1
     else:
         result["_failed_parts"].append("part1")
@@ -560,7 +901,7 @@ def get_partitioned_analysis(compact_text: str, progress_callback=None) -> dict:
     
     if progress_callback:
         progress_callback("Part 3 (상반기 월별계획) 생성 중...")
-    part3 = generate_part3(compact_text)
+    part3 = generate_part3(compact_text, month_bucket=month_bucket, guideline_rules=guideline_rules)
     if part3:
         result["part3_monthly_plan"] = part3
     else:
@@ -568,7 +909,7 @@ def get_partitioned_analysis(compact_text: str, progress_callback=None) -> dict:
     
     if progress_callback:
         progress_callback("Part 4 (하반기 + 예산/평가) 생성 중...")
-    part4 = generate_part4(compact_text)
+    part4 = generate_part4(compact_text, month_bucket=month_bucket, guideline_rules=guideline_rules)
     if part4:
         if "monthly_plan" in part4:
             result["part4_monthly_plan"] = part4["monthly_plan"]

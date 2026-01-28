@@ -10,7 +10,10 @@ from utils import (
     process_multiple_files,
     extract_file_summaries,
     summaries_to_compact_text,
-    get_partitioned_analysis
+    get_partitioned_analysis,
+    load_guideline_rules,
+    count_chars_no_space,
+    bucket_programs_by_month
 )
 from doc_utils import (
     generate_part1_report,
@@ -39,6 +42,12 @@ st.markdown("---")
 
 if 'analysis_data' not in st.session_state:
     st.session_state.analysis_data = None
+
+if 'guideline_rules' not in st.session_state:
+    st.session_state.guideline_rules = load_guideline_rules()
+
+if 'month_bucket' not in st.session_state:
+    st.session_state.month_bucket = None
 
 MAX_FILES = 30
 MAX_TOTAL_SIZE_MB = 3
@@ -91,14 +100,33 @@ with st.sidebar:
                 height=150
             )
     
+        month_bucket = bucket_programs_by_month(file_summaries)
+        
+        with st.expander("월별 프로그램 배치 미리보기"):
+            st.caption("업로드 파일에서 추출한 프로그램의 월별 배치:")
+            for m in range(1, 13):
+                progs = month_bucket.get(m, [])
+                if progs:
+                    prog_names = ", ".join([p.get('program_name', '?')[:20] for p in progs[:5]])
+                    st.caption(f"**{m}월**: {prog_names}")
+                else:
+                    st.caption(f"**{m}월**: (정기운영 자동 생성)")
+        
         if st.button("AI 분석 시작", type="primary", disabled=not upload_valid):
             progress_placeholder = st.empty()
             
             def update_progress(msg):
                 progress_placeholder.info(msg)
             
+            st.session_state.month_bucket = month_bucket
+            
             with st.spinner(f"Gemini AI가 {len(uploaded_files)}개 문서를 파트별로 분석 중입니다..."):
-                result = get_partitioned_analysis(compact_text, progress_callback=update_progress)
+                result = get_partitioned_analysis(
+                    compact_text, 
+                    progress_callback=update_progress,
+                    month_bucket=month_bucket,
+                    guideline_rules=st.session_state.guideline_rules
+                )
                 
                 if result:
                     failed_parts = result.pop("_failed_parts", [])
@@ -114,8 +142,15 @@ with st.sidebar:
     
     if st.button("샘플 데이터 로드"):
         st.session_state.analysis_data = get_default_data()
-        st.success("샘플 데이터가 로드되었습니다!")
+        st.session_state.guideline_rules = load_guideline_rules()
+        st.success("샘플 데이터와 작성지침이 로드되었습니다!")
         st.rerun()
+    
+    with st.expander("작성지침 규칙 (JSON)"):
+        if st.session_state.guideline_rules:
+            st.json(st.session_state.guideline_rules)
+        else:
+            st.info("작성지침이 로드되지 않았습니다.")
     
 
 if st.session_state.analysis_data is None:
@@ -142,6 +177,18 @@ else:
         
         part1 = data.get('part1_general', {})
         
+        p1_rules = st.session_state.guideline_rules.get('part1', {}) if st.session_state.guideline_rules else {}
+        
+        def show_char_count(text, field_name, rules_dict):
+            rule = rules_dict.get(field_name, {})
+            max_chars = rule.get('max_chars_no_space', 0)
+            current = count_chars_no_space(text)
+            if max_chars > 0:
+                color = "red" if current > max_chars else "green"
+                st.caption(f":{color}[공백 제외 글자수: {current} / {max_chars}자]")
+            else:
+                st.caption(f"공백 제외 글자수: {current}자")
+        
         with st.expander("1. 사업의 필요성", expanded=True):
             st.subheader("1) 이용아동의 욕구 및 문제점")
             need_1 = st.text_area(
@@ -150,6 +197,7 @@ else:
                 height=300,
                 key="p1_need_1"
             )
+            show_char_count(need_1, 'need_1_user_desire', p1_rules)
             data['part1_general']['need_1_user_desire'] = need_1
             
             st.subheader("2) 지역 환경적 특성")
@@ -160,6 +208,7 @@ else:
                 height=200,
                 key="p1_need_2_1"
             )
+            show_char_count(need_2_1, 'need_2_1_regional', p1_rules)
             data['part1_general']['need_2_1_regional'] = need_2_1
             
             need_2_2 = st.text_area(
@@ -168,6 +217,7 @@ else:
                 height=200,
                 key="p1_need_2_2"
             )
+            show_char_count(need_2_2, 'need_2_2_environment', p1_rules)
             data['part1_general']['need_2_2_environment'] = need_2_2
             
             need_2_3 = st.text_area(
@@ -176,6 +226,7 @@ else:
                 height=200,
                 key="p1_need_2_3"
             )
+            show_char_count(need_2_3, 'need_2_3_educational', p1_rules)
             data['part1_general']['need_2_3_educational'] = need_2_3
         
         with st.expander("2. 전년도 사업평가 및 환류계획", expanded=True):
@@ -411,6 +462,7 @@ else:
                 height=150,
                 key="p1_purpose_txt"
             )
+            show_char_count(purpose, 'purpose_text', p1_rules)
             data['part1_general']['purpose_text'] = purpose
         
         with st.expander("5. 사업목표", expanded=True):
@@ -420,6 +472,7 @@ else:
                 height=150,
                 key="p1_goals_txt"
             )
+            show_char_count(goals, 'goals_text', p1_rules)
             data['part1_general']['goals_text'] = goals
         
         st.markdown("---")

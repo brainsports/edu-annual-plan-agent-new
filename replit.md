@@ -133,6 +133,21 @@ Preferred communication style: Simple, everyday language (Korean)
 
 ## Recent Changes
 
+- **2026-01-28**: Guideline Rules JSON System and Month Distribution
+  - Added `guidelines_template.json` with writing rules (max_chars_no_space, bullet_count, max_rows)
+  - `st.session_state["guideline_rules"]` initialized and preserved during upload analysis
+  - `load_guideline_rules()`: Loads rules from JSON file
+  - `count_chars_no_space()`: Counts characters excluding spaces for validation
+  - `validate_and_fix_text()`: Auto-validates and rewrites text via Gemini (max 2 retries) + smart sentence truncation
+  - `smart_truncate()`: Sentence-based truncation when Gemini rewrite fails
+  - Month extraction: `extract_months_from_text()`, `extract_months_from_cycle()`, `CYCLE_TO_MONTHS` mapping
+  - `bucket_programs_by_month()`: Extracts program dates and buckets by month (1-12)
+  - `generate_part3/part4` now accept `month_bucket` and `guideline_rules` parameters
+  - Empty months automatically filled with default template ("일상생활지도")
+  - UI shows character count (공백 제외 글자수) below text areas with color coding
+  - Sample data load also initializes guideline_rules
+  - Sidebar expander shows current guideline rules JSON
+
 - **2026-01-28**: Major refactoring to fix JSON parsing failures with truncated responses
   - Upload limits: MAX_FILES=30, MAX_TOTAL_SIZE_MB=3 with button disable when exceeded
   - Debug indicators: "디버그 정보" expander showing file summaries, text lengths, Gemini input preview

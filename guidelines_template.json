@@ -1,0 +1,143 @@
+{
+  "part1": {
+    "need_1_user_desire": {
+      "max_chars_no_space": 500,
+      "min_chars_no_space": 300,
+      "bullet_count": 3,
+      "format": "bullet",
+      "description": "이용아동 욕구 분석"
+    },
+    "need_2_1_regional": {
+      "max_chars_no_space": 400,
+      "min_chars_no_space": 200,
+      "bullet_count": 3,
+      "format": "bullet",
+      "description": "지역적 특성"
+    },
+    "need_2_2_environment": {
+      "max_chars_no_space": 400,
+      "min_chars_no_space": 200,
+      "bullet_count": 3,
+      "format": "bullet",
+      "description": "주변환경"
+    },
+    "need_2_3_educational": {
+      "max_chars_no_space": 400,
+      "min_chars_no_space": 200,
+      "bullet_count": 3,
+      "format": "bullet",
+      "description": "교육적 특성"
+    },
+    "feedback_table": {
+      "max_rows": 5,
+      "columns": {
+        "area": {"max_chars_no_space": 20},
+        "problem": {"max_chars_no_space": 300, "bullet_count": 3},
+        "improvement": {"max_chars_no_space": 400, "bullet_count": 3}
+      },
+      "format": "table",
+      "description": "환류계획 테이블"
+    },
+    "total_review_table": {
+      "max_rows": 5,
+      "columns": {
+        "category": {"max_chars_no_space": 20},
+        "content": {"max_chars_no_space": 600, "bullet_count": 3}
+      },
+      "format": "table",
+      "description": "총평 테이블"
+    },
+    "purpose_text": {
+      "max_chars_no_space": 350,
+      "min_chars_no_space": 200,
+      "bullet_count": 0,
+      "format": "paragraph",
+      "description": "사업목적"
+    },
+    "goals_text": {
+      "max_chars_no_space": 800,
+      "min_chars_no_space": 400,
+      "bullet_count": 5,
+      "format": "bullet",
+      "description": "사업목표"
+    }
+  },
+  "part2": {
+    "detail_table": {
+      "max_rows_per_category": 5,
+      "columns": {
+        "sub_area": {"max_chars_no_space": 20},
+        "program_name": {"max_chars_no_space": 30},
+        "expected_effect": {"max_chars_no_space": 100},
+        "target": {"max_chars_no_space": 20},
+        "count": {"max_chars_no_space": 15},
+        "cycle": {"max_chars_no_space": 15},
+        "content": {"max_chars_no_space": 300, "bullet_count": 3}
+      },
+      "format": "table",
+      "description": "세부사업내용 테이블"
+    },
+    "eval_table": {
+      "max_rows_per_category": 5,
+      "columns": {
+        "sub_area": {"max_chars_no_space": 20},
+        "program_name": {"max_chars_no_space": 30},
+        "expected_effect": {"max_chars_no_space": 200, "bullet_count": 2},
+        "main_plan": {"max_chars_no_space": 100},
+        "eval_method": {"max_chars_no_space": 50}
+      },
+      "format": "table",
+      "description": "평가계획 테이블"
+    }
+  },
+  "part3": {
+    "monthly_program": {
+      "max_programs_per_month": 8,
+      "columns": {
+        "big_category": {"max_chars_no_space": 15},
+        "mid_category": {"max_chars_no_space": 20},
+        "program_name": {"max_chars_no_space": 30},
+        "target": {"max_chars_no_space": 20},
+        "staff": {"max_chars_no_space": 20},
+        "content": {"max_chars_no_space": 200, "bullet_count": 2}
+      },
+      "format": "table",
+      "description": "월별 프로그램 (1~6월)"
+    }
+  },
+  "part4": {
+    "monthly_program": {
+      "max_programs_per_month": 8,
+      "columns": {
+        "big_category": {"max_chars_no_space": 15},
+        "mid_category": {"max_chars_no_space": 20},
+        "program_name": {"max_chars_no_space": 30},
+        "target": {"max_chars_no_space": 20},
+        "staff": {"max_chars_no_space": 20},
+        "content": {"max_chars_no_space": 200, "bullet_count": 2}
+      },
+      "format": "table",
+      "description": "월별 프로그램 (7~12월)"
+    },
+    "budget_table": {
+      "max_rows": 10,
+      "columns": {
+        "category": {"max_chars_no_space": 30},
+        "amount": {"max_chars_no_space": 20},
+        "details": {"max_chars_no_space": 150}
+      },
+      "format": "table",
+      "description": "예산계획"
+    },
+    "feedback_summary": {
+      "max_rows": 5,
+      "columns": {
+        "area": {"max_chars_no_space": 20},
+        "problem": {"max_chars_no_space": 150},
+        "plan": {"max_chars_no_space": 200}
+      },
+      "format": "table",
+      "description": "환류요약"
+    }
+  }
+}
