@@ -24,8 +24,68 @@ JSON_PROMPT_RULES = """[필수 출력 규칙]
 - 문자열 내 줄바꿈은 반드시 \\n으로 표현 (실제 개행 금지)
 - 키 이름은 지정된 스키마 그대로 사용
 - 마지막은 반드시 }로 끝나야 함
-- 각 필드는 700자 이내로 요약
+- 각 필드는 600자 이내로 요약, 최대 5개 불릿만 사용
 """
+
+LABEL_PATTERNS = [
+    (r'(?:프로그램명|프로그램\s*명칭|사업명)[:\s]*([^\n]{2,100})', 'program_name'),
+    (r'(?:일자|일시|실시\s*일)[:\s]*([^\n]{2,50})', 'date'),
+    (r'(?:담당자|담당|수행인력)[:\s]*([^\n]{2,30})', 'staff'),
+    (r'(?:대상자|대상|참여자|참가자)[:\s]*([^\n]{2,50})', 'target'),
+    (r'(?:목적|사업\s*목적)[:\s]*([^\n]{2,300})', 'purpose'),
+    (r'(?:목표|사업\s*목표)[:\s]*([^\n]{2,300})', 'goal'),
+    (r'(?:기대\s*효과|효과)[:\s]*([^\n]{2,200})', 'effect'),
+    (r'(?:평가|평가\s*내용|평가\s*결과)[:\s]*([^\n]{2,300})', 'evaluation'),
+    (r'(?:향후\s*계획|차년도\s*계획|개선\s*계획)[:\s]*([^\n]{2,300})', 'plan'),
+    (r'(?:주기|횟수|빈도)[:\s]*([^\n]{2,30})', 'cycle'),
+    (r'(?:영역|분류|카테고리)[:\s]*([^\n]{2,30})', 'category'),
+]
+
+
+def extract_labels_from_text(text: str) -> dict:
+    """규칙 기반으로 텍스트에서 라벨별 값을 추출 (정규식 활용)."""
+    result = {}
+    for pattern, key in LABEL_PATTERNS:
+        matches = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
+        if matches:
+            result[key] = [m.strip() for m in matches if m.strip()]
+    return result
+
+
+def extract_file_summaries(uploaded_files: list) -> list:
+    """각 업로드 파일에서 규칙 기반 라벨 추출하여 요약 dict 목록 반환."""
+    summaries = []
+    for uf in uploaded_files:
+        file_text = read_uploaded_file(uf)
+        uf.seek(0)
+        
+        if not file_text:
+            continue
+        
+        labels = extract_labels_from_text(file_text)
+        
+        summary = {
+            "filename": uf.name,
+            "text_length": len(file_text),
+            "labels": labels,
+            "text_preview": file_text[:500] if len(file_text) > 500 else file_text
+        }
+        summaries.append(summary)
+    
+    return summaries
+
+
+def summaries_to_compact_text(summaries: list) -> str:
+    """파일 요약 목록을 Gemini 입력용 간결한 텍스트로 변환."""
+    lines = []
+    for i, s in enumerate(summaries, 1):
+        lines.append(f"[파일 {i}: {s['filename']}]")
+        for key, values in s.get('labels', {}).items():
+            if values:
+                lines.append(f"  {key}: {', '.join(values[:3])}")
+        lines.append(f"  미리보기: {s.get('text_preview', '')[:200]}...")
+        lines.append("")
+    return "\n".join(lines)
 
 
 def read_pdf(file) -> str:
@@ -232,10 +292,25 @@ def normalize_table_rows(rows, columns: list, fill_value: str = "") -> list:
     return normalized
 
 
-def safe_gemini_json(prompt: str, system_instruction: str = None, max_retries: int = 2) -> dict:
+def _is_truncated(raw_text: str) -> bool:
+    """응답이 중간에 끊겼는지 확인 (닫는 괄호 없음)."""
+    if not raw_text or not raw_text.strip():
+        return True
+    text = raw_text.strip()
+    if not text.endswith('}') and not text.endswith(']'):
+        return True
+    open_braces = text.count('{') - text.count('}')
+    open_brackets = text.count('[') - text.count(']')
+    if open_braces > 0 or open_brackets > 0:
+        return True
+    return False
+
+
+def safe_gemini_json(prompt: str, system_instruction: str = None, max_retries: int = 2, shorter_on_retry: bool = True) -> dict:
     """
     Safe Gemini JSON generation with automatic retry on parsing failure.
     Returns a dict or raises an exception with raw text for debugging.
+    If shorter_on_retry=True, retry prompts will request more concise output.
     """
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다.")
@@ -251,21 +326,30 @@ def safe_gemini_json(prompt: str, system_instruction: str = None, max_retries: i
     )
     
     last_raw_text = ""
+    truncated = False
     
     for attempt in range(max_retries + 1):
         try:
             if attempt > 0:
+                shorter_hint = ""
+                if shorter_on_retry and truncated:
+                    shorter_hint = """
+[중요] 이전 응답이 중간에 끊겼습니다. 더 짧게 요약하세요:
+- 각 필드 400자 이내
+- 불릿 포인트 최대 3개
+- 테이블 행 최대 5개"""
+                
                 retry_instruction = f"""이전 응답이 유효한 JSON이 아니었습니다.
-다시 시도합니다. 반드시:
+{shorter_hint}
+반드시:
 1) 오직 JSON 객체 1개만 출력
 2) 모든 문자열 줄바꿈은 \\n으로
-3) 각 필드 700자 이내로 요약
-4) 마크다운/설명문/코드펜스 금지
-5) 첫 문자 '{{'로 시작, 마지막 '}}'로 끝
+3) 마크다운/설명문/코드펜스 금지
+4) 첫 문자 '{{'로 시작, 마지막 '}}'로 끝
 
 {prompt}"""
                 response = model.generate_content(retry_instruction)
-                print(f"[Gemini retry#{attempt}]")
+                print(f"[Gemini retry#{attempt}] truncated={truncated}")
             else:
                 response = model.generate_content(full_prompt)
             
@@ -273,7 +357,15 @@ def safe_gemini_json(prompt: str, system_instruction: str = None, max_retries: i
             last_raw_text = raw_text
             
             preview = raw_text[:400] if raw_text else "(EMPTY)"
+            tail = raw_text[-200:] if len(raw_text) > 200 else raw_text
             print(f"[Gemini raw preview] {preview}")
+            print(f"[Gemini raw tail] ...{tail}")
+            print(f"[Gemini raw length] {len(raw_text)}")
+            
+            truncated = _is_truncated(raw_text)
+            if truncated:
+                print(f"[Gemini] 응답 끊김 감지, 재시도...")
+                continue
             
             if not raw_text.strip():
                 continue
@@ -296,6 +388,198 @@ def safe_gemini_json(prompt: str, system_instruction: str = None, max_retries: i
             last_raw_text = str(e)
     
     raise ValueError(f"JSON 파싱 최종 실패. 원문:\n{last_raw_text[:2000]}")
+
+
+def generate_part1(compact_text: str) -> dict:
+    """Part1 총괄/기획 영역만 생성."""
+    system_instruction = """당신은 연간 사업계획서 작성 전문가입니다.
+한국어로 작성하고, 이모지 사용 금지, ● 기호만 사용하세요.
+출력: 오직 JSON 객체 1개만. 마크다운/코드펜스 금지."""
+
+    prompt = f"""다음 파일 요약을 기반으로 Part1 (총괄/기획) JSON을 생성하세요.
+
+{compact_text}
+
+출력 스키마:
+{{
+  "need_1_user_desire": "이용아동 욕구 (400자, ●불릿 3개)",
+  "need_2_1_regional": "지역적 특성 (400자)",
+  "need_2_2_environment": "주변환경 (400자)",
+  "need_2_3_educational": "교육적 특성 (400자)",
+  "feedback_table": [
+    {{"area": "보호/교육/문화/정서지원/지역사회연계", "problem": "문제점 3개", "improvement": "개선방안 3개"}}
+  ],
+  "total_review_table": [
+    {{"category": "운영평가/아동평가/프로그램평가/후원활동측면/환류방안", "content": "상세 내용"}}
+  ],
+  "satisfaction_survey": {{
+    "total_respondents": 30,
+    "survey_data": [{{"문항": "1. 질문", "5점": 15, "4점": 10, "3점": 3, "2점": 1, "1점": 1}}],
+    "subjective_analysis": "주관식 분석 (300자)",
+    "overall_suggestion": "종합 제언 (300자)"
+  }},
+  "purpose_text": "사업목적 (300자)",
+  "goals_text": "사업목표 ●불릿 5개 (각 200자)"
+}}
+
+[중요] 각 필드 600자 이내, 테이블 각 5행 이내로 제한."""
+    
+    try:
+        return safe_gemini_json(prompt, system_instruction, max_retries=2)
+    except ValueError:
+        return None
+
+
+def generate_part2(compact_text: str) -> dict:
+    """Part2 세부사업 영역만 생성."""
+    system_instruction = """당신은 지역아동센터 프로그램 기획 전문가입니다.
+한국어로 작성, 이모지 금지, ● 기호만 사용.
+출력: 오직 JSON 객체 1개만."""
+
+    prompt = f"""다음 파일 요약을 기반으로 Part2 (세부사업) JSON을 생성하세요.
+
+{compact_text}
+
+출력 스키마 (5개 카테고리):
+{{
+  "보호": {{
+    "subcategories": ["생활", "안전", "가족기능강화"],
+    "detail_table": [
+      {{"sub_area": "생활", "program_name": "프로그램명", "expected_effect": "기대효과", "target": "대상", "count": "인원", "cycle": "주기", "content": "● 내용"}}
+    ],
+    "eval_table": [
+      {{"sub_area": "생활", "program_name": "프로그램명", "expected_effect": "● 효과", "main_plan": "주요계획", "eval_method": "평가방법"}}
+    ]
+  }},
+  "교육": {{"subcategories": ["성장과권리", "학습", "특기적성"], "detail_table": [...], "eval_table": [...]}},
+  "문화": {{"subcategories": ["체험활동"], "detail_table": [...], "eval_table": [...]}},
+  "정서지원": {{"subcategories": ["상담"], "detail_table": [...], "eval_table": [...]}},
+  "지역사회연계": {{"subcategories": ["연계"], "detail_table": [...], "eval_table": [...]}}
+}}
+
+[중요] 각 카테고리당 detail_table 3행, eval_table 3행 이내."""
+    
+    try:
+        return safe_gemini_json(prompt, system_instruction, max_retries=2)
+    except ValueError:
+        return None
+
+
+def generate_part3(compact_text: str) -> dict:
+    """Part3 상반기 월별계획 (1~6월) 생성."""
+    system_instruction = """당신은 사업계획 일정 전문가입니다.
+한국어, 이모지 금지, ● 기호만 사용.
+출력: 오직 JSON 객체 1개만."""
+
+    prompt = f"""다음 파일 요약을 기반으로 Part3 (상반기 1~6월) 월별계획 JSON을 생성하세요.
+
+{compact_text}
+
+출력 스키마:
+{{
+  "1월": [
+    {{"big_category": "보호", "mid_category": "생활", "program_name": "급식관리", "target": "전체아동", "staff": "돌봄교사", "content": "● 내용"}}
+  ],
+  "2월": [...],
+  "3월": [...],
+  "4월": [...],
+  "5월": [...],
+  "6월": [...]
+}}
+
+[중요] 각 월당 프로그램 5개 이내, 각 content 200자 이내."""
+    
+    try:
+        return safe_gemini_json(prompt, system_instruction, max_retries=2)
+    except ValueError:
+        return None
+
+
+def generate_part4(compact_text: str) -> dict:
+    """Part4 하반기 월별계획 (7~12월) + 예산/평가 생성."""
+    system_instruction = """당신은 사업계획 일정 및 예산 전문가입니다.
+한국어, 이모지 금지, ● 기호만 사용.
+출력: 오직 JSON 객체 1개만."""
+
+    prompt = f"""다음 파일 요약을 기반으로 Part4 (하반기 7~12월 + 예산/평가) JSON을 생성하세요.
+
+{compact_text}
+
+출력 스키마:
+{{
+  "monthly_plan": {{
+    "7월": [{{"big_category": "보호", "mid_category": "생활", "program_name": "프로그램명", "target": "대상", "staff": "인력", "content": "● 내용"}}],
+    "8월": [...],
+    "9월": [...],
+    "10월": [...],
+    "11월": [...],
+    "12월": [...]
+  }},
+  "budget_table": [
+    {{"category": "인건비", "amount": "50,000,000원", "details": "세부내용"}}
+  ],
+  "feedback_summary": [
+    {{"area": "보호", "problem": "문제점", "plan": "개선계획"}}
+  ]
+}}
+
+[중요] 각 월당 프로그램 5개, budget 5행, feedback 5행 이내."""
+    
+    try:
+        return safe_gemini_json(prompt, system_instruction, max_retries=2)
+    except ValueError:
+        return None
+
+
+def get_partitioned_analysis(compact_text: str, progress_callback=None) -> dict:
+    """파트별로 나눠서 Gemini 분석 수행. 부분 실패 허용."""
+    result = {
+        "part1_general": {},
+        "part2_programs": {},
+        "part3_monthly_plan": {},
+        "part4_monthly_plan": {},
+        "part4_budget_evaluation": {"budget_table": [], "feedback_summary": []},
+        "_failed_parts": []
+    }
+    
+    if progress_callback:
+        progress_callback("Part 1 (총괄/기획) 생성 중...")
+    part1 = generate_part1(compact_text)
+    if part1:
+        result["part1_general"] = part1
+    else:
+        result["_failed_parts"].append("part1")
+    
+    if progress_callback:
+        progress_callback("Part 2 (세부사업) 생성 중...")
+    part2 = generate_part2(compact_text)
+    if part2:
+        result["part2_programs"] = part2
+    else:
+        result["_failed_parts"].append("part2")
+    
+    if progress_callback:
+        progress_callback("Part 3 (상반기 월별계획) 생성 중...")
+    part3 = generate_part3(compact_text)
+    if part3:
+        result["part3_monthly_plan"] = part3
+    else:
+        result["_failed_parts"].append("part3")
+    
+    if progress_callback:
+        progress_callback("Part 4 (하반기 + 예산/평가) 생성 중...")
+    part4 = generate_part4(compact_text)
+    if part4:
+        if "monthly_plan" in part4:
+            result["part4_monthly_plan"] = part4["monthly_plan"]
+        if "budget_table" in part4:
+            result["part4_budget_evaluation"]["budget_table"] = part4["budget_table"]
+        if "feedback_summary" in part4:
+            result["part4_budget_evaluation"]["feedback_summary"] = part4["feedback_summary"]
+    else:
+        result["_failed_parts"].append("part4")
+    
+    return result
 
 
 def parse_json_response(response_text: str) -> dict:

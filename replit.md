@@ -133,6 +133,18 @@ Preferred communication style: Simple, everyday language (Korean)
 
 ## Recent Changes
 
+- **2026-01-28**: Major refactoring to fix JSON parsing failures with truncated responses
+  - Upload limits: MAX_FILES=30, MAX_TOTAL_SIZE_MB=3 with button disable when exceeded
+  - Debug indicators: "디버그 정보" expander showing file summaries, text lengths, Gemini input preview
+  - Rule-based extraction: LABEL_PATTERNS for regex-based label extraction (program_name, date, staff, target, purpose, goal, effect, etc.)
+  - `extract_file_summaries()`: Creates compact summary dicts from uploaded files
+  - `summaries_to_compact_text()`: Converts summaries to short text for Gemini input
+  - Partitioned Gemini generation: `generate_part1()`, `generate_part2()`, `generate_part3()`, `generate_part4()` - each part generated separately
+  - `get_partitioned_analysis()`: Orchestrates 4 calls with partial failure handling
+  - Improved `safe_gemini_json()`: Added `_is_truncated()` detection, `shorter_on_retry` parameter, logs response length/tail
+  - Each part has strict size limits (600 chars per field, 5 rows per table)
+  - Progress callback shows current part being generated
+
 - **2026-01-26**: Implemented new Part 3/4 structure with intelligent date distribution
   - Part 3 now uses 12-month structure with program arrays per month
   - New 6-column monthly program table: 대분류, 중분류, 프로그램명, 참여자, 수행인력, 사업내용

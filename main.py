@@ -3,7 +3,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 import altair as alt
-from utils import get_gemini_analysis, get_default_data, read_uploaded_file, process_multiple_files
+from utils import (
+    get_gemini_analysis, 
+    get_default_data, 
+    read_uploaded_file, 
+    process_multiple_files,
+    extract_file_summaries,
+    summaries_to_compact_text,
+    get_partitioned_analysis
+)
 from doc_utils import (
     generate_part1_report,
     generate_part2_report,
@@ -32,38 +40,75 @@ st.markdown("---")
 if 'analysis_data' not in st.session_state:
     st.session_state.analysis_data = None
 
+MAX_FILES = 30
+MAX_TOTAL_SIZE_MB = 3
+
 with st.sidebar:
     st.header("사업계획 수립 도우미")
     uploaded_files = st.file_uploader(
         "평가서 및 실적 보고서 업로드 (연도 무관)",
         type=['pdf', 'docx', 'hwp', 'txt', 'csv'],
         accept_multiple_files=True,
-        help="파일당 최대 200MB • PDF, DOCX, TXT, CSV 지원"
+        help=f"최대 {MAX_FILES}개 파일, 총 {MAX_TOTAL_SIZE_MB}MB • PDF, DOCX, TXT, CSV 지원"
     )
     
     if uploaded_files:
-        st.info(f"📁 {len(uploaded_files)}개 파일 선택됨")
+        total_size_bytes = sum(uf.size for uf in uploaded_files)
+        total_size_mb = total_size_bytes / (1024 * 1024)
+        
+        st.info(f"📁 {len(uploaded_files)}개 파일 선택됨 ({total_size_mb:.2f}MB)")
+        
+        upload_valid = True
+        if len(uploaded_files) > MAX_FILES:
+            st.error(f"파일 개수가 {MAX_FILES}개를 초과했습니다. ({len(uploaded_files)}개)")
+            upload_valid = False
+        if total_size_mb > MAX_TOTAL_SIZE_MB:
+            st.error(f"총 파일 크기가 {MAX_TOTAL_SIZE_MB}MB를 초과했습니다. ({total_size_mb:.2f}MB)")
+            upload_valid = False
         
         for uf in uploaded_files:
-            st.caption(f"• {uf.name}")
+            file_size_kb = uf.size / 1024
+            st.caption(f"• {uf.name} ({file_size_kb:.1f}KB)")
         
-        combined_content = process_multiple_files(uploaded_files)
+        file_summaries = extract_file_summaries(uploaded_files)
+        compact_text = summaries_to_compact_text(file_summaries)
         
-        if combined_content:
-            with st.expander("업로드된 내용 미리보기"):
-                st.text_area(
-                    "통합된 문서 내용",
-                    combined_content[:1000] + "..." if len(combined_content) > 1000 else combined_content,
-                    height=150
-                )
+        if not file_summaries:
+            st.error("파일에서 텍스트를 추출할 수 없습니다. PDF, DOCX, TXT, CSV 형식의 파일을 업로드해주세요.")
+            upload_valid = False
         
-            if st.button("AI 분석 시작", type="primary"):
-                with st.spinner(f"Gemini AI가 {len(uploaded_files)}개 문서를 분석 중입니다..."):
-                    result = get_gemini_analysis(combined_content)
-                    if result:
-                        st.session_state.analysis_data = result
+        with st.expander("디버그 정보"):
+            for i, uf in enumerate(uploaded_files):
+                st.caption(f"[{i+1}] {uf.name}: {uf.size/1024:.1f}KB")
+            st.caption(f"요약 텍스트 길이: {len(compact_text)}자")
+            st.text_area("파일 요약 (Gemini 입력)", compact_text[:2000], height=150)
+        
+        with st.expander("업로드된 내용 미리보기"):
+            combined_content = process_multiple_files(uploaded_files)
+            st.text_area(
+                "통합된 문서 내용",
+                combined_content[:1000] + "..." if len(combined_content) > 1000 else combined_content,
+                height=150
+            )
+    
+        if st.button("AI 분석 시작", type="primary", disabled=not upload_valid):
+            progress_placeholder = st.empty()
+            
+            def update_progress(msg):
+                progress_placeholder.info(msg)
+            
+            with st.spinner(f"Gemini AI가 {len(uploaded_files)}개 문서를 파트별로 분석 중입니다..."):
+                result = get_partitioned_analysis(compact_text, progress_callback=update_progress)
+                
+                if result:
+                    failed_parts = result.pop("_failed_parts", [])
+                    st.session_state.analysis_data = result
+                    
+                    if failed_parts:
+                        st.warning(f"일부 파트 생성 실패: {', '.join(failed_parts)}. 해당 파트는 샘플 데이터를 사용하세요.")
+                    else:
                         st.success("분석이 완료되었습니다!")
-                        st.rerun()
+                    st.rerun()
     
     st.markdown("---")
     
