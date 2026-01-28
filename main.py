@@ -21,6 +21,7 @@ from doc_utils import (
     generate_part2_report,
     generate_monthly_report,
     generate_monthly_program_report,
+    generate_part4_full_report,
     generate_full_report
 )
 
@@ -608,14 +609,25 @@ else:
         
         st.markdown("---")
         
-        part1_report = generate_part1_report(data['part1_general'])
-        
-        st.download_button(
-            label="PART 1 다운로드 (Word)",
-            data=part1_report,
-            file_name="Part1_총괄기획.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+        part1_data = data.get('part1_general', {})
+        part1_has_data = any([
+            part1_data.get('need_1_user_desire'),
+            part1_data.get('purpose_text'),
+            part1_data.get('goals_text'),
+            part1_data.get('feedback_table')
+        ])
+        if part1_has_data:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            part1_report = generate_part1_report(data['part1_general'])
+            st.download_button(
+                label="📥 PART 1 다운로드 (Word)",
+                data=part1_report,
+                file_name=f"part1_{timestamp}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        else:
+            st.warning("먼저 AI 분석 시작을 눌러 내용을 생성해 주세요.")
     
     with tab2:
         st.header("PART 2: 세부 사업 계획")
@@ -744,13 +756,23 @@ else:
         
         st.markdown("---")
         
-        part2_report = generate_part2_report(data['part2_programs'])
-        st.download_button(
-            label="PART 2 다운로드 (Word)",
-            data=part2_report,
-            file_name="Part2_세부사업.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        part2_has_data = any(
+            cat_data.get('detail_table') or cat_data.get('eval_table')
+            for cat_data in data.get('part2_programs', {}).values()
+            if isinstance(cat_data, dict)
         )
+        if part2_has_data:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            part2_report = generate_part2_report(data['part2_programs'])
+            st.download_button(
+                label="📥 PART 2 다운로드 (Word)",
+                data=part2_report,
+                file_name=f"part2_{timestamp}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        else:
+            st.warning("먼저 AI 분석 시작을 눌러 내용을 생성해 주세요.")
     
     with tab3:
         st.title("PART 3: 상반기 월별 사업계획 (1월~6월)")
@@ -816,13 +838,22 @@ else:
             
             st.markdown("---")
         
-        h1_report = generate_monthly_program_report(data['part3_monthly_plan'], h1_months)
-        st.download_button(
-            label="📥 상반기 사업계획서 다운로드 (Word)",
-            data=h1_report,
-            file_name="Part3_상반기계획.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        part3_has_data = any(
+            data.get('part3_monthly_plan', {}).get(m) 
+            for m in h1_months
         )
+        if part3_has_data:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            h1_report = generate_monthly_program_report(data['part3_monthly_plan'], h1_months)
+            st.download_button(
+                label="📥 PART 3 다운로드 (Word)",
+                data=h1_report,
+                file_name=f"part3_{timestamp}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        else:
+            st.warning("먼저 AI 분석 시작을 눌러 내용을 생성해 주세요.")
     
     with tab4:
         st.title("PART 4: 하반기 월별 사업계획 (7월~12월)")
@@ -888,13 +919,29 @@ else:
             
             st.markdown("---")
         
-        h2_report = generate_monthly_program_report(data['part4_monthly_plan'], h2_months)
-        st.download_button(
-            label="📥 하반기 사업계획서 다운로드 (Word)",
-            data=h2_report,
-            file_name="Part4_하반기계획.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        part4_monthly_data = any(
+            data.get('part4_monthly_plan', {}).get(m) 
+            for m in h2_months
         )
+        budget_eval = data.get('part4_budget_evaluation', {})
+        part4_has_data = part4_monthly_data or budget_eval.get('budget_table') or budget_eval.get('feedback_summary')
+        
+        if part4_has_data:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            h2_report = generate_part4_full_report(
+                data['part4_monthly_plan'], 
+                h2_months, 
+                budget_eval
+            )
+            st.download_button(
+                label="📥 PART 4 다운로드 (Word)",
+                data=h2_report,
+                file_name=f"part4_{timestamp}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        else:
+            st.warning("먼저 AI 분석 시작을 눌러 내용을 생성해 주세요.")
 
 st.markdown("---")
 st.markdown(
