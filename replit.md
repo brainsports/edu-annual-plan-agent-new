@@ -133,6 +133,18 @@ Preferred communication style: Simple, everyday language (Korean)
 
 ## Recent Changes
 
+- **2026-01-28**: Table Cell & Satisfaction Section min_chars Enforcement
+  - guidelines_template.json에 표 컬럼 min_chars_no_space 추가:
+    - feedback_table.problem/improvement: min=300, max=500, bullet=3
+    - total_review_table.content: min=200, max=600, bullet=3
+    - part2.detail_table.content: min=150, max=350, bullet=3
+  - 만족도 섹션 규칙 추가 (part1.satisfaction):
+    - subjective_summary: min=500, max=800, bullet=5
+    - overall_suggestion: min=500, max=800, bullet=5
+  - _apply_table_rule 순서 수정: bullet→min pad→max truncate→bullet 재적용
+  - apply_guidelines_to_analysis에 satisfaction 처리 추가
+  - 디버그 UI 기본 숨김 처리 (expanded=False)
+
 - **2026-01-28**: Comprehensive Guideline Rules Enforcement System (min/max 100% 보장)
   - **PADDING_PHRASES**: 8개의 한국어 보강 문구로 LLM 호출 없이 결정적 패딩
   - **Helper functions for text formatting:**
