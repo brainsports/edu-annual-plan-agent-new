@@ -472,7 +472,8 @@ def get_gemini_analysis(text: str) -> dict:
 
     generation_config = genai.GenerationConfig(
         response_mime_type="application/json",
-        temperature=0.7
+        temperature=0.7,
+        max_output_tokens=8192
     )
     
     model = genai.GenerativeModel(
@@ -533,6 +534,7 @@ def get_gemini_analysis(text: str) -> dict:
         parsed.setdefault("part1_general", {})
         parsed.setdefault("part2_programs", {})
         parsed.setdefault("part3_monthly_plan", {})
+        parsed.setdefault("part4_monthly_plan", {})
         parsed.setdefault("part4_budget_evaluation", {"budget_table": [], "feedback_summary": []})
         
         if "part1_general" in parsed and isinstance(parsed["part1_general"], dict):

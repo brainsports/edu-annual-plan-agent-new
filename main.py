@@ -84,6 +84,8 @@ else:
         data['part2_programs'] = {}
     if 'part3_monthly_plan' not in data:
         data['part3_monthly_plan'] = {}
+    if 'part4_monthly_plan' not in data:
+        data['part4_monthly_plan'] = {}
     if 'part4_budget_evaluation' not in data:
         data['part4_budget_evaluation'] = {"budget_table": [], "feedback_summary": []}
     
@@ -598,7 +600,7 @@ else:
         
         is_preview_p4 = st.toggle("📄 문서 형태로 미리보기", key="toggle_p4")
         
-        monthly_plan = data.get('part3_monthly_plan', {})
+        monthly_plan = data.get('part4_monthly_plan', {})
         h2_months = ["7월", "8월", "9월", "10월", "11월", "12월"]
         
         for month in h2_months:
@@ -644,7 +646,7 @@ else:
                     key=f"month_editor_h2_{month}"
                 )
                 
-                data['part3_monthly_plan'][month] = edited_month.rename(
+                data['part4_monthly_plan'][month] = edited_month.rename(
                     columns={
                         '대분류': 'big_category',
                         '중분류': 'mid_category',
@@ -657,7 +659,7 @@ else:
             
             st.markdown("---")
         
-        h2_report = generate_monthly_program_report(data['part3_monthly_plan'], h2_months)
+        h2_report = generate_monthly_program_report(data['part4_monthly_plan'], h2_months)
         st.download_button(
             label="📥 하반기 사업계획서 다운로드 (Word)",
             data=h2_report,
