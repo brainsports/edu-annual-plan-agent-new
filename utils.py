@@ -12,6 +12,21 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
+DEFAULT_GEN_CONFIG = genai.GenerationConfig(
+    response_mime_type="application/json",
+    temperature=0.5,
+    max_output_tokens=8192
+)
+
+JSON_PROMPT_RULES = """[필수 출력 규칙]
+- 반드시 단일 JSON 객체만 출력 (배열 금지)
+- 마크다운/코드펜스(```) 절대 금지
+- 문자열 내 줄바꿈은 반드시 \\n으로 표현 (실제 개행 금지)
+- 키 이름은 지정된 스키마 그대로 사용
+- 마지막은 반드시 }로 끝나야 함
+- 각 필드는 700자 이내로 요약
+"""
+
 
 def read_pdf(file) -> str:
     """Extract text from PDF file using pdfplumber."""
@@ -215,6 +230,72 @@ def normalize_table_rows(rows, columns: list, fill_value: str = "") -> list:
         normalized.append(normalized_row)
     
     return normalized
+
+
+def safe_gemini_json(prompt: str, system_instruction: str = None, max_retries: int = 2) -> dict:
+    """
+    Safe Gemini JSON generation with automatic retry on parsing failure.
+    Returns a dict or raises an exception with raw text for debugging.
+    """
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다.")
+    
+    print(f"[Gemini] model={GEMINI_MODEL}")
+    
+    full_prompt = f"{JSON_PROMPT_RULES}\n\n{prompt}"
+    
+    model = genai.GenerativeModel(
+        model_name=GEMINI_MODEL,
+        system_instruction=system_instruction,
+        generation_config=DEFAULT_GEN_CONFIG
+    )
+    
+    last_raw_text = ""
+    
+    for attempt in range(max_retries + 1):
+        try:
+            if attempt > 0:
+                retry_instruction = f"""이전 응답이 유효한 JSON이 아니었습니다.
+다시 시도합니다. 반드시:
+1) 오직 JSON 객체 1개만 출력
+2) 모든 문자열 줄바꿈은 \\n으로
+3) 각 필드 700자 이내로 요약
+4) 마크다운/설명문/코드펜스 금지
+5) 첫 문자 '{{'로 시작, 마지막 '}}'로 끝
+
+{prompt}"""
+                response = model.generate_content(retry_instruction)
+                print(f"[Gemini retry#{attempt}]")
+            else:
+                response = model.generate_content(full_prompt)
+            
+            raw_text = response.text if response.text else ""
+            last_raw_text = raw_text
+            
+            preview = raw_text[:400] if raw_text else "(EMPTY)"
+            print(f"[Gemini raw preview] {preview}")
+            
+            if not raw_text.strip():
+                continue
+            
+            try:
+                parsed = json.loads(raw_text)
+                result = _ensure_dict(parsed)
+                if result is not None:
+                    return result
+            except json.JSONDecodeError:
+                pass
+            
+            parsed = _extract_json_from_text(raw_text)
+            result = _ensure_dict(parsed)
+            if result is not None:
+                return result
+                
+        except Exception as e:
+            print(f"[Gemini error] {str(e)}")
+            last_raw_text = str(e)
+    
+    raise ValueError(f"JSON 파싱 최종 실패. 원문:\n{last_raw_text[:2000]}")
 
 
 def parse_json_response(response_text: str) -> dict:
@@ -470,66 +551,10 @@ def get_gemini_analysis(text: str) -> dict:
     - 5대 영역별(보호, 교육, 문화, 정서지원, 지역사회연계) 환류 요약
 """
 
-    generation_config = genai.GenerationConfig(
-        response_mime_type="application/json",
-        temperature=0.7,
-        max_output_tokens=8192
-    )
-    
-    model = genai.GenerativeModel(
-        model_name=GEMINI_MODEL,
-        system_instruction=system_instruction,
-        generation_config=generation_config
-    )
-    
-    prompt = f"다음 문서를 분석하고 지정된 JSON 형식으로 결과를 반환해주세요. JSON 객체({{}}) 1개만 출력하고 다른 텍스트는 포함하지 마세요:\n\n{text}"
-    repair_prompt = "이전 응답이 유효한 JSON 객체가 아니었습니다. 반드시 JSON 객체({}) 1개만 출력하세요. 설명문/마크다운/코드블록(```) 금지. 배열([])로 시작 금지. 첫 문자는 반드시 '{'."
-    
-    def _try_generate(attempt_prompt: str, attempt_num: int = 0) -> str:
-        """Generate content and return raw text."""
-        try:
-            response = model.generate_content(attempt_prompt)
-            return response.text if response.text else ""
-        except Exception as e:
-            error_msg = str(e)
-            if "404" in error_msg:
-                st.error(f"Gemini API 오류: 모델 '{GEMINI_MODEL}'을 찾을 수 없습니다.")
-            elif "403" in error_msg or "permission" in error_msg.lower():
-                st.error("Gemini API 오류: API 키 권한을 확인하세요.")
-            elif "429" in error_msg or "quota" in error_msg.lower():
-                st.error("Gemini API 오류: API 쿼터를 초과했습니다.")
-            else:
-                st.error(f"Gemini API 오류: {error_msg}")
-            return ""
-    
-    def _parse_and_validate(raw: str) -> dict:
-        """Parse raw text and validate it's a dict."""
-        if not raw or not raw.strip():
-            return None
-        parsed = _extract_json_from_text(raw)
-        return _ensure_dict(parsed)
+    prompt = f"다음 문서를 분석하고 지정된 JSON 형식으로 결과를 반환해주세요:\n\n{text}"
     
     try:
-        raw_text = _try_generate(prompt, 0)
-        preview = raw_text[:500] if raw_text else "(EMPTY)"
-        print(f"[Gemini raw preview] {preview}")
-        
-        parsed = _parse_and_validate(raw_text)
-        
-        for retry in range(1, 3):
-            if parsed is not None:
-                break
-            print(f"[Gemini repair#{retry}] Retrying...")
-            raw_text = _try_generate(f"{repair_prompt}\n\n원본 문서:\n{text[:5000]}", retry)
-            preview = raw_text[:500] if raw_text else "(EMPTY)"
-            print(f"[Gemini repair#{retry} preview] {preview}")
-            parsed = _parse_and_validate(raw_text)
-        
-        if parsed is None:
-            st.error("JSON 파싱에 실패했습니다. Gemini 응답이 올바른 JSON 객체 형식이 아닙니다.")
-            if raw_text:
-                st.code(raw_text[:1200], language="text")
-            return None
+        parsed = safe_gemini_json(prompt, system_instruction, max_retries=2)
         
         parsed.setdefault("part1_general", {})
         parsed.setdefault("part2_programs", {})
@@ -552,14 +577,21 @@ def get_gemini_analysis(text: str) -> dict:
         
         return parsed
             
+    except ValueError as e:
+        error_msg = str(e)
+        st.error("JSON 파싱에 실패했습니다.")
+        if "원문:" in error_msg:
+            raw_preview = error_msg.split("원문:")[-1][:1500]
+            st.code(raw_preview, language="text")
+        return None
     except Exception as e:
         error_msg = str(e)
         if "404" in error_msg:
-            st.error(f"Gemini API 오류: 모델 '{GEMINI_MODEL}'을 찾을 수 없습니다. GEMINI_MODEL 환경변수를 확인하세요.")
+            st.error(f"Gemini API 오류: 모델 '{GEMINI_MODEL}'을 찾을 수 없습니다.")
         elif "403" in error_msg or "permission" in error_msg.lower():
             st.error("Gemini API 오류: API 키 권한을 확인하세요.")
         elif "429" in error_msg or "quota" in error_msg.lower():
-            st.error("Gemini API 오류: API 쿼터를 초과했습니다. 잠시 후 다시 시도하세요.")
+            st.error("Gemini API 오류: API 쿼터를 초과했습니다.")
         else:
             st.error(f"Gemini API 오류: {error_msg}")
         return None

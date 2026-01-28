@@ -9,26 +9,12 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 import numpy as np
 
-import google.generativeai as genai
 from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
-
-# [모델 설정] (현재 doc_utils에서는 직접 호출하지 않지만, 향후 확장 대비)
-API_KEY = os.environ.get("GEMINI_API_KEY")
-if API_KEY:
-    genai.configure(api_key=API_KEY)
-    # google.generativeai는 보통 "gemini-2.0-flash" 형태를 권장 (models/ 접두는 상황에 따라 이슈가 생길 수 있음)
-    try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
-    except Exception:
-        # 혹시 환경에 따라 models/ 형태만 되는 경우를 대비
-        model = genai.GenerativeModel("models/gemini-2.0-flash")
-else:
-    model = None
 
 
 # --- 기본 서식 함수 ---
