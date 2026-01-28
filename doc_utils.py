@@ -48,21 +48,34 @@ def set_standard_margins(document: Document):
         section.bottom_margin = Inches(1.0)
 
 
+def set_cell_background(cell, color_hex: str):
+    """테이블 셀 배경색 설정 (예: "D9D9D9" = 연한 회색)"""
+    shading_elm = parse_xml(
+        r'<w:shd {} w:fill="{}"/>'.format(nsdecls('w'), color_hex)
+    )
+    cell._tc.get_or_add_tcPr().append(shading_elm)
+
+
 def add_left_aligned_heading(document: Document, text: str, level: int = 1):
     heading = document.add_heading(text, level=level)
     heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
     return heading
 
 
-def add_markdown_text(paragraph, text: str):
+def add_markdown_text(cell_or_paragraph, text: str):
     """
     **bold** 형태만 간단 지원
+    Cell 또는 Paragraph 객체 모두 지원
     """
     if not text:
         return
+    if hasattr(cell_or_paragraph, 'paragraphs'):
+        para = cell_or_paragraph.paragraphs[0]
+    else:
+        para = cell_or_paragraph
     parts = str(text).split("**")
     for i, part in enumerate(parts):
-        run = paragraph.add_run(part)
+        run = para.add_run(part)
         if i % 2 == 1:
             run.bold = True
 
