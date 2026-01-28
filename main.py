@@ -175,7 +175,7 @@ else:
     if 'part4_budget_evaluation' not in data:
         data['part4_budget_evaluation'] = {"budget_table": [], "feedback_summary": []}
     
-    with st.expander("규칙 검증 결과", expanded=True):
+    with st.expander("규칙 검증 결과 (디버그)", expanded=False):
         st.subheader("규칙 로드 상태")
         rules = st.session_state.guideline_rules or {}
         load_status = rules.get('_load_status', 'unknown')

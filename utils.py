@@ -1045,7 +1045,7 @@ def _apply_text_rule(text: str, rule: dict, field_name: str = "") -> dict:
 
 
 def _apply_table_rule(table: list, rule: dict, table_name: str = "") -> dict:
-    """테이블에 규칙을 적용합니다."""
+    """테이블에 규칙을 적용합니다. 순서: bullet→min pad→max truncate→bullet 재적용"""
     if not table or not isinstance(table, list):
         return {"table": [], "log": f"{table_name}: 빈 테이블"}
     
@@ -1055,7 +1055,8 @@ def _apply_table_rule(table: list, rule: dict, table_name: str = "") -> dict:
     if len(table) > max_rows:
         table = table[:max_rows]
     
-    for row in table:
+    cell_logs = []
+    for row_idx, row in enumerate(table):
         if isinstance(row, dict):
             for col_name, col_rule in columns.items():
                 if col_name in row and row[col_name]:
@@ -1064,23 +1065,36 @@ def _apply_table_rule(table: list, rule: dict, table_name: str = "") -> dict:
                     cell_bullet = col_rule.get('bullet_count', 0)
                     
                     cell_text = str(row[col_name])
+                    original_count = count_chars_no_space(cell_text)
                     
                     if cell_bullet > 0:
                         cell_text = _ensure_bullet_prefix(cell_text)
                         cell_text = _ensure_bullet_count(cell_text, cell_bullet)
                     
-                    if cell_max > 0:
-                        cell_text = _truncate_to_max_no_space(cell_text, cell_max)
-                    
                     if cell_min > 0:
                         cell_text = _pad_to_min_chars(cell_text, cell_min, is_bullet=(cell_bullet > 0))
                     
+                    if cell_max > 0:
+                        cell_text = _truncate_to_max_no_space(cell_text, cell_max)
+                    
                     if cell_bullet > 0:
                         cell_text = _ensure_bullet_prefix(cell_text)
+                        cell_text = _ensure_bullet_count(cell_text, cell_bullet)
                     
                     row[col_name] = cell_text
+                    
+                    if cell_min > 0 or cell_max > 0:
+                        final_count = count_chars_no_space(cell_text)
+                        min_ok = (cell_min == 0) or (final_count >= cell_min)
+                        max_ok = (cell_max == 0) or (final_count <= cell_max)
+                        status = "✓" if (min_ok and max_ok) else "✗"
+                        cell_logs.append(f"  [{row_idx+1}]{col_name}: {original_count}→{final_count}자 ({cell_min}~{cell_max}) {status}")
     
     log = f"{table_name}: {len(table)}행 (max:{max_rows})"
+    if cell_logs:
+        log += "\n" + "\n".join(cell_logs[:5])
+        if len(cell_logs) > 5:
+            log += f"\n  ...외 {len(cell_logs)-5}개"
     return {"table": table, "log": log}
 
 
@@ -1218,6 +1232,29 @@ def apply_guidelines_to_analysis(data: dict, guideline_rules: dict) -> tuple:
         logs.append(f"[Part4] {result['log']}")
     
     data['part4_budget_evaluation'] = budget_eval
+    
+    satisfaction_rules = p1_rules.get('satisfaction', {})
+    if satisfaction_rules and 'satisfaction_survey' in part1:
+        satisfaction = part1.get('satisfaction_survey', {})
+        
+        if 'subjective_summary' in satisfaction_rules:
+            field_name = 'subjective_analysis'
+            if field_name in satisfaction:
+                text = satisfaction.get(field_name, '')
+                result = _apply_text_rule(text, satisfaction_rules['subjective_summary'], 'subjective_analysis')
+                satisfaction[field_name] = result['text']
+                logs.append(f"[만족도] {result['log']}")
+        
+        if 'overall_suggestion' in satisfaction_rules:
+            field_name = 'overall_suggestion'
+            if field_name in satisfaction:
+                text = satisfaction.get(field_name, '')
+                result = _apply_text_rule(text, satisfaction_rules['overall_suggestion'], 'overall_suggestion')
+                satisfaction[field_name] = result['text']
+                logs.append(f"[만족도] {result['log']}")
+        
+        part1['satisfaction_survey'] = satisfaction
+        data['part1_general'] = part1
     
     return data, logs
 

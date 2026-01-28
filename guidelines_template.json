@@ -32,8 +32,8 @@
       "max_rows": 5,
       "columns": {
         "area": {"max_chars_no_space": 20},
-        "problem": {"max_chars_no_space": 300, "bullet_count": 3},
-        "improvement": {"max_chars_no_space": 400, "bullet_count": 3}
+        "problem": {"min_chars_no_space": 300, "max_chars_no_space": 500, "bullet_count": 3},
+        "improvement": {"min_chars_no_space": 300, "max_chars_no_space": 500, "bullet_count": 3}
       },
       "format": "table",
       "description": "환류계획 테이블"
@@ -42,10 +42,26 @@
       "max_rows": 5,
       "columns": {
         "category": {"max_chars_no_space": 20},
-        "content": {"max_chars_no_space": 600, "bullet_count": 3}
+        "content": {"min_chars_no_space": 200, "max_chars_no_space": 600, "bullet_count": 3}
       },
       "format": "table",
       "description": "총평 테이블"
+    },
+    "satisfaction": {
+      "subjective_summary": {
+        "min_chars_no_space": 500,
+        "max_chars_no_space": 800,
+        "bullet_count": 5,
+        "format": "bullet",
+        "description": "주관식 문항 요약분석"
+      },
+      "overall_suggestion": {
+        "min_chars_no_space": 500,
+        "max_chars_no_space": 800,
+        "bullet_count": 5,
+        "format": "bullet",
+        "description": "종합 분석 및 제언"
+      }
     },
     "purpose_text": {
       "max_chars_no_space": 350,
@@ -72,7 +88,7 @@
         "target": {"max_chars_no_space": 20},
         "count": {"max_chars_no_space": 15},
         "cycle": {"max_chars_no_space": 15},
-        "content": {"max_chars_no_space": 300, "bullet_count": 3}
+        "content": {"min_chars_no_space": 150, "max_chars_no_space": 350, "bullet_count": 3}
       },
       "format": "table",
       "description": "세부사업내용 테이블"
