@@ -77,11 +77,34 @@ with st.sidebar:
                 "파일에서 텍스트를 추출할 수 없습니다. PDF, DOCX, TXT, CSV 형식의 파일을 업로드해주세요.")
             upload_valid = False
 
+        extraction_failed_files = []
         with st.expander("디버그 정보"):
+            st.markdown("### 디버그: 파일별 텍스트 추출 상태")
+
+            for f in uploaded_files:
+                parsed = read_uploaded_file(f)
+                diag = parsed.get("diagnostic", {})
+                extracted_len = diag.get("extracted_len", 0)
+                note = diag.get("note", "")
+                
+                st.write(f"**{parsed.get('name')}**")
+                st.write(f"- bytes: {parsed.get('size')} | type: {parsed.get('type')} | extracted_len: {extracted_len}")
+                
+                if note:
+                    st.warning(note)
+                    extraction_failed_files.append(parsed.get("name"))
+                
+                if extracted_len > 0:
+                    st.code((parsed.get("text") or "")[:300])
+
             for i, uf in enumerate(uploaded_files):
                 st.caption(f"[{i+1}] {uf.name}: {uf.size/1024:.1f}KB")
             st.caption(f"요약 텍스트 길이: {len(compact_text)}자")
-            st.text_area("파일 요약 (Gemini 입력)", compact_text[:2000], height=150)
+        
+        if not compact_text.strip() and uploaded_files:
+            st.warning("업로드한 PDF에서 텍스트가 추출되지 않았습니다. 스캔/이미지 PDF일 수 있어 OCR이 필요합니다.")
+        elif extraction_failed_files:
+            st.info(f"일부 파일에서 텍스트 추출 실패: {', '.join(extraction_failed_files)}")
 
         with st.expander("업로드된 내용 미리보기"):
             combined_content = process_multiple_files(uploaded_files)

@@ -463,16 +463,60 @@ def _gemini_text(prompt: str,
 # 파일 읽기/텍스트 추출
 # -----------------------------
 def _extract_text_from_pdf_bytes(pdf_bytes: bytes) -> str:
-    """PDF 텍스트 추출: PyPDF2 우선"""
+    """
+    PDF 텍스트 추출 폴백:
+    1) PyPDF2
+    2) pdfplumber
+    3) PyMuPDF(fitz)
+    - 텍스트 기반 PDF는 최대한 추출
+    - 스캔/이미지 PDF는 여기서 텍스트가 거의 나오지 않으며, 이후 단계에서 OCR 안내
+    """
+    if not pdf_bytes:
+        return ""
+
+    def _clean(s: str) -> str:
+        return (s or "").replace("\x00", "").strip()
+
+    def _good_enough(s: str) -> bool:
+        return len(re.sub(r"\s+", "", s or "")) >= 30
+
     try:
-        from PyPDF2 import PdfReader  # type: ignore
+        from PyPDF2 import PdfReader
         reader = PdfReader(io.BytesIO(pdf_bytes))
         parts = []
         for page in reader.pages:
             parts.append(page.extract_text() or "")
-        return "\n".join(parts).strip()
+        txt = _clean("\n".join(parts))
+        if _good_enough(txt):
+            return txt
     except Exception:
-        return ""
+        pass
+
+    try:
+        import pdfplumber
+        parts = []
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            for p in pdf.pages:
+                parts.append(p.extract_text() or "")
+        txt = _clean("\n".join(parts))
+        if _good_enough(txt):
+            return txt
+    except Exception:
+        pass
+
+    try:
+        import fitz
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        parts = []
+        for page in doc:
+            parts.append(page.get_text("text") or "")
+        txt = _clean("\n".join(parts))
+        if _good_enough(txt):
+            return txt
+    except Exception:
+        pass
+
+    return ""
 
 
 def read_uploaded_file(uploaded_file) -> Dict[str, Any]:
@@ -495,7 +539,9 @@ def read_uploaded_file(uploaded_file) -> Dict[str, Any]:
     ext = os.path.splitext(name)[1].lower()
 
     text = ""
-    if "pdf" in file_type or ext == ".pdf":
+    is_pdf = "pdf" in file_type or ext == ".pdf"
+    
+    if is_pdf:
         text = _extract_text_from_pdf_bytes(raw)
     elif ext in [".txt", ".md", ".csv"]:
         try:
@@ -504,7 +550,7 @@ def read_uploaded_file(uploaded_file) -> Dict[str, Any]:
             text = str(raw)
     elif ext in [".xlsx", ".xls"]:
         try:
-            import pandas as pd  # type: ignore
+            import pandas as pd
             df = pd.read_excel(io.BytesIO(raw))
             text = df.to_csv(index=False)
         except Exception:
@@ -515,7 +561,19 @@ def read_uploaded_file(uploaded_file) -> Dict[str, Any]:
         except Exception:
             text = ""
 
-    return {"name": name, "size": size, "type": file_type, "text": text}
+    diagnostic = {
+        "ext": ext,
+        "mime": file_type,
+        "bytes": size,
+        "extracted_len": len(text or ""),
+        "pdf_text_extracted": bool((text or "").strip()),
+        "note": ""
+    }
+
+    if is_pdf and not (text or "").strip():
+        diagnostic["note"] = "PDF에서 텍스트 추출 실패(스캔/이미지 PDF 가능). OCR이 필요할 수 있습니다."
+
+    return {"name": name, "size": size, "type": file_type, "text": text, "diagnostic": diagnostic}
 
 
 def process_multiple_files(uploaded_files: List[Any]) -> List[Dict[str, Any]]:
