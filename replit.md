@@ -32,6 +32,17 @@ Preferred communication style: Simple, everyday language (Korean)
 - **Guideline Rules Enforcement**: A comprehensive system, configured via `guidelines_template.json`, enforces character counts (min/max, excluding spaces), bullet formatting, and row limits for all text fields and tables, using deterministic padding phrases when necessary.
 - **Error Handling**: Includes API key validation, robust JSON parsing, graceful font fallbacks, and defensive data initialization.
 - **Chart Generation**: `matplotlib` with Korean font configuration for generating satisfaction pie charts.
+- **Satisfaction Survey Normalization**: `normalize_satisfaction_survey()` function ensures consistent data structure between sample and uploaded data, with automatic column name normalization (5점(명)→5점, 매우만족→5점, etc.) and validation. Default survey data uses deterministic distribution (45% 5점, 35% 4점, 12% 3점, 5% 2점, remainder 1점) to always sum to total_respondents.
+
+## Recent Changes (2026-01-28)
+
+- **PART 1 Word Generation**: Complete rewrite of `generate_part1_report()` to include all 5 sections in correct order:
+  1. 사업의 필요성 (need_1, need_2_1, need_2_2, need_2_3)
+  2. 전년도 사업평가 및 환류계획 (feedback_table, total_review_table)
+  3. 만족도조사 (survey_data table with scores, subjective_analysis, overall_suggestion)
+  4. 사업목적 (purpose_text)
+  5. 사업목표 (goals_text)
+- **Satisfaction Survey Normalization**: Added `normalize_satisfaction_survey()` function integrated in two places (get_partitioned_analysis and apply_guidelines_to_analysis) to ensure consistency for both sample and uploaded data.
 
 ## External Dependencies
 
