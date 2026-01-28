@@ -133,14 +133,15 @@ Preferred communication style: Simple, everyday language (Korean)
 
 ## Recent Changes
 
-- **2026-01-28**: Comprehensive Guideline Rules Enforcement System
+- **2026-01-28**: Comprehensive Guideline Rules Enforcement System (min/max 100% 보장)
+  - **PADDING_PHRASES**: 8개의 한국어 보강 문구로 LLM 호출 없이 결정적 패딩
   - **Helper functions for text formatting:**
     - `_is_bullet_format()`: Checks if text uses bullet format
     - `_ensure_bullet_prefix()`: Forces all lines to start with "• "
     - `_ensure_bullet_count()`: Adjusts bullet count to target
     - `_truncate_to_max_no_space()`: Truncates based on max_chars (excluding spaces)
-    - `_pad_to_min_chars()`: Pads text to meet minimum character count
-    - `_apply_text_rule()`: Applies all text rules (format, bullet, min/max chars)
+    - `_pad_to_min_chars()`: 100% 보장 - min_chars 미달 시 PADDING_PHRASES로 무조건 채움
+    - `_apply_text_rule()`: 순서 보장 (불릿→min패딩→max자르기→불릿재적용), ✓/✗ 상태 표시
     - `_apply_table_rule()`: Applies table rules (max_rows, column min/max/bullet)
   - **`apply_guidelines_to_analysis()` function:**
     - Enforces rules for Part1 text fields (need_1, need_2_*, purpose, goals)

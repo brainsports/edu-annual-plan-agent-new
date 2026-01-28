@@ -1,0 +1,62 @@
+[문제]
+- UI에 분석 결과는 들어오지만, 작성지침의 min_chars_no_space(공백 제외 최소 글자수)가 충족되지 않는다.
+- 예: need_1_user_desire가 300~500이어야 하는데 공백 제외 53으로 남아있다.
+- 즉, apply_guidelines_to_analysis의 “최소 글자수 채우기”가 최종 analysis에 반영되지 않거나, 규칙 로드/적용이 누락되었다.
+
+[우선 확인(필수)]
+1) guidelines_template.json이 “유효한 JSON”인지 검사한다.
+   - 현재 파일에 쉼표(,) 누락이 있으면 json.load가 실패하므로 반드시 고친다.
+   - load_guideline_rules에서 예외 발생 시, 어떤 오류였는지 디버그로 화면에 출력한다.
+   - 예: st.expander("디버그: rules 로드")에
+     - 파일 존재 여부
+     - json.load 성공/실패 + 실패 시 예외 메시지
+     - rules["part1"]["need_1_user_desire"] 값 출력
+
+[핵심 수정(반드시 적용)]
+2) utils.py에서 “min_chars_no_space를 LLM 호출 없이도 100% 보장”하도록 후처리 로직을 강화한다.
+   - 현재는 _rewrite_to_fit_rule에서 gemini 재작성에 의존하는데, 결과가 짧으면 min이 안 채워질 수 있다.
+   - 해결: bullet/paragraph 모두에 대해 “결정적 padding”을 추가한다.
+
+   구현 요구사항:
+   A) bullet 필드(format="bullet", bullet_count>0)
+      - _ensure_bullet_count로 불릿 개수 고정
+      - 각 줄이 반드시 "• "로 시작
+      - 공백 제외 글자수가 min 미만이면,
+        각 불릿 줄 끝에 한국어 보강 문장을 반복적으로 덧붙여 min 이상이 될 때까지 채운다.
+        (LLM 호출 금지. 무조건 채워지게 while 루프)
+      - 그 후 max_chars_no_space로 자른다.
+      - 마지막에 다시 bullet_count와 "• " 접두를 재확인한다.
+
+   B) paragraph 필드(format="paragraph")
+      - 공백 제외 글자수가 min 미만이면,
+        문장 보강 텍스트를 반복적으로 덧붙여 min 이상으로 만든다(LLM 호출 금지).
+      - max_chars_no_space로 자른다.
+
+   C) 테이블 셀의 bullet_count도 동일하게 “불릿 개수 + 접두 + max”를 확실히 강제한다.
+
+3) apply_guidelines_to_analysis 적용이 ‘실제로 실행되고 결과가 반영되는지’ 검증 출력 추가
+   - main.py에서 AI 분석 완료 후 st.expander("규칙 검증")를 추가해 다음을 출력:
+     - part1의 각 텍스트 필드에 대해:
+       - count_chars_no_space(text)
+       - bullet_count 만족 여부(줄 수/접두)
+     - feedback_table, total_review_table 행 수
+     - part3/part4 월별 프로그램: 월별 row 수(<=8), content 불릿 2개 여부
+   - 사용자가 화면에서 즉시 “규칙 충족/미충족”을 확인 가능해야 한다.
+
+[월별 프로그램(중요)]
+4) part3.monthly_program / part4.monthly_program은 dict(월→list) 구조다.
+   - 월별 list에 대해 max_programs_per_month(8) 제한을 반드시 적용한다.
+   - 각 row의 content는 bullet_count=2를 강제한다.
+
+[테스트]
+- PDF 1~3개 업로드 → AI 분석 시작
+- “규칙 검증”에서:
+  - need_1_user_desire 공백제외 300~500 & 불릿 3줄 & 각 줄 "• "
+  - goals_text 공백제외 400~800 & 불릿 5줄
+  - purpose_text 공백제외 200~350 & 문단
+  - 월별 프로그램 각 월 최대 8개, content 불릿 2줄
+- 통과하면 커밋/체크포인트 생성
+
+[주의]
+- UI 흐름(업로드→분석→표 채움)은 유지
+- 규칙 충족은 “후처리(apply_guidelines_to_analysis)”에서 100% 보장

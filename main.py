@@ -175,7 +175,24 @@ else:
     if 'part4_budget_evaluation' not in data:
         data['part4_budget_evaluation'] = {"budget_table": [], "feedback_summary": []}
     
-    with st.expander("규칙 검증 결과", expanded=False):
+    with st.expander("규칙 검증 결과", expanded=True):
+        st.subheader("규칙 로드 상태")
+        rules = st.session_state.guideline_rules or {}
+        load_status = rules.get('_load_status', 'unknown')
+        load_error = rules.get('_load_error', None)
+        
+        if load_status == 'success':
+            st.success(f"규칙 로드 성공")
+            p1_keys = list(rules.get('part1', {}).keys())
+            st.caption(f"Part1 규칙 키: {', '.join(p1_keys)}")
+            sample_rule = rules.get('part1', {}).get('need_1_user_desire', {})
+            st.caption(f"need_1_user_desire 규칙: min={sample_rule.get('min_chars_no_space')}, max={sample_rule.get('max_chars_no_space')}, bullet={sample_rule.get('bullet_count')}")
+        else:
+            st.error(f"규칙 로드 실패: {load_status}")
+            if load_error:
+                st.error(load_error)
+        
+        st.markdown("---")
         st.subheader("작성지침 적용 로그")
         
         if st.session_state.guideline_logs:
