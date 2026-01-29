@@ -1595,7 +1595,7 @@ def apply_guidelines_to_analysis(data: dict, guideline_rules: dict) -> tuple:
 
 
 def get_partitioned_analysis(compact_text: str, progress_callback=None, month_bucket: dict = None, guideline_rules: dict = None) -> dict:
-    """파트별로 나눠서 Gemini 분석 수행. 부분 실패 허용. month_bucket과 guideline_rules 적용."""
+    """파트별로 나눠서 참참AI 분석 수행. 부분 실패 허용. month_bucket과 guideline_rules 적용."""
     result = {
         "part1_general": {},
         "part2_programs": {},

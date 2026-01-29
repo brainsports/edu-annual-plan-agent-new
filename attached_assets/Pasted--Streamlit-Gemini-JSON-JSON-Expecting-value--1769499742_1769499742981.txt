@@ -1,5 +1,5 @@
 [상황/문제]
-Streamlit 앱에서 Gemini 분석 결과를 JSON으로 파싱하는 과정에서 다음 문제가 반복된다:
+Streamlit 앱에서 참참AI 분석 결과를 JSON으로 파싱하는 과정에서 다음 문제가 반복된다:
 - JSON 파싱 오류(Expecting value)
 - 코드블록(```json) / 설명문이 섞여 파싱 실패
 - 최상위가 list로 반환되어 setdefault 오류 발생
