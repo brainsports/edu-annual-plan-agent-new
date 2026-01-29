@@ -36,6 +36,21 @@ Preferred communication style: Simple, everyday language (Korean)
 
 ## Recent Changes (2026-01-29)
 
+- **Critical Crash Fix - set_table_width_by_ratio() Compatibility**:
+  - Fixed `AttributeError: 'CT_Tbl' object has no attribute 'get_or_add_tblPr'`
+  - Now uses safe pattern: `tblPr = tbl.tblPr` then create with `OxmlElement()` if None
+  - Added try/except wrapper with error logging for robustness
+
+- **PART 2 Content Rules Enforcement**:
+  - 기대효과 (expected_effect): max 100 characters enforced
+  - 계획내용 (content): 3-5 bullet items enforced (min_bullet_count/max_bullet_count)
+  - Removed "(추가 내용 필요)" placeholder text from bullet padding
+  - Updated `_ensure_bullet_count()` to support min/max range
+
+- **PART 2 Word Table Column Widths**:
+  - Applied fixed ratios to 세부사업내용 table: 8% / 8% / 30% / 8% / 8% / 8% / 30%
+  - Columns: 세부영역, 프로그램명, 기대효과, 대상, 인원, 주기, 계획내용
+
 - **10-Question Enforcement for Satisfaction Survey**: 
   - Added `SURVEY_QUESTION_COUNT = 10` constant in both `utils.py` and `doc_utils.py`
   - `normalize_satisfaction_survey()` now enforces exactly 10 questions (pads with defaults if < 10, truncates if > 10)
@@ -47,7 +62,7 @@ Preferred communication style: Simple, everyday language (Korean)
     2. 응답 분포 (인원수) (grouped bar chart showing response distribution)
   - Charts displayed side-by-side in a 2-column table with 50/50 width ratio
 
-- **Fixed Table Column Widths**:
+- **Fixed Table Column Widths for PART 1**:
   - Added `set_table_width_by_ratio()` utility function with proper autofit disable and fixed layout
   - Applied to all PART 1 tables:
     - 차년도사업환류계획 테이블: 20% / 40% / 40%
