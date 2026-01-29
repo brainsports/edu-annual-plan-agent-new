@@ -91,7 +91,7 @@ def add_justified_paragraph(document: Document, text: str):
 
 def set_table_width_by_ratio(table, ratios: list, usable_width_inches: float = 6.5):
     """
-    표 컬럼 폭을 비율에 따라 고정합니다.
+    표 컬럼 폭을 비율에 따라 고정합니다. (python-docx 버전 호환)
     
     Args:
         table: python-docx Table 객체
@@ -101,42 +101,60 @@ def set_table_width_by_ratio(table, ratios: list, usable_width_inches: float = 6
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
     
-    table.autofit = False
-    
-    tbl = table._tbl
-    tblPr = tbl.get_or_add_tblPr()
-    
-    existing_layout = tblPr.find(qn('w:tblLayout'))
-    if existing_layout is not None:
-        tblPr.remove(existing_layout)
-    
-    tblLayout = OxmlElement('w:tblLayout')
-    tblLayout.set(qn('w:type'), 'fixed')
-    tblPr.append(tblLayout)
-    
-    total_width_twips = int(usable_width_inches * 1440)
-    
-    existing_tblW = tblPr.find(qn('w:tblW'))
-    if existing_tblW is not None:
-        tblPr.remove(existing_tblW)
-    tblW = OxmlElement('w:tblW')
-    tblW.set(qn('w:w'), str(total_width_twips))
-    tblW.set(qn('w:type'), 'dxa')
-    tblPr.append(tblW)
-    
-    for row in table.rows:
-        for i, cell in enumerate(row.cells):
-            if i < len(ratios):
-                cell_width = int(total_width_twips * ratios[i])
-                cell.width = cell_width
-                tcPr = cell._tc.get_or_add_tcPr()
-                existing_tcW = tcPr.find(qn('w:tcW'))
-                if existing_tcW is not None:
-                    tcPr.remove(existing_tcW)
-                tcW = OxmlElement('w:tcW')
-                tcW.set(qn('w:w'), str(cell_width))
-                tcW.set(qn('w:type'), 'dxa')
-                tcPr.append(tcW)
+    try:
+        table.autofit = False
+        
+        tbl = table._tbl
+        tblPr = tbl.tblPr
+        if tblPr is None:
+            tblPr = OxmlElement('w:tblPr')
+            tbl.insert(0, tblPr)
+        
+        existing_layout = tblPr.find(qn('w:tblLayout'))
+        if existing_layout is not None:
+            tblPr.remove(existing_layout)
+        
+        tblLayout = OxmlElement('w:tblLayout')
+        tblLayout.set(qn('w:type'), 'fixed')
+        tblPr.append(tblLayout)
+        
+        total_width_twips = int(usable_width_inches * 1440)
+        
+        existing_tblW = tblPr.find(qn('w:tblW'))
+        if existing_tblW is not None:
+            tblPr.remove(existing_tblW)
+        tblW = OxmlElement('w:tblW')
+        tblW.set(qn('w:w'), str(total_width_twips))
+        tblW.set(qn('w:type'), 'dxa')
+        tblPr.append(tblW)
+        
+        for row in table.rows:
+            for i, cell in enumerate(row.cells):
+                if i < len(ratios):
+                    cell_width = int(total_width_twips * ratios[i])
+                    cell.width = cell_width
+                    tc = cell._tc
+                    tcPr = tc.tcPr
+                    if tcPr is None:
+                        tcPr = OxmlElement('w:tcPr')
+                        tc.insert(0, tcPr)
+                    existing_tcW = tcPr.find(qn('w:tcW'))
+                    if existing_tcW is not None:
+                        tcPr.remove(existing_tcW)
+                    tcW = OxmlElement('w:tcW')
+                    tcW.set(qn('w:w'), str(cell_width))
+                    tcW.set(qn('w:type'), 'dxa')
+                    tcPr.append(tcW)
+        
+        try:
+            for i, ratio in enumerate(ratios):
+                if i < len(table.columns):
+                    table.columns[i].width = int(total_width_twips * ratio)
+        except Exception:
+            pass
+            
+    except Exception as e:
+        print(f"[set_table_width_by_ratio] 표 폭 설정 실패 (ratios={ratios}): {e}")
 
 
 def generate_satisfaction_charts(survey_data: list, total_respondents: int = 30):
