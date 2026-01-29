@@ -491,6 +491,7 @@ def generate_part2_report(programs_dict):
                     content = str(item.get('content', '') or '')
                     add_markdown_text(row[6], content)
                 
+                set_table_width_by_ratio(table, [0.08, 0.08, 0.30, 0.08, 0.08, 0.08, 0.30])
                 doc.add_paragraph("")
             
             eval_table = payload.get('eval_table', []) if isinstance(payload, dict) else []

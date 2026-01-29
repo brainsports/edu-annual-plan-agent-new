@@ -901,18 +901,19 @@ def _ensure_bullet_prefix(text: str) -> str:
     return '\n'.join(result)
 
 
-def _ensure_bullet_count(text: str, target_count: int) -> str:
-    """불릿 개수를 target_count에 맞춥니다."""
-    if not text or target_count <= 0:
+def _ensure_bullet_count(text: str, target_count: int, min_count: int = 0, max_count: int = 0) -> str:
+    """불릿 개수를 min~max 범위에 맞춥니다. target_count는 고정 개수용(기존 호환)."""
+    if not text:
         return text
     
     lines = [l.strip() for l in text.strip().split('\n') if l.strip()]
     
-    if len(lines) > target_count:
-        lines = lines[:target_count]
-    elif len(lines) < target_count:
-        while len(lines) < target_count:
-            lines.append("• (추가 내용 필요)")
+    if max_count > 0 and min_count > 0:
+        if len(lines) > max_count:
+            lines = lines[:max_count]
+    elif target_count > 0:
+        if len(lines) > target_count:
+            lines = lines[:target_count]
     
     return '\n'.join(lines)
 
@@ -1077,21 +1078,30 @@ def _apply_table_rule(table: list, rule: dict, table_name: str = "") -> dict:
                     cell_max = col_rule.get('max_chars_no_space', 0)
                     cell_min = col_rule.get('min_chars_no_space', 0)
                     cell_bullet = col_rule.get('bullet_count', 0)
+                    min_bullet = col_rule.get('min_bullet_count', 0)
+                    max_bullet = col_rule.get('max_bullet_count', 0)
                     
                     cell_text = str(row[col_name])
                     original_count = count_chars_no_space(cell_text)
                     
-                    if cell_bullet > 0:
+                    if min_bullet > 0 and max_bullet > 0:
+                        cell_text = _ensure_bullet_prefix(cell_text)
+                        cell_text = _ensure_bullet_count(cell_text, 0, min_bullet, max_bullet)
+                    elif cell_bullet > 0:
                         cell_text = _ensure_bullet_prefix(cell_text)
                         cell_text = _ensure_bullet_count(cell_text, cell_bullet)
                     
                     if cell_min > 0:
-                        cell_text = _pad_to_min_chars(cell_text, cell_min, is_bullet=(cell_bullet > 0))
+                        is_bullet_format = (cell_bullet > 0) or (min_bullet > 0)
+                        cell_text = _pad_to_min_chars(cell_text, cell_min, is_bullet=is_bullet_format)
                     
                     if cell_max > 0:
                         cell_text = _truncate_to_max_no_space(cell_text, cell_max)
                     
-                    if cell_bullet > 0:
+                    if min_bullet > 0 and max_bullet > 0:
+                        cell_text = _ensure_bullet_prefix(cell_text)
+                        cell_text = _ensure_bullet_count(cell_text, 0, min_bullet, max_bullet)
+                    elif cell_bullet > 0:
                         cell_text = _ensure_bullet_prefix(cell_text)
                         cell_text = _ensure_bullet_count(cell_text, cell_bullet)
                     
