@@ -3,6 +3,7 @@ import os
 import requests
 import pandas as pd
 import matplotlib
+import logging
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -17,6 +18,40 @@ from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
 
 SURVEY_QUESTION_COUNT = 10
+EXPECTED_EFFECT_MAX_CHARS = 100  # 공백 포함 100자
+
+logger = logging.getLogger(__name__)
+
+
+def truncate_expected_effect(text: str, max_chars: int = EXPECTED_EFFECT_MAX_CHARS) -> str:
+    """기대효과 100자 제한 (공백 포함). 축약 후에도 최소 10자 이상 유지."""
+    if not text:
+        return text
+    
+    text = str(text).strip()
+    original_len = len(text)
+    
+    if len(text) <= max_chars:
+        return text
+    
+    # 축약: 마지막 완성된 문장에서 자르기 시도
+    truncated = text[:max_chars]
+    
+    # 문장 끝 기호 찾기
+    last_period = max(truncated.rfind('.'), truncated.rfind('다.'), truncated.rfind('함.'), truncated.rfind('됨.'))
+    if last_period > max_chars // 2:
+        truncated = truncated[:last_period + 1]
+    else:
+        # 단어 경계에서 자르기
+        last_space = truncated.rfind(' ')
+        if last_space > max_chars // 2:
+            truncated = truncated[:last_space]
+    
+    if len(truncated) < 10:
+        truncated = text[:max_chars]
+    
+    logger.debug(f"[기대효과 100자] {original_len}→{len(truncated)} chars")
+    return truncated
 
 # --- 기본 서식 함수 ---
 def ensure_korean_font():
@@ -462,13 +497,42 @@ def generate_part2_report(programs_dict):
     set_standard_margins(doc)
     add_left_aligned_heading(doc, "PART 2: 세부 사업 계획", 1)
 
+    # 5대영역 순서 정의
+    category_order = ["보호", "교육", "문화", "정서지원", "지역사회연계"]
+    first_category = True
+
     if isinstance(programs_dict, dict):
-        for category, payload in programs_dict.items():
-            if category.startswith('_'):
-                continue
+        # 정렬된 순서로 영역 처리
+        sorted_categories = sorted(
+            [c for c in programs_dict.keys() if not c.startswith('_')],
+            key=lambda x: category_order.index(x) if x in category_order else 999
+        )
+        
+        for category in sorted_categories:
+            payload = programs_dict[category]
+            
+            # 페이지 나눔 (첫 영역 제외)
+            if not first_category:
+                doc.add_page_break()
+            first_category = False
+            
             doc.add_heading(str(category), level=2)
             
             detail_table = payload.get('detail_table', []) if isinstance(payload, dict) else []
+            
+            # 기대효과 100자 제한 적용 (이중 안전장치 - 워드 출력 직전)
+            effect_map = {}  # program_name -> expected_effect 매핑 (평가계획 연동용)
+            if detail_table:
+                for item in detail_table:
+                    original_effect = str(item.get('expected_effect', '') or '')
+                    truncated_effect = truncate_expected_effect(original_effect)
+                    item['expected_effect'] = truncated_effect
+                    
+                    # 평가계획 연동을 위한 매핑 저장
+                    prog_name = str(item.get('program_name', '') or '')
+                    if prog_name:
+                        effect_map[prog_name] = truncated_effect
+            
             if detail_table:
                 doc.add_heading("세부사업내용", level=3)
                 detail_headers = ["세부영역", "프로그램명", "기대효과", "대상", "인원", "주기", "계획내용"]
@@ -495,6 +559,22 @@ def generate_part2_report(programs_dict):
                 doc.add_paragraph("")
             
             eval_table = payload.get('eval_table', []) if isinstance(payload, dict) else []
+            
+            # 기존 스키마 호환성 + 기대효과 연동
+            for item in eval_table:
+                # 기존 스키마 호환: eval_tool/eval_timing → main_plan/eval_method
+                if 'eval_tool' in item and 'main_plan' not in item:
+                    item['main_plan'] = item.pop('eval_tool', '')
+                if 'eval_timing' in item and 'eval_method' not in item:
+                    item['eval_method'] = item.pop('eval_timing', '')
+                if 'sub_area' not in item:
+                    item['sub_area'] = ''
+                
+                # 기대효과가 없으면 detail_table에서 연동
+                prog_name = str(item.get('program_name', '') or '')
+                if not item.get('expected_effect') and prog_name in effect_map:
+                    item['expected_effect'] = effect_map[prog_name]
+            
             if eval_table:
                 doc.add_heading("평가계획", level=3)
                 eval_headers = ["세부영역", "프로그램명", "기대효과", "평가계획", "평가방법"]
@@ -509,12 +589,20 @@ def generate_part2_report(programs_dict):
                 for item in eval_table:
                     row = table.add_row().cells
                     row[0].text = str(item.get('sub_area', '') or '')
-                    row[1].text = str(item.get('program_name', '') or '')
-                    effect = str(item.get('expected_effect', '') or '')
+                    prog_name = str(item.get('program_name', '') or '')
+                    row[1].text = prog_name
+                    
+                    # 기대효과 연동: detail_table의 값을 사용 (없으면 eval_table 값 사용 후 100자 제한)
+                    if prog_name in effect_map:
+                        effect = effect_map[prog_name]
+                    else:
+                        effect = truncate_expected_effect(str(item.get('expected_effect', '') or ''))
                     add_markdown_text(row[2], effect)
                     row[3].text = str(item.get('main_plan', '') or '')
                     row[4].text = str(item.get('eval_method', '') or '')
                 
+                # 평가계획 표 비율: 15/15/40/15/15
+                set_table_width_by_ratio(table, [0.15, 0.15, 0.40, 0.15, 0.15])
                 doc.add_paragraph("")
             
             if not detail_table and not eval_table:

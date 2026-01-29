@@ -918,6 +918,41 @@ def _ensure_bullet_count(text: str, target_count: int, min_count: int = 0, max_c
     return '\n'.join(lines)
 
 
+EXPECTED_EFFECT_MAX_CHARS = 100  # 기대효과 공백 포함 100자 제한
+
+
+def truncate_expected_effect_with_space(text: str, max_chars: int = EXPECTED_EFFECT_MAX_CHARS) -> str:
+    """기대효과 100자 제한 (공백 포함). 축약 후에도 최소 10자 이상 유지."""
+    if not text:
+        return text
+    
+    text = str(text).strip()
+    original_len = len(text)
+    
+    if len(text) <= max_chars:
+        return text
+    
+    # 축약: 마지막 완성된 문장에서 자르기 시도
+    truncated = text[:max_chars]
+    
+    # 문장 끝 기호 찾기
+    last_period = max(truncated.rfind('.'), truncated.rfind('다.'), truncated.rfind('함.'), truncated.rfind('됨.'))
+    if last_period > max_chars // 2:
+        truncated = truncated[:last_period + 1]
+    else:
+        # 단어 경계에서 자르기
+        last_space = truncated.rfind(' ')
+        if last_space > max_chars // 2:
+            truncated = truncated[:last_space]
+    
+    if len(truncated) < 10:
+        truncated = text[:max_chars]
+    
+    import logging
+    logging.debug(f"[기대효과 100자] {original_len}→{len(truncated)} chars")
+    return truncated
+
+
 def _truncate_to_max_no_space(text: str, max_chars: int) -> str:
     """공백 제외 글자수 기준으로 자릅니다."""
     if not text or max_chars <= 0:
@@ -1249,6 +1284,17 @@ def apply_guidelines_to_analysis(data: dict, guideline_rules: dict) -> tuple:
                     result = _apply_table_rule(cat_data[table_name], p2_rules[table_name], f"{category}/{table_name}")
                     cat_data[table_name] = result['table']
                     logs.append(f"[Part2] {result['log']}")
+            
+            # 기대효과 100자 제한 (공백 포함) - 이중 안전장치 1차 (생성 직후)
+            for table_name in ['detail_table', 'eval_table']:
+                if table_name in cat_data and isinstance(cat_data[table_name], list):
+                    for item in cat_data[table_name]:
+                        if isinstance(item, dict) and 'expected_effect' in item:
+                            original = str(item.get('expected_effect', '') or '')
+                            truncated = truncate_expected_effect_with_space(original)
+                            if len(original) != len(truncated):
+                                logs.append(f"[Part2] {category}/{table_name} 기대효과: {len(original)}→{len(truncated)}자")
+                            item['expected_effect'] = truncated
     
     data['part2_programs'] = part2
     

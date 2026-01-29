@@ -36,20 +36,35 @@ Preferred communication style: Simple, everyday language (Korean)
 
 ## Recent Changes (2026-01-29)
 
+- **PART 2 Preview Mode Enhancement**:
+  - Preview now shows both 기대효과 and 계획내용 with bold labels (🎯 기대효과:, 📝 계획내용:)
+  - 평가계획 preview updated to 5-column structure (세부영역, 프로그램명, 기대효과, 평가계획, 평가방법)
+  - Backward compatibility: old schema (eval_tool/eval_timing) auto-mapped to new schema (main_plan/eval_method)
+
+- **기대효과 100자 이중 안전장치**:
+  - 공백 포함 100자 제한 (utils.py + doc_utils.py 양쪽에서 적용)
+  - 1차: 데이터 생성 직후 (apply_guidelines_to_analysis)
+  - 2차: 워드 출력 직전 (generate_part2_report)
+  - 축약 로직: 문장 경계 또는 단어 경계에서 자연스럽게 자름
+
+- **5대영역 페이지 나눔**:
+  - 워드 출력 시 각 영역(보호→교육→문화→정서지원→지역사회연계) 시작 전 page break 삽입
+  - 영역 순서 정렬 자동 적용
+
+- **평가계획 표 개선**:
+  - 기대효과 연동: detail_table의 expected_effect를 program_name으로 매핑
+  - 표 가로폭 비율: 15% / 15% / 40% / 15% / 15%
+
+- **세부사업내용 표 비율 유지**: 8% / 8% / 30% / 8% / 8% / 8% / 30%
+
 - **Critical Crash Fix - set_table_width_by_ratio() Compatibility**:
   - Fixed `AttributeError: 'CT_Tbl' object has no attribute 'get_or_add_tblPr'`
   - Now uses safe pattern: `tblPr = tbl.tblPr` then create with `OxmlElement()` if None
   - Added try/except wrapper with error logging for robustness
 
 - **PART 2 Content Rules Enforcement**:
-  - 기대효과 (expected_effect): max 100 characters enforced
   - 계획내용 (content): 3-5 bullet items enforced (min_bullet_count/max_bullet_count)
   - Removed "(추가 내용 필요)" placeholder text from bullet padding
-  - Updated `_ensure_bullet_count()` to support min/max range
-
-- **PART 2 Word Table Column Widths**:
-  - Applied fixed ratios to 세부사업내용 table: 8% / 8% / 30% / 8% / 8% / 8% / 30%
-  - Columns: 세부영역, 프로그램명, 기대효과, 대상, 인원, 주기, 계획내용
 
 - **10-Question Enforcement for Satisfaction Survey**: 
   - Added `SURVEY_QUESTION_COUNT = 10` constant in both `utils.py` and `doc_utils.py`

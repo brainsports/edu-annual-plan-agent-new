@@ -672,10 +672,11 @@ else:
         if preview_mode_p2:
             for idx, row in detail_df.iterrows():
                 st.markdown(f"#### 📄 {row.get('세부영역', '')} > {row.get('프로그램명', '')}")
-                exp_effect = row.get('기대효과', '기대효과 내용이 없습니다.')
-                st.info(f"**🎯 기대효과**: {exp_effect}")
+                exp_effect = row.get('기대효과', '') or '기대효과 내용이 없습니다.'
+                plan_content = row.get('계획내용', '') or '계획내용이 없습니다.'
+                st.markdown(f"**🎯 기대효과:** {exp_effect}")
+                st.markdown(f"**📝 계획내용:** {plan_content}")
                 st.markdown(f"**대상**: {row.get('대상', '')} | **인원**: {row.get('인원', '')} | **주기**: {row.get('주기', '')}")
-                st.markdown(row.get('계획내용', ''))
                 st.markdown("---")
         else:
             st.caption("💡 팁: 칸이 좁아 보이면 더블클릭하여 전체 내용을 확인/수정하세요.")
@@ -711,24 +712,47 @@ else:
         st.subheader(f"📊 {selected_category} - 평가계획")
         
         eval_data = category_data.get('eval_table', [])
-        eval_df = pd.DataFrame(eval_data) if eval_data else pd.DataFrame(columns=['program_name', 'eval_tool', 'eval_method', 'eval_timing'])
+        
+        # 기존 스키마 호환성: eval_tool/eval_timing → main_plan/eval_method 매핑
+        if eval_data:
+            for item in eval_data:
+                if 'eval_tool' in item and 'main_plan' not in item:
+                    item['main_plan'] = item.pop('eval_tool', '')
+                if 'eval_timing' in item and 'eval_method' not in item:
+                    item['eval_method'] = item.pop('eval_timing', '')
+                if 'sub_area' not in item:
+                    item['sub_area'] = ''
+                if 'expected_effect' not in item:
+                    # detail_table에서 program_name으로 기대효과 연동
+                    prog_name = item.get('program_name', '')
+                    for detail in detail_data:
+                        if detail.get('program_name') == prog_name:
+                            item['expected_effect'] = detail.get('expected_effect', '')
+                            item['sub_area'] = detail.get('sub_area', '')
+                            break
+                    if 'expected_effect' not in item:
+                        item['expected_effect'] = ''
+        
+        eval_df = pd.DataFrame(eval_data) if eval_data else pd.DataFrame(columns=['sub_area', 'program_name', 'expected_effect', 'main_plan', 'eval_method'])
         
         if not eval_df.empty and 'program_name' in eval_df.columns:
             eval_df = eval_df.rename(columns={
+                'sub_area': '세부영역',
                 'program_name': '프로그램명',
-                'eval_tool': '평가도구',
-                'eval_method': '평가방법',
-                'eval_timing': '평가시기'
+                'expected_effect': '기대효과',
+                'main_plan': '평가계획',
+                'eval_method': '평가방법'
             })
         else:
-            eval_df = pd.DataFrame(columns=['프로그램명', '평가도구', '평가방법', '평가시기'])
+            eval_df = pd.DataFrame(columns=['세부영역', '프로그램명', '기대효과', '평가계획', '평가방법'])
         
         if preview_mode_p2:
             for idx, row in eval_df.iterrows():
-                st.markdown(f"**{row.get('프로그램명', '')}**")
-                st.markdown(f"- 평가도구: {row.get('평가도구', '')}")
-                st.markdown(f"- 평가방법: {row.get('평가방법', '')}")
-                st.markdown(f"- 평가시기: {row.get('평가시기', '')}")
+                st.markdown(f"#### 📊 {row.get('세부영역', '')} > {row.get('프로그램명', '')}")
+                exp_effect = row.get('기대효과', '') or '기대효과 내용이 없습니다.'
+                st.markdown(f"**🎯 기대효과:** {exp_effect}")
+                st.markdown(f"**📋 평가계획:** {row.get('평가계획', '')}")
+                st.markdown(f"**📏 평가방법:** {row.get('평가방법', '')}")
                 st.markdown("---")
         else:
             edited_eval = st.data_editor(
@@ -737,20 +761,22 @@ else:
                 use_container_width=True,
                 hide_index=True,
                 column_config={
+                    "세부영역": st.column_config.TextColumn("세부영역", width="small"),
                     "프로그램명": st.column_config.TextColumn("프로그램명", width="medium"),
-                    "평가도구": st.column_config.TextColumn("평가도구", width="medium"),
-                    "평가방법": st.column_config.TextColumn("평가방법", width="large"),
-                    "평가시기": st.column_config.TextColumn("평가시기", width="small"),
+                    "기대효과": st.column_config.TextColumn("기대효과", width="large"),
+                    "평가계획": st.column_config.TextColumn("평가계획", width="medium"),
+                    "평가방법": st.column_config.TextColumn("평가방법", width="medium"),
                 },
                 key=f"p2_eval_{selected_category}"
             )
             
             data['part2_programs'][selected_category]['eval_table'] = edited_eval.rename(
                 columns={
+                    '세부영역': 'sub_area',
                     '프로그램명': 'program_name',
-                    '평가도구': 'eval_tool',
-                    '평가방법': 'eval_method',
-                    '평가시기': 'eval_timing'
+                    '기대효과': 'expected_effect',
+                    '평가계획': 'main_plan',
+                    '평가방법': 'eval_method'
                 }
             ).to_dict('records')
         
