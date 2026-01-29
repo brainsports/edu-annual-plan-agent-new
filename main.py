@@ -43,16 +43,14 @@ try:
 except:
     pass
 
-st.set_page_config(page_title="AI 사업계획 도우미",
-                   page_icon="🤝",
-                   layout="wide")
+st.set_page_config(page_title="AI 사업계획 도우미", page_icon="🤝", layout="wide")
 
 # 전체 스타일 적용 (박스형 레이아웃, 따뜻한 크림색 배경)
 APP_STYLE = """
 <style>
-/* 전체 앱 배경 - 따뜻한 크림색 */
-.stApp {
-    background-color: #FFF8E7 !important;
+/* 전체 앱 배경 - 따뜻한 웜 베이지 */
+.stApp, [data-testid="stAppViewContainer"] {
+    background-color: #F9F5F0 !important;
 }
 
 /* Streamlit 기본 UI 숨김 */
@@ -67,15 +65,18 @@ footer {visibility: hidden;}
     display: none !important;
 }
 
-/* 박스형 레이아웃 - 메인 컨테이너 */
+/* 박스형 레이아웃 - 메인 컨테이너 (여백 2배 강화) */
 .main .block-container {
-    max-width: 1200px !important;
-    margin: 2rem auto !important;
+    max-width: 1000px !important;
+    margin: 3rem auto !important;
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
     background: #FFFFFF;
-    border-radius: 24px;
-    padding: 2rem 2.5rem !important;
-    box-shadow: 0 8px 32px rgba(167, 139, 250, 0.12), 
-                0 2px 8px rgba(0, 0, 0, 0.04);
+    border-radius: 28px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08), 
+                0 4px 12px rgba(167, 139, 250, 0.06);
 }
 
 /* 메인 컨테이너 스타일 */
@@ -258,21 +259,21 @@ WRITING_TIPS_HTML = """
 </div>
 """
 
+
 # ============================================================
 # 파일 업로드 처리 함수 (왼쪽 칼럼용)
 # ============================================================
 def render_file_upload_section():
     """왼쪽 칼럼에 파일 업로드 UI 렌더링"""
-    st.markdown('<div class="upload-box"><h4>📁 파일 업로드</h4></div>', unsafe_allow_html=True)
-    
-    uploaded_files = st.file_uploader(
-        "PDF, DOCX 파일 지원",
-        type=['pdf', 'docx', 'txt', 'csv'],
-        accept_multiple_files=True,
-        label_visibility="collapsed",
-        key="main_uploader"
-    )
-    
+    st.markdown('<div class="upload-box"><h4>📁 파일 업로드</h4></div>',
+                unsafe_allow_html=True)
+
+    uploaded_files = st.file_uploader("PDF, DOCX 파일 지원",
+                                      type=['pdf', 'docx', 'txt', 'csv'],
+                                      accept_multiple_files=True,
+                                      label_visibility="collapsed",
+                                      key="main_uploader")
+
     if uploaded_files:
         total_size_bytes = sum(uf.size for uf in uploaded_files)
         total_size_mb = total_size_bytes / (1024 * 1024)
@@ -304,23 +305,26 @@ def render_file_upload_section():
         month_bucket = bucket_programs_by_month(file_summaries)
 
         return uploaded_files, upload_valid, compact_text, month_bucket
-    
+
     return None, False, "", {}
+
 
 def render_sample_button():
     """샘플 데이터 버튼 렌더링"""
     st.markdown("---")
     st.caption("처음이라면 샘플로 체험해 보세요")
-    if st.button("📋 샘플 체험", use_container_width=True):
+    if st.button("📋 예시 데이터", use_container_width=True):
         raw_data = get_default_data()
         rules = load_guideline_rules()
-        adjusted_data, adjustment_logs = apply_guidelines_to_analysis(raw_data, rules)
+        adjusted_data, adjustment_logs = apply_guidelines_to_analysis(
+            raw_data, rules)
         st.session_state.analysis_data = adjusted_data
         st.session_state.guideline_rules = rules
         for log in adjustment_logs:
             logger.info(log)
         st.success("샘플 로드 완료!")
         st.rerun()
+
 
 # ============================================================
 # 메인 3단 레이아웃 (No Sidebar)
@@ -330,21 +334,26 @@ def render_sample_button():
 if st.session_state.analysis_data is None:
     # 3단 레이아웃: 왼쪽(20%) - 중앙(60%) - 오른쪽(20%)
     left_col, center_col, right_col = st.columns([1, 3, 1])
-    
+
     # 왼쪽 칼럼: 파일 업로드
     with left_col:
-        uploaded_files, upload_valid, compact_text, month_bucket = render_file_upload_section()
-        
+        uploaded_files, upload_valid, compact_text, month_bucket = render_file_upload_section(
+        )
+
         if uploaded_files and upload_valid:
             st.markdown("")
-            if st.button("✨ 마법처럼 분석 시작", type="primary", use_container_width=True):
+            if st.button("✨ 마법처럼 분석 시작",
+                         type="primary",
+                         use_container_width=True):
                 progress_placeholder = st.empty()
 
                 def update_progress(msg):
                     if "PART 1" in msg or "PART 2" in msg:
-                        progress_placeholder.info(FRIENDLY_MESSAGES['analyzing'])
+                        progress_placeholder.info(
+                            FRIENDLY_MESSAGES['analyzing'])
                     elif "PART 3" in msg or "PART 4" in msg:
-                        progress_placeholder.info(FRIENDLY_MESSAGES['almost_done'])
+                        progress_placeholder.info(
+                            FRIENDLY_MESSAGES['almost_done'])
                     else:
                         progress_placeholder.info(FRIENDLY_MESSAGES['reading'])
 
@@ -370,14 +379,14 @@ if st.session_state.analysis_data is None:
                         else:
                             st.success(FRIENDLY_MESSAGES['complete'])
                         st.rerun()
-        
+
         render_sample_button()
-        
+
         if SHOW_INTERNAL:
             with st.expander("작성지침 (JSON)"):
                 if st.session_state.guideline_rules:
                     st.json(st.session_state.guideline_rules)
-    
+
     # 중앙 칼럼: 메인 콘텐츠
     with center_col:
         # 라벤더 배너 타이틀
@@ -385,8 +394,9 @@ if st.session_state.analysis_data is None:
         <div class="lavender-banner">
             <h1>AI 연간 사업계획 통합 에이전트 ✨</h1>
         </div>
-        """, unsafe_allow_html=True)
-        
+        """,
+                    unsafe_allow_html=True)
+
         # 안내 카드
         st.markdown("""
         <div class="main-card" style="text-align: center;">
@@ -395,8 +405,9 @@ if st.session_state.analysis_data is None:
             <p style="color: #9CA3AF; margin-bottom: 1rem;">PDF / DOCX 파일 업로드 가능</p>
             <p style="color: #6B7280;">👈 왼쪽에서 파일을 선택하고 '마법처럼 분석 시작' 버튼을 눌러주세요</p>
         </div>
-        """, unsafe_allow_html=True)
-        
+        """,
+                    unsafe_allow_html=True)
+
         # 캐릭터 말풍선
         st.markdown("""
         <div style="display: flex; align-items: flex-start; gap: 1rem; margin-top: 1.5rem; justify-content: center;">
@@ -407,15 +418,16 @@ if st.session_state.analysis_data is None:
                 </p>
             </div>
         </div>
-        """, unsafe_allow_html=True)
-    
+        """,
+                    unsafe_allow_html=True)
+
     # 오른쪽 칼럼: 작성 팁
     with right_col:
         st.markdown(WRITING_TIPS_HTML, unsafe_allow_html=True)
 else:
     # 데이터 있을 때도 3단 레이아웃 유지
     left_col, center_col, right_col = st.columns([1, 3, 1])
-    
+
     data = st.session_state.analysis_data
 
     if 'part1_general' not in data:
@@ -431,21 +443,22 @@ else:
             "budget_table": [],
             "feedback_summary": []
         }
-    
+
     # 왼쪽 칼럼: 새 분석 / 초기화
     with left_col:
-        st.markdown('<div class="upload-box"><h4>📁 새 분석</h4></div>', unsafe_allow_html=True)
+        st.markdown('<div class="upload-box"><h4>📁 새 분석</h4></div>',
+                    unsafe_allow_html=True)
         if st.button("🔄 처음부터 다시", use_container_width=True):
             st.session_state.analysis_data = None
             st.rerun()
-        
+
         st.markdown("---")
         st.caption("현재 분석 완료된 데이터를 수정하고 워드 파일로 다운로드하세요.")
 
     # 오른쪽 칼럼: 작성 팁
     with right_col:
         st.markdown(WRITING_TIPS_HTML, unsafe_allow_html=True)
-    
+
     # 중앙 칼럼: 메인 콘텐츠 (탭, 분석 결과)
     with center_col:
         # 라벤더 배너 타이틀
@@ -453,7 +466,8 @@ else:
         <div class="lavender-banner">
             <h1>AI 연간 사업계획 통합 에이전트 ✨</h1>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+                    unsafe_allow_html=True)
 
         if SHOW_INTERNAL:
             with st.expander("규칙 검증 결과 (디버그)", expanded=False):
@@ -466,8 +480,11 @@ else:
                     st.success(f"규칙 로드 성공")
                     p1_keys = list(rules.get('part1', {}).keys())
                     st.caption(f"Part1 규칙 키: {', '.join(p1_keys)}")
-                    sample_rule = rules.get('part1', {}).get('need_1_user_desire', {})
-                    st.caption(f"need_1_user_desire 규칙: min={sample_rule.get('min_chars_no_space')}, max={sample_rule.get('max_chars_no_space')}, bullet={sample_rule.get('bullet_count')}")
+                    sample_rule = rules.get('part1',
+                                            {}).get('need_1_user_desire', {})
+                    st.caption(
+                        f"need_1_user_desire 규칙: min={sample_rule.get('min_chars_no_space')}, max={sample_rule.get('max_chars_no_space')}, bullet={sample_rule.get('bullet_count')}"
+                    )
                 else:
                     st.error(f"규칙 로드 실패: {load_status}")
                     if load_error:
@@ -494,7 +511,8 @@ else:
                                ('need_2_1_regional', '지역적 특성'),
                                ('need_2_2_environment', '주변환경'),
                                ('need_2_3_educational', '교육적 특성'),
-                               ('purpose_text', '사업목적'), ('goals_text', '사업목표')]
+                               ('purpose_text', '사업목적'),
+                               ('goals_text', '사업목표')]
 
                 for field_key, field_label in text_fields:
                     text = part1.get(field_key, '')
@@ -505,7 +523,10 @@ else:
                     fmt = rule.get('format', 'paragraph')
 
                     actual_chars = count_chars_no_space(text)
-                    actual_bullets = len([l for l in text.split('\n') if l.strip().startswith('•')]) if text else 0
+                    actual_bullets = len([
+                        l for l in text.split('\n')
+                        if l.strip().startswith('•')
+                    ]) if text else 0
 
                     status = "✅"
                     if max_c > 0 and actual_chars > max_c:
@@ -520,7 +541,9 @@ else:
                         else:
                             bullet_status = f"❌ 불릿:{actual_bullets}/{bullet}"
 
-                    st.caption(f"• {field_label}: {actual_chars}자 (범위:{min_c}~{max_c}) {status} {bullet_status}")
+                    st.caption(
+                        f"• {field_label}: {actual_chars}자 (범위:{min_c}~{max_c}) {status} {bullet_status}"
+                    )
 
                 st.markdown("**Part 1 테이블:**")
                 for table_name in ['feedback_table', 'total_review_table']:
@@ -529,7 +552,9 @@ else:
                     max_rows = rule.get('max_rows', 100)
                     actual_rows = len(table) if isinstance(table, list) else 0
                     status = "✅" if actual_rows <= max_rows else "❌"
-                    st.caption(f"• {table_name}: {actual_rows}행 (max:{max_rows}) {status}")
+                    st.caption(
+                        f"• {table_name}: {actual_rows}행 (max:{max_rows}) {status}"
+                    )
 
                 st.markdown("**Part 2 세부사업 테이블:**")
                 part2 = data.get('part2_programs', {})
@@ -545,12 +570,16 @@ else:
                         et_cnt = len(cat_data.get('eval_table', []))
                         dt_status = "✅" if dt_cnt <= detail_max else "❌"
                         et_status = "✅" if et_cnt <= eval_max else "❌"
-                        st.caption(f"• {cat_name}: detail={dt_cnt}{dt_status} eval={et_cnt}{et_status}")
+                        st.caption(
+                            f"• {cat_name}: detail={dt_cnt}{dt_status} eval={et_cnt}{et_status}"
+                        )
 
                 st.markdown("**Part 3/4 월별 프로그램:**")
-                for part_key, part_label in [('part3_monthly_plan', 'Part3'), ('part4_monthly_plan', 'Part4')]:
+                for part_key, part_label in [('part3_monthly_plan', 'Part3'),
+                                             ('part4_monthly_plan', 'Part4')]:
                     monthly = data.get(part_key, {})
-                    p_rules = rules.get(part_key.replace('_monthly_plan', ''), {})
+                    p_rules = rules.get(part_key.replace('_monthly_plan', ''),
+                                        {})
                     mp_rule = p_rules.get('monthly_program', {})
                     max_per_month = mp_rule.get('max_programs_per_month', 8)
 
@@ -561,7 +590,9 @@ else:
                         month_summary.append(f"{m}:{cnt}{status}")
 
                     if month_summary:
-                        st.caption(f"• {part_label}: {', '.join(month_summary[:6])}... (max:{max_per_month})")
+                        st.caption(
+                            f"• {part_label}: {', '.join(month_summary[:6])}... (max:{max_per_month})"
+                        )
 
                 st.markdown("**Part 4 예산/환류 테이블:**")
                 budget_eval = data.get('part4_budget_evaluation', {})
@@ -575,8 +606,12 @@ else:
                 fs_cnt = len(budget_eval.get('feedback_summary', []))
                 bt_status = "✅" if bt_cnt <= budget_max else "❌"
                 fs_status = "✅" if fs_cnt <= feedback_max else "❌"
-                st.caption(f"• budget_table: {bt_cnt}행 (max:{budget_max}) {bt_status}")
-                st.caption(f"• feedback_summary: {fs_cnt}행 (max:{feedback_max}) {fs_status}")
+                st.caption(
+                    f"• budget_table: {bt_cnt}행 (max:{budget_max}) {bt_status}"
+                )
+                st.caption(
+                    f"• feedback_summary: {fs_cnt}행 (max:{feedback_max}) {fs_status}"
+                )
 
         # 중앙 칼럼 내 탭 (center_col 안에서 렌더링)
         tab1, tab2, tab3, tab4 = st.tabs([
@@ -599,14 +634,16 @@ else:
                 current = count_chars_no_space(text)
                 if max_chars > 0:
                     color = "red" if current > max_chars else "green"
-                    st.caption(f":{color}[공백 제외 글자수: {current} / {max_chars}자]")
+                    st.caption(
+                        f":{color}[공백 제외 글자수: {current} / {max_chars}자]")
                 else:
                     st.caption(f"공백 제외 글자수: {current}자")
 
             with st.expander("1. 사업의 필요성", expanded=True):
                 st.subheader("1) 이용아동의 욕구 및 문제점")
                 need_1 = st.text_area("1) 이용아동의 욕구 및 문제점 (상세 서술)",
-                                      value=part1.get('need_1_user_desire', ''),
+                                      value=part1.get('need_1_user_desire',
+                                                      ''),
                                       height=300,
                                       key="p1_need_1")
                 show_char_count(need_1, 'need_1_user_desire', p1_rules)
@@ -615,23 +652,24 @@ else:
                 st.subheader("2) 지역 환경적 특성")
 
                 need_2_1 = st.text_area("(1) 지역적 특성 (상세 서술)",
-                                        value=part1.get('need_2_1_regional', ''),
+                                        value=part1.get(
+                                            'need_2_1_regional', ''),
                                         height=200,
                                         key="p1_need_2_1")
                 show_char_count(need_2_1, 'need_2_1_regional', p1_rules)
                 data['part1_general']['need_2_1_regional'] = need_2_1
 
                 need_2_2 = st.text_area("(2) 주변환경 (상세 서술)",
-                                        value=part1.get('need_2_2_environment',
-                                                        ''),
+                                        value=part1.get(
+                                            'need_2_2_environment', ''),
                                         height=200,
                                         key="p1_need_2_2")
                 show_char_count(need_2_2, 'need_2_2_environment', p1_rules)
                 data['part1_general']['need_2_2_environment'] = need_2_2
 
                 need_2_3 = st.text_area("(3) 교육적 특성 (상세 서술)",
-                                        value=part1.get('need_2_3_educational',
-                                                        ''),
+                                        value=part1.get(
+                                            'need_2_3_educational', ''),
                                         height=200,
                                         key="p1_need_2_3")
                 show_char_count(need_2_3, 'need_2_3_educational', p1_rules)
@@ -675,11 +713,12 @@ else:
                         use_container_width=True,
                         hide_index=True,
                         column_config={
-                            "영역": st.column_config.TextColumn("영역", width=100),
-                            "문제점": st.column_config.TextColumn("문제점",
-                                                               width="large"),
-                            "개선방안": st.column_config.TextColumn("개선방안",
-                                                                width="large"),
+                            "영역":
+                            st.column_config.TextColumn("영역", width=100),
+                            "문제점":
+                            st.column_config.TextColumn("문제점", width="large"),
+                            "개선방안":
+                            st.column_config.TextColumn("개선방안", width="large"),
                         },
                         key="p1_feedback_tbl")
 
@@ -705,7 +744,9 @@ else:
                 else:
                     total_review_df = pd.DataFrame(columns=['영역', '내용'])
 
-                target_review_order = ["운영평가", "아동평가", "프로그램평가", "후원활동측면", "환류방안"]
+                target_review_order = [
+                    "운영평가", "아동평가", "프로그램평가", "후원활동측면", "환류방안"
+                ]
                 if not total_review_df.empty and '영역' in total_review_df.columns:
                     total_review_df['영역'] = pd.Categorical(
                         total_review_df['영역'],
@@ -746,14 +787,16 @@ else:
             with st.expander("3. 만족도조사", expanded=True):
                 satisfaction_survey = part1.get('satisfaction_survey', {})
 
-                if satisfaction_survey and satisfaction_survey.get('survey_data'):
+                if satisfaction_survey and satisfaction_survey.get(
+                        'survey_data'):
                     st.subheader("응답자 설정")
                     col_resp, col_btn = st.columns([2, 1])
                     with col_resp:
                         total_respondents = st.number_input(
                             "총 응답 인원 (명)",
                             min_value=1,
-                            value=satisfaction_survey.get('total_respondents', 30),
+                            value=satisfaction_survey.get(
+                                'total_respondents', 30),
                             key="p1_total_resp")
                         data['part1_general']['satisfaction_survey'][
                             'total_respondents'] = total_respondents
@@ -853,7 +896,9 @@ else:
                                 ]).properties(height=400)
 
                         avg_text = avg_bar.mark_text(
-                            align='left', baseline='middle', dx=3,
+                            align='left',
+                            baseline='middle',
+                            dx=3,
                             color='black').encode(
                                 text=alt.Text('평균점수:Q', format='.2f'))
 
@@ -873,7 +918,8 @@ else:
                             order=alt.Order('척도:N', sort='descending'),
                             tooltip=['문항:N', '척도:N',
                                      '인원수:Q']).properties(height=400)
-                        st.altair_chart(stacked_chart, use_container_width=True)
+                        st.altair_chart(stacked_chart,
+                                        use_container_width=True)
 
                     st.markdown("---")
 
@@ -888,7 +934,8 @@ else:
 
                     subjective_analysis = st.text_area(
                         "주관식 문항 요약 및 분석 (500자 이상)",
-                        value=satisfaction_survey.get('subjective_analysis', ''),
+                        value=satisfaction_survey.get('subjective_analysis',
+                                                      ''),
                         height=300,
                         key="p1_subj_analysis")
                     data['part1_general']['satisfaction_survey'][
@@ -899,7 +946,8 @@ else:
                     st.subheader("종합 분석 및 제언")
                     overall_suggestion = st.text_area(
                         "종합 분석 및 제언 (500자 이상)",
-                        value=satisfaction_survey.get('overall_suggestion', ''),
+                        value=satisfaction_survey.get('overall_suggestion',
+                                                      ''),
                         height=300,
                         key="p1_overall_suggestion")
                     data['part1_general']['satisfaction_survey'][
@@ -969,7 +1017,10 @@ else:
             part2 = data.get('part2_programs', {})
 
             if selected_category not in part2:
-                part2[selected_category] = {"detail_table": [], "eval_table": []}
+                part2[selected_category] = {
+                    "detail_table": [],
+                    "eval_table": []
+                }
                 data['part2_programs'] = part2
 
             category_data = part2.get(selected_category, {
@@ -980,8 +1031,8 @@ else:
             st.subheader(f"📋 {selected_category} - 세부사업내용")
 
             detail_data = category_data.get('detail_table', [])
-            detail_df = pd.DataFrame(detail_data) if detail_data else pd.DataFrame(
-                columns=[
+            detail_df = pd.DataFrame(
+                detail_data) if detail_data else pd.DataFrame(columns=[
                     'sub_area', 'program_name', 'expected_effect', 'target',
                     'count', 'cycle', 'content'
                 ])
@@ -998,13 +1049,15 @@ else:
                         'content': '계획내용'
                     })
             else:
-                detail_df = pd.DataFrame(
-                    columns=['세부영역', '프로그램명', '기대효과', '대상', '인원', '주기', '계획내용'])
+                detail_df = pd.DataFrame(columns=[
+                    '세부영역', '프로그램명', '기대효과', '대상', '인원', '주기', '계획내용'
+                ])
 
             if preview_mode_p2:
                 for idx, row in detail_df.iterrows():
                     st.markdown(
-                        f"#### 📄 {row.get('세부영역', '')} > {row.get('프로그램명', '')}")
+                        f"#### 📄 {row.get('세부영역', '')} > {row.get('프로그램명', '')}"
+                    )
                     exp_effect = row.get('기대효과', '') or '기대효과 내용이 없습니다.'
                     plan_content = row.get('계획내용', '') or '계획내용이 없습니다.'
                     st.markdown(f"**🎯 기대효과:** {exp_effect}")
@@ -1021,14 +1074,20 @@ else:
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "세부영역": st.column_config.TextColumn("세부영역", width="small"),
-                        "프로그램명": st.column_config.TextColumn("프로그램명",
-                                                             width="medium"),
-                        "기대효과": st.column_config.TextColumn("기대효과", width="large"),
-                        "대상": st.column_config.TextColumn("대상", width="small"),
-                        "인원": st.column_config.TextColumn("인원", width="small"),
-                        "주기": st.column_config.TextColumn("주기", width="small"),
-                        "계획내용": st.column_config.TextColumn("계획내용", width="large"),
+                        "세부영역":
+                        st.column_config.TextColumn("세부영역", width="small"),
+                        "프로그램명":
+                        st.column_config.TextColumn("프로그램명", width="medium"),
+                        "기대효과":
+                        st.column_config.TextColumn("기대효과", width="large"),
+                        "대상":
+                        st.column_config.TextColumn("대상", width="small"),
+                        "인원":
+                        st.column_config.TextColumn("인원", width="small"),
+                        "주기":
+                        st.column_config.TextColumn("주기", width="small"),
+                        "계획내용":
+                        st.column_config.TextColumn("계획내용", width="large"),
                     },
                     key=f"p2_detail_{selected_category}")
 
@@ -1091,7 +1150,8 @@ else:
             if preview_mode_p2:
                 for idx, row in eval_df.iterrows():
                     st.markdown(
-                        f"#### 📊 {row.get('세부영역', '')} > {row.get('프로그램명', '')}")
+                        f"#### 📊 {row.get('세부영역', '')} > {row.get('프로그램명', '')}"
+                    )
                     exp_effect = row.get('기대효과', '') or '기대효과 내용이 없습니다.'
                     st.markdown(f"**🎯 기대효과:** {exp_effect}")
                     st.markdown(f"**📋 평가계획:** {row.get('평가계획', '')}")
@@ -1104,14 +1164,16 @@ else:
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "세부영역": st.column_config.TextColumn("세부영역", width="small"),
-                        "프로그램명": st.column_config.TextColumn("프로그램명",
-                                                             width="medium"),
-                        "기대효과": st.column_config.TextColumn("기대효과", width="large"),
-                        "평가계획": st.column_config.TextColumn("평가계획",
-                                                            width="medium"),
-                        "평가방법": st.column_config.TextColumn("평가방법",
-                                                            width="medium"),
+                        "세부영역":
+                        st.column_config.TextColumn("세부영역", width="small"),
+                        "프로그램명":
+                        st.column_config.TextColumn("프로그램명", width="medium"),
+                        "기대효과":
+                        st.column_config.TextColumn("기대효과", width="large"),
+                        "평가계획":
+                        st.column_config.TextColumn("평가계획", width="medium"),
+                        "평가방법":
+                        st.column_config.TextColumn("평가방법", width="medium"),
                     },
                     key=f"p2_eval_{selected_category}")
 
@@ -1158,10 +1220,11 @@ else:
 
                 month_programs = monthly_plan.get(month, [])
                 month_df = pd.DataFrame(
-                    month_programs) if month_programs else pd.DataFrame(columns=[
-                        'big_category', 'mid_category', 'program_name', 'target',
-                        'staff', 'content'
-                    ])
+                    month_programs) if month_programs else pd.DataFrame(
+                        columns=[
+                            'big_category', 'mid_category', 'program_name',
+                            'target', 'staff', 'content'
+                        ])
 
                 if not month_df.empty and 'big_category' in month_df.columns:
                     month_df = month_df.rename(
@@ -1198,7 +1261,8 @@ else:
                             "중분류":
                             st.column_config.TextColumn("중분류", width="small"),
                             "프로그램명":
-                            st.column_config.TextColumn("프로그램명", width="medium"),
+                            st.column_config.TextColumn("프로그램명",
+                                                        width="medium"),
                             "참여자":
                             st.column_config.TextColumn("참여자", width="small"),
                             "수행인력":
@@ -1250,10 +1314,11 @@ else:
 
                 month_programs = monthly_plan.get(month, [])
                 month_df = pd.DataFrame(
-                    month_programs) if month_programs else pd.DataFrame(columns=[
-                        'big_category', 'mid_category', 'program_name', 'target',
-                        'staff', 'content'
-                    ])
+                    month_programs) if month_programs else pd.DataFrame(
+                        columns=[
+                            'big_category', 'mid_category', 'program_name',
+                            'target', 'staff', 'content'
+                        ])
 
                 if not month_df.empty and 'big_category' in month_df.columns:
                     month_df = month_df.rename(
@@ -1290,7 +1355,8 @@ else:
                             "중분류":
                             st.column_config.TextColumn("중분류", width="small"),
                             "프로그램명":
-                            st.column_config.TextColumn("프로그램명", width="medium"),
+                            st.column_config.TextColumn("프로그램명",
+                                                        width="medium"),
                             "참여자":
                             st.column_config.TextColumn("참여자", width="small"),
                             "수행인력":
@@ -1321,8 +1387,8 @@ else:
             if part4_has_data:
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-                h2_report = generate_part4_full_report(data['part4_monthly_plan'],
-                                                       h2_months, budget_eval)
+                h2_report = generate_part4_full_report(
+                    data['part4_monthly_plan'], h2_months, budget_eval)
                 st.download_button(
                     label="📥 PART 4 다운로드 (Word)",
                     data=h2_report,
