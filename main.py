@@ -45,12 +45,15 @@ except:
 
 st.set_page_config(page_title="AI 사업계획 도우미", page_icon="🤝", layout="wide")
 
-# 전체 스타일 적용 (박스형 레이아웃, 따뜻한 크림색 배경)
+# 전체 스타일 적용 (연두색 테마, 참참 공문서 스타일)
 APP_STYLE = """
 <style>
-/* 전체 앱 배경 - 따뜻한 웜 베이지 */
+/* ===== 컬러 시스템 (연두색 테마) ===== */
+/* Primary: #7CB342, Background: #F9F9F7, Surface: #FFFFFF, Text: #374151, Border: #D1D5DB */
+
+/* 전체 앱 배경 */
 .stApp, [data-testid="stAppViewContainer"] {
-    background-color: #F9F5F0 !important;
+    background-color: #F9F9F7 !important;
 }
 
 /* Streamlit 기본 UI 숨김 */
@@ -65,42 +68,38 @@ footer {visibility: hidden;}
     display: none !important;
 }
 
-/* 박스형 레이아웃 - 메인 컨테이너 (여백 2배 강화) */
+/* 박스형 레이아웃 - 메인 컨테이너 (A4 공문서 스타일) */
 .main .block-container {
     max-width: 1000px !important;
-    margin: 3rem auto !important;
-    padding-top: 3rem !important;
-    padding-bottom: 3rem !important;
-    padding-left: 3rem !important;
-    padding-right: 3rem !important;
+    margin: 2rem auto !important;
+    padding: 2.5rem 3rem !important;
     background: #FFFFFF;
-    border-radius: 28px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08), 
-                0 4px 12px rgba(167, 139, 250, 0.06);
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 }
 
 /* 메인 컨테이너 스타일 */
 .main-card {
-    background: #FDFCFB;
-    border-radius: 15px;
+    background: #FFFFFF;
+    border-radius: 8px;
     padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(167, 139, 250, 0.08);
+    border: 1px solid #E5E7EB;
     margin-bottom: 1rem;
-    border: 1px solid rgba(167, 139, 250, 0.1);
 }
 
-/* 라벤더 배너 헤더 */
+/* 연두색 헤더 배너 */
 .lavender-banner {
-    background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
-    border-radius: 15px;
+    background: linear-gradient(135deg, #7CB342 0%, #689F38 100%);
+    border-radius: 0 0 15px 15px;
     padding: 1.5rem 2rem;
     text-align: center;
     margin-bottom: 1.5rem;
-    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.25);
+    box-shadow: 0 4px 12px rgba(124, 179, 66, 0.25);
 }
 
 .lavender-banner h1 {
-    color: white;
+    color: #FFFFFF;
     font-size: 1.8rem;
     margin: 0;
     font-weight: 600;
@@ -108,99 +107,120 @@ footer {visibility: hidden;}
 
 /* 업로드 박스 스타일 */
 .upload-box {
-    background: white;
-    border-radius: 15px;
+    background: #FFFFFF;
+    border-radius: 8px;
     padding: 1.2rem;
-    box-shadow: 0 2px 8px rgba(167, 139, 250, 0.1);
+    border: 1px solid #D1D5DB;
     margin-bottom: 1rem;
 }
 
 .upload-box h4 {
-    color: #4B5563;
+    color: #374151;
     margin-bottom: 0.8rem;
     font-size: 1rem;
+    font-weight: 600;
 }
 
-/* 팁 박스 스타일 */
+/* 팁 박스 스타일 (연두색 톤) */
 .tips-box {
-    background: linear-gradient(180deg, #FEF3C7 0%, #FDE68A 100%);
-    border-radius: 15px;
+    background: linear-gradient(180deg, #F1F8E9 0%, #DCEDC8 100%);
+    border-radius: 8px;
     padding: 1.2rem;
-    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+    border: 1px solid #C5E1A5;
 }
 
 .tips-box h4 {
-    color: #92400E;
+    color: #33691E;
     margin-bottom: 1rem;
     font-size: 1rem;
+    font-weight: 600;
 }
 
 .tips-box p {
-    color: #78350F;
+    color: #558B2F;
     font-size: 0.85rem;
     line-height: 1.5;
     margin-bottom: 0.8rem;
 }
 
 .tips-box strong {
-    color: #92400E;
+    color: #33691E;
 }
 
-/* 버튼 스타일 - 라벤더 */
+/* 버튼 스타일 - 연두색 */
 .stButton > button {
-    border-radius: 15px !important;
+    border-radius: 30px !important;
     font-weight: 500 !important;
     transition: all 0.2s ease !important;
 }
 
 .stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%) !important;
+    background: #7CB342 !important;
     border: none !important;
+    color: #FFFFFF !important;
     font-size: 1.1rem !important;
     padding: 0.8rem 2rem !important;
 }
 
 .stButton > button[kind="primary"]:hover {
-    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%) !important;
+    background: #689F38 !important;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 4px 12px rgba(124, 179, 66, 0.35);
+}
+
+/* 보조 버튼 스타일 */
+.stButton > button[kind="secondary"] {
+    background: #FFFFFF !important;
+    border: 2px solid #7CB342 !important;
+    color: #7CB342 !important;
+}
+
+.stButton > button[kind="secondary"]:hover {
+    background: #F1F8E9 !important;
 }
 
 /* 파일 업로더 스타일 */
 [data-testid="stFileUploader"] {
-    background: #FFFDF7;
-    border-radius: 12px;
-    border: 2px dashed #C4B5FD;
+    background: #FAFAFA;
+    border-radius: 8px;
+    border: 2px dashed #AED581;
     padding: 0.8rem;
 }
 
-/* 업로드 박스 배경 통일 */
-.upload-box {
-    background: #FFFDF7 !important;
-}
-
 /* 성공/정보 메시지 스타일 */
-.stSuccess, .stInfo, .stWarning {
-    border-radius: 12px !important;
+.stSuccess {
+    background-color: #F1F8E9 !important;
+    border: 1px solid #AED581 !important;
+    border-radius: 8px !important;
 }
 
-/* 탭 스타일 - 라벤더 */
+.stInfo, .stWarning {
+    border-radius: 8px !important;
+}
+
+/* 탭 스타일 - 연두색 언더라인 */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    background: #F9FAFB;
-    border-radius: 12px;
-    padding: 4px;
+    gap: 4px;
+    background: transparent;
+    border-bottom: 2px solid #E5E7EB;
+    padding: 0;
+    border-radius: 0;
 }
 
 .stTabs [data-baseweb="tab"] {
-    border-radius: 10px;
-    padding: 10px 20px;
+    border-radius: 0;
+    padding: 12px 24px;
     color: #6B7280;
+    background: transparent;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
 }
 
 .stTabs [aria-selected="true"] {
-    background: #A78BFA !important;
-    color: white !important;
+    background: transparent !important;
+    color: #7CB342 !important;
+    font-weight: 600;
+    border-bottom: 3px solid #7CB342 !important;
 }
 
 /* 텍스트 스타일 */
@@ -208,10 +228,72 @@ p, span, div {
     color: #374151;
 }
 
+h1, h2, h3, h4, h5, h6 {
+    color: #1F2937 !important;
+}
+
 /* Expander 스타일 */
 .streamlit-expanderHeader {
-    border-radius: 12px !important;
+    border-radius: 8px !important;
     background: #F9FAFB !important;
+    border: 1px solid #E5E7EB !important;
+}
+
+/* 테이블 스타일 (참참 공문서 스타일) */
+.stDataFrame, [data-testid="stDataFrame"] {
+    border: 1px solid #D1D5DB !important;
+    border-radius: 4px !important;
+}
+
+/* 테이블 헤더 - 연한 연두색 */
+.stDataFrame thead tr th {
+    background-color: #F1F8E9 !important;
+    color: #374151 !important;
+    font-weight: 600 !important;
+    border: 1px solid #D1D5DB !important;
+}
+
+/* 테이블 셀 테두리 */
+.stDataFrame tbody tr td {
+    border: 1px solid #D1D5DB !important;
+}
+
+/* 텍스트 에어리어 스타일 */
+.stTextArea textarea {
+    border: 1px solid #D1D5DB !important;
+    border-radius: 6px !important;
+}
+
+.stTextArea textarea:focus {
+    border-color: #7CB342 !important;
+    box-shadow: 0 0 0 2px rgba(124, 179, 66, 0.2) !important;
+}
+
+/* 숫자 입력 스타일 */
+.stNumberInput input {
+    border: 1px solid #D1D5DB !important;
+    border-radius: 6px !important;
+}
+
+.stNumberInput input:focus {
+    border-color: #7CB342 !important;
+}
+
+/* 라디오 버튼 스타일 */
+.stRadio > div {
+    gap: 0.5rem;
+}
+
+/* 다운로드 버튼 스타일 */
+.stDownloadButton > button {
+    background: #7CB342 !important;
+    color: #FFFFFF !important;
+    border-radius: 30px !important;
+    border: none !important;
+}
+
+.stDownloadButton > button:hover {
+    background: #689F38 !important;
 }
 </style>
 """
