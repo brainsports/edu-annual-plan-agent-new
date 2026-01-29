@@ -3,6 +3,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 import altair as alt
+import logging
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 from utils import (
     get_gemini_analysis, 
     get_default_data, 
@@ -145,8 +151,15 @@ with st.sidebar:
     st.markdown("---")
     
     if st.button("샘플 데이터 로드"):
-        st.session_state.analysis_data = get_default_data()
-        st.session_state.guideline_rules = load_guideline_rules()
+        raw_data = get_default_data()
+        rules = load_guideline_rules()
+        # 샘플 데이터에도 작성지침 적용 (기대효과 100~300자 등)
+        adjusted_data, adjustment_logs = apply_guidelines_to_analysis(raw_data, rules)
+        st.session_state.analysis_data = adjusted_data
+        st.session_state.guideline_rules = rules
+        # 보정 로그 출력
+        for log in adjustment_logs:
+            print(log)
         st.success("샘플 데이터와 작성지침이 로드되었습니다!")
         st.rerun()
     

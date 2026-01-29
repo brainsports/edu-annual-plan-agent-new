@@ -918,39 +918,160 @@ def _ensure_bullet_count(text: str, target_count: int, min_count: int = 0, max_c
     return '\n'.join(lines)
 
 
-EXPECTED_EFFECT_MAX_CHARS = 100  # 기대효과 공백 포함 100자 제한
+EXPECTED_EFFECT_MIN_CHARS = 100  # 기대효과 공백 포함 최소 100자
+EXPECTED_EFFECT_MAX_CHARS = 300  # 기대효과 공백 포함 최대 300자
 
 
-def truncate_expected_effect_with_space(text: str, max_chars: int = EXPECTED_EFFECT_MAX_CHARS) -> str:
-    """기대효과 100자 제한 (공백 포함). 축약 후에도 최소 10자 이상 유지."""
+def adjust_expected_effect(text: str, program_name: str = "", sub_area: str = "") -> str:
+    """
+    기대효과 100~300자 범위 강제 보정 (공백 포함).
+    - 100자 미만: 의미 확장
+    - 300자 초과: 핵심만 남기고 축약
+    - 로그 출력: 프로그램명, 세부영역, 글자수
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not text:
-        return text
+        # 기본 기대효과 생성 (100자 이상)
+        default_effect = f"● **프로그램 효과**: 본 프로그램을 통해 참여 아동들의 전반적인 발달과 성장을 도모하며, 긍정적인 변화와 역량 강화를 기대합니다. 체계적인 활동을 통해 사회성 및 정서적 안정을 증진합니다."
+        logger.info(f"[기대효과 보정] {program_name}/{sub_area}: 빈값→기본값 생성 ({len(default_effect)}자)")
+        return default_effect
     
     text = str(text).strip()
     original_len = len(text)
     
-    if len(text) <= max_chars:
+    # 정상 범위 (100~300자)
+    if EXPECTED_EFFECT_MIN_CHARS <= len(text) <= EXPECTED_EFFECT_MAX_CHARS:
+        logger.debug(f"[기대효과 OK] {program_name}/{sub_area}: {original_len}자 (범위 내)")
         return text
     
-    # 축약: 마지막 완성된 문장에서 자르기 시도
-    truncated = text[:max_chars]
+    # 100자 미만: 의미 확장
+    if len(text) < EXPECTED_EFFECT_MIN_CHARS:
+        expanded = _expand_expected_effect(text, program_name, sub_area)
+        logger.info(f"[기대효과 확장] {program_name}/{sub_area}: {original_len}→{len(expanded)}자")
+        return expanded
     
-    # 문장 끝 기호 찾기
-    last_period = max(truncated.rfind('.'), truncated.rfind('다.'), truncated.rfind('함.'), truncated.rfind('됨.'))
-    if last_period > max_chars // 2:
-        truncated = truncated[:last_period + 1]
+    # 300자 초과: 축약
+    if len(text) > EXPECTED_EFFECT_MAX_CHARS:
+        truncated = _truncate_expected_effect(text)
+        logger.info(f"[기대효과 축약] {program_name}/{sub_area}: {original_len}→{len(truncated)}자")
+        return truncated
+    
+    return text
+
+
+def _expand_expected_effect(text: str, program_name: str = "", sub_area: str = "") -> str:
+    """100자 미만 기대효과를 의미있게 확장 (반복 문구 금지)"""
+    text = str(text).strip()
+    current_len = len(text)
+    
+    if current_len >= EXPECTED_EFFECT_MIN_CHARS:
+        return text
+    
+    # 확장 문구 라이브러리 (의미 있는 내용)
+    expansion_phrases = [
+        "이를 통해 참여 아동들의 전반적인 역량이 강화됩니다.",
+        "체계적인 활동을 통해 지속적인 성장과 발전을 도모합니다.",
+        "프로그램 참여를 통해 긍정적인 행동 변화를 유도합니다.",
+        "사회성 및 정서적 안정감 향상에 기여합니다.",
+        "아동의 자존감과 자기효능감 증진에 도움을 줍니다.",
+        "일상생활에서의 실천력 향상을 기대할 수 있습니다.",
+        "또래 관계 개선 및 소통 능력 발달에 효과적입니다.",
+        "가정과 시설 간 연계를 통해 지속적인 효과를 보장합니다.",
+    ]
+    
+    result = text
+    phrase_idx = 0
+    
+    # 불릿 형식인지 확인
+    is_bullet = text.strip().startswith('●') or '\n●' in text
+    
+    while len(result) < EXPECTED_EFFECT_MIN_CHARS and phrase_idx < len(expansion_phrases):
+        phrase = expansion_phrases[phrase_idx]
+        
+        # 이미 포함된 문구는 스킵
+        if phrase[:10] in result:
+            phrase_idx += 1
+            continue
+        
+        if is_bullet:
+            # 불릿 형식이면 새 불릿으로 추가
+            new_bullet = f"\n● **추가 효과**: {phrase}"
+            result = result.rstrip() + new_bullet
+        else:
+            # 일반 텍스트면 문장 추가
+            if result.endswith('.') or result.endswith('다') or result.endswith('함') or result.endswith('됨'):
+                result = result + " " + phrase
+            else:
+                result = result + ". " + phrase
+        
+        phrase_idx += 1
+    
+    # 여전히 100자 미만이면 보조 문구 추가
+    if len(result) < EXPECTED_EFFECT_MIN_CHARS:
+        supplement = f" 본 프로그램은 {sub_area if sub_area else '해당 영역'}에서 아동의 긍정적 변화와 성장을 지원합니다."
+        result = result.rstrip('.') + "." + supplement
+    
+    return result[:EXPECTED_EFFECT_MAX_CHARS] if len(result) > EXPECTED_EFFECT_MAX_CHARS else result
+
+
+def _truncate_expected_effect(text: str) -> str:
+    """300자 초과 기대효과를 핵심만 남기고 축약"""
+    text = str(text).strip()
+    
+    if len(text) <= EXPECTED_EFFECT_MAX_CHARS:
+        return text
+    
+    # 불릿 형식인지 확인
+    is_bullet = text.strip().startswith('●') or '\n●' in text
+    
+    if is_bullet:
+        # 불릿별로 분리해서 앞의 불릿만 유지
+        lines = text.split('\n')
+        result_lines = []
+        current_len = 0
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # 현재 라인 추가 시 300자 초과 여부 확인
+            new_len = current_len + len(line) + 1  # +1 for newline
+            if new_len <= EXPECTED_EFFECT_MAX_CHARS - 10:  # 여유 10자
+                result_lines.append(line)
+                current_len = new_len
+            else:
+                break
+        
+        return '\n'.join(result_lines)
     else:
+        # 일반 텍스트: 문장 경계에서 자르기
+        truncated = text[:EXPECTED_EFFECT_MAX_CHARS]
+        
+        # 마지막 완성된 문장 찾기
+        endings = ['.', '다.', '함.', '됨.', '습니다.', '합니다.']
+        best_end = -1
+        for ending in endings:
+            pos = truncated.rfind(ending)
+            if pos > best_end and pos > EXPECTED_EFFECT_MAX_CHARS // 2:
+                best_end = pos + len(ending)
+        
+        if best_end > EXPECTED_EFFECT_MIN_CHARS:
+            return truncated[:best_end]
+        
         # 단어 경계에서 자르기
         last_space = truncated.rfind(' ')
-        if last_space > max_chars // 2:
-            truncated = truncated[:last_space]
-    
-    if len(truncated) < 10:
-        truncated = text[:max_chars]
-    
-    import logging
-    logging.debug(f"[기대효과 100자] {original_len}→{len(truncated)} chars")
-    return truncated
+        if last_space > EXPECTED_EFFECT_MAX_CHARS // 2:
+            return truncated[:last_space]
+        
+        return truncated
+
+
+def truncate_expected_effect_with_space(text: str, max_chars: int = EXPECTED_EFFECT_MAX_CHARS) -> str:
+    """하위 호환용 - adjust_expected_effect로 대체됨"""
+    return adjust_expected_effect(text)
 
 
 def _truncate_to_max_no_space(text: str, max_chars: int) -> str:
@@ -1285,16 +1406,67 @@ def apply_guidelines_to_analysis(data: dict, guideline_rules: dict) -> tuple:
                     cat_data[table_name] = result['table']
                     logs.append(f"[Part2] {result['log']}")
             
-            # 기대효과 100자 제한 (공백 포함) - 이중 안전장치 1차 (생성 직후)
-            for table_name in ['detail_table', 'eval_table']:
-                if table_name in cat_data and isinstance(cat_data[table_name], list):
-                    for item in cat_data[table_name]:
-                        if isinstance(item, dict) and 'expected_effect' in item:
-                            original = str(item.get('expected_effect', '') or '')
-                            truncated = truncate_expected_effect_with_space(original)
-                            if len(original) != len(truncated):
-                                logs.append(f"[Part2] {category}/{table_name} 기대효과: {len(original)}→{len(truncated)}자")
-                            item['expected_effect'] = truncated
+            # [A] 기대효과 100~300자 범위 보정 - detail_table만 보정 (eval_table은 Word 출력 시 연동)
+            # 규칙: eval_table은 detail_table에서 복사하므로, 여기서는 detail_table만 보정
+            effect_map = {}  # program_name → adjusted expected_effect
+            
+            if 'detail_table' in cat_data and isinstance(cat_data['detail_table'], list):
+                for item in cat_data['detail_table']:
+                    if isinstance(item, dict) and 'expected_effect' in item:
+                        original = str(item.get('expected_effect', '') or '')
+                        program_name = str(item.get('program_name', '') or '')
+                        sub_area_val = str(item.get('sub_area', '') or '')
+                        
+                        # 100~300자 범위 보정
+                        adjusted = adjust_expected_effect(original, program_name, sub_area_val)
+                        
+                        # 로그: 프로그램명, 세부영역, 글자수
+                        status = "OK" if EXPECTED_EFFECT_MIN_CHARS <= len(adjusted) <= EXPECTED_EFFECT_MAX_CHARS else "NG"
+                        log_msg = f"[Part2 검증] {category}/detail_table '{program_name}' ({sub_area_val}): {len(original)}→{len(adjusted)}자 {status}"
+                        logs.append(log_msg)
+                        print(log_msg)  # 콘솔 출력
+                        
+                        item['expected_effect'] = adjusted
+                        
+                        # effect_map에 저장 (eval_table 연동용)
+                        if program_name:
+                            effect_map[program_name] = adjusted
+            
+            # [B] eval_table 기대효과를 detail_table에서 복사 (완전 동일 텍스트 강제)
+            # 1차: program_name 매칭, 2차: 인덱스 매칭 (fallback)
+            detail_list = cat_data.get('detail_table', [])
+            if 'eval_table' in cat_data and isinstance(cat_data['eval_table'], list):
+                for idx, item in enumerate(cat_data['eval_table']):
+                    if isinstance(item, dict):
+                        program_name = str(item.get('program_name', '') or '')
+                        sub_area_val = str(item.get('sub_area', '') or '')
+                        
+                        if program_name and program_name in effect_map:
+                            # 1차: program_name 매칭 (동일 텍스트)
+                            item['expected_effect'] = effect_map[program_name]
+                            log_msg = f"[Part2 검증] {category}/eval_table '{program_name}' ({sub_area_val}): {len(effect_map[program_name])}자 OK (연동)"
+                        elif idx < len(detail_list) and isinstance(detail_list[idx], dict):
+                            # 2차: 인덱스 매칭 (fallback - 동일 인덱스의 detail_table에서 복사)
+                            detail_effect = str(detail_list[idx].get('expected_effect', '') or '')
+                            if detail_effect:
+                                item['expected_effect'] = detail_effect
+                                log_msg = f"[Part2 검증] {category}/eval_table '{program_name}' ({sub_area_val}): {len(detail_effect)}자 OK (인덱스연동 idx={idx})"
+                            else:
+                                log_msg = f"[Part2 검증] {category}/eval_table '{program_name}' ({sub_area_val}): WARN 인덱스연동 실패 (빈값)"
+                        else:
+                            # 연동 실패 시 detail_table 첫 항목에서 복사 (최후의 수단)
+                            if detail_list and isinstance(detail_list[0], dict):
+                                first_effect = str(detail_list[0].get('expected_effect', '') or '')
+                                if first_effect:
+                                    item['expected_effect'] = first_effect
+                                    log_msg = f"[Part2 검증] {category}/eval_table '{program_name}' ({sub_area_val}): {len(first_effect)}자 OK (첫항목연동)"
+                                else:
+                                    log_msg = f"[Part2 검증] {category}/eval_table '{program_name}' ({sub_area_val}): WARN 연동실패"
+                            else:
+                                log_msg = f"[Part2 검증] {category}/eval_table '{program_name}' ({sub_area_val}): WARN 연동실패 (detail_table 비어있음)"
+                        
+                        logs.append(log_msg)
+                        print(log_msg)
     
     data['part2_programs'] = part2
     

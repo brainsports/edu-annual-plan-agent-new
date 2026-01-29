@@ -36,16 +36,21 @@ Preferred communication style: Simple, everyday language (Korean)
 
 ## Recent Changes (2026-01-29)
 
+- **기대효과 100~300자 강제 규칙 (PART 2 최우선 수정)**:
+  - **규칙**: 세부사업내용/평가계획 표의 기대효과는 공백 포함 100~300자 필수
+  - **평가계획 연동**: eval_table 기대효과 = detail_table 기대효과 (완전 동일 텍스트, 재작성/변형 금지)
+  - **3중 안전장치**:
+    - [A] 생성 직후 보정: `adjust_expected_effect()` (확장/축약)
+    - [B] 평가계획 연동: detail_table → eval_table 동일 텍스트 복사
+    - [C] 워드 출력 직전: `validate_and_adjust_expected_effect()` 최종 검증
+  - **확장 로직**: 100자 미만 시 의미있는 문구 추가 (반복 금지)
+  - **축약 로직**: 300자 초과 시 문장/불릿 경계에서 자름
+  - **로그**: 프로그램명, 세부영역, 글자수 출력
+
 - **PART 2 Preview Mode Enhancement**:
   - Preview now shows both 기대효과 and 계획내용 with bold labels (🎯 기대효과:, 📝 계획내용:)
   - 평가계획 preview updated to 5-column structure (세부영역, 프로그램명, 기대효과, 평가계획, 평가방법)
   - Backward compatibility: old schema (eval_tool/eval_timing) auto-mapped to new schema (main_plan/eval_method)
-
-- **기대효과 100자 이중 안전장치**:
-  - 공백 포함 100자 제한 (utils.py + doc_utils.py 양쪽에서 적용)
-  - 1차: 데이터 생성 직후 (apply_guidelines_to_analysis)
-  - 2차: 워드 출력 직전 (generate_part2_report)
-  - 축약 로직: 문장 경계 또는 단어 경계에서 자연스럽게 자름
 
 - **5대영역 페이지 나눔**:
   - 워드 출력 시 각 영역(보호→교육→문화→정서지원→지역사회연계) 시작 전 page break 삽입
