@@ -809,7 +809,9 @@ def generate_monthly_program_report(monthly_plan_dict,
         "content": "사업내용",
     }
 
-    for month in months_list:
+    part3_col_ratios = [0.08, 0.08, 0.18, 0.08, 0.08, 0.50]
+    
+    for idx, month in enumerate(months_list):
         doc.add_heading(month, level=2)
 
         rows = monthly_plan_dict.get(month, []) if isinstance(
@@ -818,7 +820,8 @@ def generate_monthly_program_report(monthly_plan_dict,
 
         if not rows:
             doc.add_paragraph("등록된 사업이 없습니다.")
-            doc.add_paragraph("")
+            if idx < len(months_list) - 1:
+                doc.add_page_break()
             continue
 
         table = doc.add_table(rows=1, cols=len(headers))
@@ -839,7 +842,10 @@ def generate_monthly_program_report(monthly_plan_dict,
             content = str(item.get("content", "") or "")
             add_markdown_text(r[5], content)
 
-        doc.add_paragraph("")
+        set_table_width_by_ratio(table, part3_col_ratios)
+        
+        if idx < len(months_list) - 1:
+            doc.add_page_break()
 
     buffer = io.BytesIO()
     doc.save(buffer)
@@ -902,12 +908,10 @@ def generate_budget_evaluation_report(budget_eval_data):
 
 
 def generate_part4_full_report(monthly_plan_dict, months_list, budget_eval_data):
-    """PART 4 전체 Word 문서 생성 (하반기 월별계획 + 예산 + 환류요약)"""
+    """PART 4 전체 Word 문서 생성 (하반기 월별계획만 - 예산/환류요약 제외)"""
     doc = Document()
     set_standard_margins(doc)
-    add_left_aligned_heading(doc, "PART 4: 하반기 월별 사업계획 및 평가", 1)
-    
-    doc.add_heading("하반기 월별 사업계획 (7월~12월)", level=2)
+    add_left_aligned_heading(doc, "PART 4: 하반기 월별 사업계획", 1)
     
     headers = {
         "big_category": "대분류",
@@ -918,14 +922,18 @@ def generate_part4_full_report(monthly_plan_dict, months_list, budget_eval_data)
         "content": "사업내용",
     }
     
-    for month in months_list:
-        doc.add_heading(month, level=3)
+    part4_col_ratios = [0.08, 0.08, 0.18, 0.08, 0.08, 0.50]
+    
+    for idx, month in enumerate(months_list):
+        doc.add_heading(month, level=2)
         
         rows = monthly_plan_dict.get(month, []) if isinstance(monthly_plan_dict, dict) else []
         rows = rows or []
         
         if not rows:
             doc.add_paragraph("등록된 사업이 없습니다.")
+            if idx < len(months_list) - 1:
+                doc.add_page_break()
             continue
         
         table = doc.add_table(rows=1, cols=len(headers))
@@ -946,47 +954,10 @@ def generate_part4_full_report(monthly_plan_dict, months_list, budget_eval_data)
             content = str(item.get("content", "") or "")
             add_markdown_text(r[5], content)
         
-        doc.add_paragraph("")
-    
-    budget_table = budget_eval_data.get('budget_table', []) if isinstance(budget_eval_data, dict) else []
-    if budget_table:
-        doc.add_heading("예산계획", level=2)
-        headers = ["항목", "금액", "세부내용"]
-        table = doc.add_table(rows=1, cols=len(headers))
-        table.style = "Table Grid"
+        set_table_width_by_ratio(table, part4_col_ratios)
         
-        hdr = table.rows[0].cells
-        for i, h in enumerate(headers):
-            hdr[i].text = h
-            set_cell_background(hdr[i], "D9D9D9")
-        
-        for item in budget_table:
-            row = table.add_row().cells
-            row[0].text = str(item.get('category', '') or '')
-            row[1].text = str(item.get('amount', '') or '')
-            row[2].text = str(item.get('details', '') or '')
-        
-        doc.add_paragraph("")
-    
-    feedback_summary = budget_eval_data.get('feedback_summary', []) if isinstance(budget_eval_data, dict) else []
-    if feedback_summary:
-        doc.add_heading("환류 요약", level=2)
-        headers = ["영역", "문제점", "개선계획"]
-        table = doc.add_table(rows=1, cols=len(headers))
-        table.style = "Table Grid"
-        
-        hdr = table.rows[0].cells
-        for i, h in enumerate(headers):
-            hdr[i].text = h
-            set_cell_background(hdr[i], "D9D9D9")
-        
-        for item in feedback_summary:
-            row = table.add_row().cells
-            row[0].text = str(item.get('area', '') or '')
-            problem = str(item.get('problem', '') or '')
-            add_markdown_text(row[1], problem)
-            plan = str(item.get('plan', '') or '')
-            add_markdown_text(row[2], plan)
+        if idx < len(months_list) - 1:
+            doc.add_page_break()
     
     buffer = io.BytesIO()
     doc.save(buffer)
