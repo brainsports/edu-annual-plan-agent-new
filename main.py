@@ -47,12 +47,12 @@ st.set_page_config(page_title="AI 사업계획 도우미",
                    page_icon="🤝",
                    layout="wide")
 
-# 전체 스타일 적용 (크림색 배경, 라벤더 포인트, 둥근 모서리)
+# 전체 스타일 적용 (박스형 레이아웃, 따뜻한 크림색 배경)
 APP_STYLE = """
 <style>
-/* 기본 배경 및 폰트 - 크림색 미색 */
+/* 전체 앱 배경 - 따뜻한 크림색 */
 .stApp {
-    background-color: #FDFCFB;
+    background-color: #FFF8E7 !important;
 }
 
 /* Streamlit 기본 UI 숨김 */
@@ -67,13 +67,25 @@ footer {visibility: hidden;}
     display: none !important;
 }
 
+/* 박스형 레이아웃 - 메인 컨테이너 */
+.main .block-container {
+    max-width: 1200px !important;
+    margin: 2rem auto !important;
+    background: #FFFFFF;
+    border-radius: 24px;
+    padding: 2rem 2.5rem !important;
+    box-shadow: 0 8px 32px rgba(167, 139, 250, 0.12), 
+                0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
 /* 메인 컨테이너 스타일 */
 .main-card {
-    background: white;
+    background: #FDFCFB;
     border-radius: 15px;
     padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(167, 139, 250, 0.1);
+    box-shadow: 0 2px 8px rgba(167, 139, 250, 0.08);
     margin-bottom: 1rem;
+    border: 1px solid rgba(167, 139, 250, 0.1);
 }
 
 /* 라벤더 배너 헤더 */
@@ -155,10 +167,15 @@ footer {visibility: hidden;}
 
 /* 파일 업로더 스타일 */
 [data-testid="stFileUploader"] {
-    background: #FDFCFB;
+    background: #FFFDF7;
     border-radius: 12px;
-    border: 2px dashed #A78BFA;
+    border: 2px dashed #C4B5FD;
     padding: 0.8rem;
+}
+
+/* 업로드 박스 배경 통일 */
+.upload-box {
+    background: #FFFDF7 !important;
 }
 
 /* 성공/정보 메시지 스타일 */
