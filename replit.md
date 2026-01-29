@@ -13,7 +13,9 @@ Preferred communication style: Simple, everyday language (Korean)
 ## System Architecture
 
 ### Frontend
-- **Framework**: Streamlit for a web-based UI with a wide layout and sidebar.
+- **Framework**: Streamlit for a web-based UI with a wide layout and 3-column structure (no sidebar).
+- **Layout**: 3-column layout (20%-60%-20%) with left file upload, center main content, right writing tips.
+- **Theme**: Warm cream background (#FDFCFB), lavender accent (#A78BFA), rounded corners (15px), soft shadows.
 - **UI Components**:
     - **Tab 1 (PART 1)**: Utilizes Expanders for editing sections like "사업의 필요성", "전년도 사업평가 및 환류계획", "만족도조사", "사업목적", and "사업목표".
     - **Tab 2 (PART 2)**: Employs Radio buttons for selecting categories (e.g., 보호, 교육) to display detailed program and evaluation tables.
