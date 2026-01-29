@@ -47,12 +47,12 @@ st.set_page_config(page_title="AI 사업계획 도우미",
                    page_icon="🤝",
                    layout="wide")
 
-# 전체 스타일 적용 (퍼플 테마, 오프화이트 배경, 둥근 모서리)
+# 전체 스타일 적용 (크림색 배경, 라벤더 포인트, 둥근 모서리)
 APP_STYLE = """
 <style>
-/* 기본 배경 및 폰트 */
+/* 기본 배경 및 폰트 - 크림색 미색 */
 .stApp {
-    background-color: #F8F7FC;
+    background-color: #FDFCFB;
 }
 
 /* Streamlit 기본 UI 숨김 */
@@ -62,134 +62,138 @@ footer {visibility: hidden;}
 [data-testid="stToolbar"] {visibility: hidden;}
 [data-testid="stDecoration"] {visibility: hidden;}
 
+/* 사이드바 완전 숨김 */
+[data-testid="stSidebar"] {
+    display: none !important;
+}
+
 /* 메인 컨테이너 스타일 */
 .main-card {
     background: white;
-    border-radius: 20px;
-    padding: 2.5rem;
-    box-shadow: 0 2px 12px rgba(123, 108, 246, 0.08);
-    margin: 1rem 0;
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(167, 139, 250, 0.1);
+    margin-bottom: 1rem;
 }
 
-/* 업로드 영역 스타일 */
-.upload-area {
-    background: linear-gradient(135deg, #F8F7FC 0%, #EDE9FE 100%);
-    border: 2px dashed #7B6CF6;
-    border-radius: 16px;
-    padding: 2rem;
+/* 라벤더 배너 헤더 */
+.lavender-banner {
+    background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%);
+    border-radius: 15px;
+    padding: 1.5rem 2rem;
     text-align: center;
-    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.25);
 }
 
-.upload-area:hover {
-    border-color: #5B4CD6;
-    background: linear-gradient(135deg, #EDE9FE 0%, #DDD6FE 100%);
+.lavender-banner h1 {
+    color: white;
+    font-size: 1.8rem;
+    margin: 0;
+    font-weight: 600;
 }
 
-/* 버튼 스타일 */
+/* 업로드 박스 스타일 */
+.upload-box {
+    background: white;
+    border-radius: 15px;
+    padding: 1.2rem;
+    box-shadow: 0 2px 8px rgba(167, 139, 250, 0.1);
+    margin-bottom: 1rem;
+}
+
+.upload-box h4 {
+    color: #4B5563;
+    margin-bottom: 0.8rem;
+    font-size: 1rem;
+}
+
+/* 팁 박스 스타일 */
+.tips-box {
+    background: linear-gradient(180deg, #FEF3C7 0%, #FDE68A 100%);
+    border-radius: 15px;
+    padding: 1.2rem;
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+}
+
+.tips-box h4 {
+    color: #92400E;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.tips-box p {
+    color: #78350F;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 0.8rem;
+}
+
+.tips-box strong {
+    color: #92400E;
+}
+
+/* 버튼 스타일 - 라벤더 */
 .stButton > button {
-    border-radius: 12px !important;
+    border-radius: 15px !important;
     font-weight: 500 !important;
     transition: all 0.2s ease !important;
 }
 
 .stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #7B6CF6 0%, #6366F1 100%) !important;
+    background: linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%) !important;
     border: none !important;
+    font-size: 1.1rem !important;
+    padding: 0.8rem 2rem !important;
 }
 
 .stButton > button[kind="primary"]:hover {
-    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%) !important;
-    transform: translateY(-1px);
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
 
-/* 진행 단계 스타일 */
-.step-indicator {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    margin: 2rem 0;
-}
-
-.step-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #6B7280;
-    font-size: 0.9rem;
-}
-
-.step-item.active {
-    color: #7B6CF6;
-    font-weight: 600;
-}
-
-.step-number {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: #E5E7EB;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.step-item.active .step-number {
-    background: #7B6CF6;
-    color: white;
-}
-
-/* 캐릭터 말풍선 */
-.character-bubble {
-    background: white;
-    border-radius: 16px;
-    padding: 1rem 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    position: relative;
-    margin-top: 1rem;
-}
-
-.character-bubble::before {
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: 30px;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-bottom: 8px solid white;
-}
-
-/* 파일 업로더 스타일 개선 */
+/* 파일 업로더 스타일 */
 [data-testid="stFileUploader"] {
-    background: white;
+    background: #FDFCFB;
     border-radius: 12px;
-    padding: 1rem;
+    border: 2px dashed #A78BFA;
+    padding: 0.8rem;
 }
 
 /* 성공/정보 메시지 스타일 */
-.stSuccess, .stInfo {
+.stSuccess, .stInfo, .stWarning {
     border-radius: 12px !important;
 }
 
-/* 탭 스타일 개선 */
+/* 탭 스타일 - 라벤더 */
 .stTabs [data-baseweb="tab-list"] {
     gap: 8px;
+    background: #F9FAFB;
+    border-radius: 12px;
+    padding: 4px;
 }
 
 .stTabs [data-baseweb="tab"] {
-    border-radius: 8px;
-    padding: 8px 16px;
+    border-radius: 10px;
+    padding: 10px 20px;
+    color: #6B7280;
 }
 
-/* 사이드바 스타일 */
-[data-testid="stSidebar"] {
-    background: white;
+.stTabs [aria-selected="true"] {
+    background: #A78BFA !important;
+    color: white !important;
 }
 
-[data-testid="stSidebar"] > div:first-child {
-    padding-top: 2rem;
+/* 텍스트 스타일 */
+p, span, div {
+    color: #374151;
+}
+
+/* Expander 스타일 */
+.streamlit-expanderHeader {
+    border-radius: 12px !important;
+    background: #F9FAFB !important;
 }
 </style>
 """
@@ -219,30 +223,51 @@ FRIENDLY_MESSAGES = {
     'partial_fail': "일부 내용을 가져오지 못했어요. 샘플 데이터로 보완해 주세요."
 }
 
-# 사이드바 (파일 업로드 전용)
-with st.sidebar:
-    st.markdown("### 📁 파일 업로드")
-    st.caption("사업 보고서를 올려주세요")
+if 'guideline_logs' not in st.session_state:
+    st.session_state.guideline_logs = []
+
+# ============================================================
+# 작성 팁 컨텐츠 (오른쪽 칼럼용)
+# ============================================================
+WRITING_TIPS_HTML = """
+<div class="tips-box">
+    <h4>💡 작성 팁</h4>
+    <p><strong>파트 1: 총괄/기획</strong><br>
+    지역적 특성은 통계 데이터 기반으로, 아동 욕구는 구체적 사례를 들어 서술하세요.</p>
+    <p><strong>파트 2: 세부사업</strong><br>
+    프로그램명은 목적이 드러나게, 기대효과는 측정 가능한 지표로 적어주세요.</p>
+    <p><strong>파트 3/4: 월별계획</strong><br>
+    현실적인 수행인력 배정과 예산 계획이 중요합니다. 주요 행사 일정을 고려하세요.</p>
+</div>
+"""
+
+# ============================================================
+# 파일 업로드 처리 함수 (왼쪽 칼럼용)
+# ============================================================
+def render_file_upload_section():
+    """왼쪽 칼럼에 파일 업로드 UI 렌더링"""
+    st.markdown('<div class="upload-box"><h4>📁 파일 업로드</h4></div>', unsafe_allow_html=True)
     
     uploaded_files = st.file_uploader(
         "PDF, DOCX 파일 지원",
         type=['pdf', 'docx', 'txt', 'csv'],
         accept_multiple_files=True,
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="main_uploader"
     )
-
+    
     if uploaded_files:
         total_size_bytes = sum(uf.size for uf in uploaded_files)
         total_size_mb = total_size_bytes / (1024 * 1024)
 
-        st.success(f"✓ {len(uploaded_files)}개 파일 선택됨")
+        st.success(f"✓ {len(uploaded_files)}개 파일")
 
         upload_valid = True
         if len(uploaded_files) > MAX_FILES:
-            st.warning(f"파일이 너무 많아요. {MAX_FILES}개까지 올릴 수 있어요.")
+            st.warning(f"최대 {MAX_FILES}개")
             upload_valid = False
         if total_size_mb > MAX_TOTAL_SIZE_MB:
-            st.warning(f"파일 용량이 커요. {MAX_TOTAL_SIZE_MB}MB까지 가능해요.")
+            st.warning(f"최대 {MAX_TOTAL_SIZE_MB}MB")
             upload_valid = False
 
         for uf in uploaded_files:
@@ -252,165 +277,128 @@ with st.sidebar:
         compact_text = summaries_to_compact_text(file_summaries)
 
         if not file_summaries:
-            st.warning("읽을 수 없는 파일이에요. PDF나 DOCX 파일을 올려주세요.")
+            st.warning("읽을 수 없는 파일이에요.")
             upload_valid = False
 
         if SHOW_INTERNAL:
-            with st.expander("디버그 정보"):
-                for i, uf in enumerate(uploaded_files):
-                    st.caption(f"[{i+1}] {uf.name}: {uf.size/1024:.1f}KB")
-                st.caption(f"요약 텍스트 길이: {len(compact_text)}자")
-                st.text_area("파일 요약 (Gemini 입력)",
-                             compact_text[:2000],
-                             height=150)
-
-            with st.expander("업로드된 내용 미리보기"):
-                combined_content = process_multiple_files(uploaded_files)
-                st.text_area(
-                    "통합된 문서 내용",
-                    combined_content[:1000] + "..."
-                    if len(combined_content) > 1000 else combined_content,
-                    height=150)
+            with st.expander("디버그"):
+                st.caption(f"요약: {len(compact_text)}자")
 
         month_bucket = bucket_programs_by_month(file_summaries)
 
-        if SHOW_INTERNAL:
-            with st.expander("월별 프로그램 배치 미리보기"):
-                st.caption("업로드 파일에서 추출한 프로그램의 월별 배치:")
-                for m in range(1, 13):
-                    progs = month_bucket.get(m, [])
-                    if progs:
-                        prog_names = ", ".join([
-                            p.get('program_name', '?')[:20] for p in progs[:5]
-                        ])
-                        st.caption(f"**{m}월**: {prog_names}")
-                    else:
-                        st.caption(f"**{m}월**: (정기운영 자동 생성)")
+        return uploaded_files, upload_valid, compact_text, month_bucket
+    
+    return None, False, "", {}
 
-        st.markdown("")
-        if st.button("🚀 AI가 분석 시작하기", type="primary", disabled=not upload_valid, use_container_width=True):
-            progress_placeholder = st.empty()
-
-            def update_progress(msg):
-                if "PART 1" in msg or "PART 2" in msg:
-                    progress_placeholder.info(FRIENDLY_MESSAGES['analyzing'])
-                elif "PART 3" in msg or "PART 4" in msg:
-                    progress_placeholder.info(FRIENDLY_MESSAGES['almost_done'])
-                else:
-                    progress_placeholder.info(FRIENDLY_MESSAGES['reading'])
-
-            st.session_state.month_bucket = month_bucket
-            st.session_state.is_analyzing = True
-
-            with st.spinner(FRIENDLY_MESSAGES['reading']):
-                result = get_partitioned_analysis(
-                    compact_text,
-                    progress_callback=update_progress,
-                    month_bucket=month_bucket,
-                    guideline_rules=st.session_state.guideline_rules)
-
-                if result:
-                    failed_parts = result.pop("_failed_parts", [])
-                    guideline_logs = result.pop("_guideline_logs", [])
-                    st.session_state.analysis_data = result
-                    st.session_state.guideline_logs = guideline_logs
-                    st.session_state.is_analyzing = False
-
-                    if failed_parts:
-                        st.warning(FRIENDLY_MESSAGES['partial_fail'])
-                    else:
-                        st.success(FRIENDLY_MESSAGES['complete'])
-                    st.rerun()
-
+def render_sample_button():
+    """샘플 데이터 버튼 렌더링"""
     st.markdown("---")
-    st.caption("처음이라면 샘플로 먼저 체험해 보세요.")
-    if st.button("📋 샘플로 체험하기", use_container_width=True):
+    st.caption("처음이라면 샘플로 체험해 보세요")
+    if st.button("📋 샘플 체험", use_container_width=True):
         raw_data = get_default_data()
         rules = load_guideline_rules()
-        adjusted_data, adjustment_logs = apply_guidelines_to_analysis(
-            raw_data, rules)
+        adjusted_data, adjustment_logs = apply_guidelines_to_analysis(raw_data, rules)
         st.session_state.analysis_data = adjusted_data
         st.session_state.guideline_rules = rules
         for log in adjustment_logs:
             logger.info(log)
-        st.success("샘플 데이터가 로드되었어요!")
+        st.success("샘플 로드 완료!")
         st.rerun()
 
-    if SHOW_INTERNAL:
-        with st.expander("작성지침 규칙 (JSON)"):
-            if st.session_state.guideline_rules:
-                st.json(st.session_state.guideline_rules)
-            else:
-                st.info("작성지침이 로드되지 않았습니다.")
+# ============================================================
+# 메인 3단 레이아웃 (No Sidebar)
+# ============================================================
 
-if 'guideline_logs' not in st.session_state:
-    st.session_state.guideline_logs = []
-
-# 첫 화면 (데이터 없을 때) - 친근한 안내 카드
+# 첫 화면 (데이터 없을 때)
 if st.session_state.analysis_data is None:
-    # 상단 타이틀
-    st.markdown("""
-    <div style="text-align: center; padding: 2rem 0 1rem 0;">
-        <h1 style="color: #7B6CF6; font-size: 2.5rem; margin-bottom: 0.5rem;">
-            AI 사업계획 도우미
-        </h1>
-        <p style="color: #6B7280; font-size: 1.1rem;">
-            파일을 올리면 찹찹 AI가 연간 사업계획 작성을 도와드려요.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # 3단 레이아웃: 왼쪽(20%) - 중앙(60%) - 오른쪽(20%)
+    left_col, center_col, right_col = st.columns([1, 3, 1])
     
-    # 3단계 진행 안내
-    st.markdown("""
-    <div style="display: flex; justify-content: center; gap: 3rem; margin: 2rem 0; flex-wrap: wrap;">
-        <div style="text-align: center;">
-            <div style="width: 48px; height: 48px; background: #7B6CF6; border-radius: 50%; 
-                        display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem;">
-                <span style="color: white; font-size: 1.2rem;">①</span>
-            </div>
-            <p style="color: #374151; font-weight: 500;">파일 업로드</p>
-        </div>
-        <div style="text-align: center;">
-            <div style="width: 48px; height: 48px; background: #E5E7EB; border-radius: 50%; 
-                        display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem;">
-                <span style="color: #6B7280; font-size: 1.2rem;">②</span>
-            </div>
-            <p style="color: #9CA3AF;">AI 분석</p>
-        </div>
-        <div style="text-align: center;">
-            <div style="width: 48px; height: 48px; background: #E5E7EB; border-radius: 50%; 
-                        display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem;">
-                <span style="color: #6B7280; font-size: 1.2rem;">③</span>
-            </div>
-            <p style="color: #9CA3AF;">결과 확인 & 다운로드</p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # 왼쪽 칼럼: 파일 업로드
+    with left_col:
+        uploaded_files, upload_valid, compact_text, month_bucket = render_file_upload_section()
+        
+        if uploaded_files and upload_valid:
+            st.markdown("")
+            if st.button("✨ 마법처럼 분석 시작", type="primary", use_container_width=True):
+                progress_placeholder = st.empty()
+
+                def update_progress(msg):
+                    if "PART 1" in msg or "PART 2" in msg:
+                        progress_placeholder.info(FRIENDLY_MESSAGES['analyzing'])
+                    elif "PART 3" in msg or "PART 4" in msg:
+                        progress_placeholder.info(FRIENDLY_MESSAGES['almost_done'])
+                    else:
+                        progress_placeholder.info(FRIENDLY_MESSAGES['reading'])
+
+                st.session_state.month_bucket = month_bucket
+                st.session_state.is_analyzing = True
+
+                with st.spinner(FRIENDLY_MESSAGES['reading']):
+                    result = get_partitioned_analysis(
+                        compact_text,
+                        progress_callback=update_progress,
+                        month_bucket=month_bucket,
+                        guideline_rules=st.session_state.guideline_rules)
+
+                    if result:
+                        failed_parts = result.pop("_failed_parts", [])
+                        guideline_logs = result.pop("_guideline_logs", [])
+                        st.session_state.analysis_data = result
+                        st.session_state.guideline_logs = guideline_logs
+                        st.session_state.is_analyzing = False
+
+                        if failed_parts:
+                            st.warning(FRIENDLY_MESSAGES['partial_fail'])
+                        else:
+                            st.success(FRIENDLY_MESSAGES['complete'])
+                        st.rerun()
+        
+        render_sample_button()
+        
+        if SHOW_INTERNAL:
+            with st.expander("작성지침 (JSON)"):
+                if st.session_state.guideline_rules:
+                    st.json(st.session_state.guideline_rules)
     
-    # 메인 카드
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+    # 중앙 칼럼: 메인 콘텐츠
+    with center_col:
+        # 라벤더 배너 타이틀
+        st.markdown("""
+        <div class="lavender-banner">
+            <h1>AI 연간 사업계획 통합 에이전트 ✨</h1>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # 안내 카드
         st.markdown("""
         <div class="main-card" style="text-align: center;">
             <div style="font-size: 4rem; margin-bottom: 1rem;">📄</div>
             <h3 style="color: #374151; margin-bottom: 0.5rem;">사업 보고서 파일을 올려주세요</h3>
-            <p style="color: #9CA3AF; margin-bottom: 1.5rem;">PDF / DOCX 파일 업로드 가능</p>
-            <p style="color: #6B7280;">👈 왼쪽 사이드바에서 파일을 선택해주세요</p>
+            <p style="color: #9CA3AF; margin-bottom: 1rem;">PDF / DOCX 파일 업로드 가능</p>
+            <p style="color: #6B7280;">👈 왼쪽에서 파일을 선택하고 '마법처럼 분석 시작' 버튼을 눌러주세요</p>
         </div>
         """, unsafe_allow_html=True)
         
         # 캐릭터 말풍선
         st.markdown("""
-        <div style="display: flex; align-items: flex-start; gap: 1rem; margin-top: 2rem;">
+        <div style="display: flex; align-items: flex-start; gap: 1rem; margin-top: 1.5rem; justify-content: center;">
             <div style="font-size: 3rem;">🤖</div>
-            <div class="character-bubble">
+            <div class="main-card" style="max-width: 400px;">
                 <p style="color: #374151; margin: 0;">
                     걱정 마세요. 제가 차근차근 도와드릴게요 🙂
                 </p>
             </div>
         </div>
         """, unsafe_allow_html=True)
+    
+    # 오른쪽 칼럼: 작성 팁
+    with right_col:
+        st.markdown(WRITING_TIPS_HTML, unsafe_allow_html=True)
 else:
+    # 데이터 있을 때도 3단 레이아웃 유지
+    left_col, center_col, right_col = st.columns([1, 3, 1])
+    
     data = st.session_state.analysis_data
 
     if 'part1_general' not in data:
@@ -426,6 +414,27 @@ else:
             "budget_table": [],
             "feedback_summary": []
         }
+    
+    # 왼쪽 칼럼: 새 분석 / 초기화
+    with left_col:
+        st.markdown('<div class="upload-box"><h4>📁 새 분석</h4></div>', unsafe_allow_html=True)
+        if st.button("🔄 처음부터 다시", use_container_width=True):
+            st.session_state.analysis_data = None
+            st.rerun()
+        
+        st.markdown("---")
+        st.caption("현재 분석 완료된 데이터를 수정하고 워드 파일로 다운로드하세요.")
+
+    # 오른쪽 칼럼: 작성 팁
+    with right_col:
+        st.markdown(WRITING_TIPS_HTML, unsafe_allow_html=True)
+    
+    # 라벤더 배너 타이틀 (전체 폭)
+    st.markdown("""
+    <div class="lavender-banner">
+        <h1>AI 연간 사업계획 통합 에이전트 ✨</h1>
+    </div>
+    """, unsafe_allow_html=True)
 
     if SHOW_INTERNAL:
         with st.expander("규칙 검증 결과 (디버그)", expanded=False):
