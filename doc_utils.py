@@ -10,12 +10,13 @@ import matplotlib.font_manager as fm
 import numpy as np
 
 from docx import Document
-from docx.shared import Inches, Pt
+from docx.shared import Inches, Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
 from docx.oxml.ns import nsdecls
 from docx.oxml import parse_xml
 
+SURVEY_QUESTION_COUNT = 10
 
 # --- 기본 서식 함수 ---
 def ensure_korean_font():
@@ -86,6 +87,147 @@ def add_justified_paragraph(document: Document, text: str):
     para = document.add_paragraph()
     add_markdown_text(para, text)
     para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+
+def set_table_width_by_ratio(table, ratios: list, usable_width_inches: float = 6.5):
+    """
+    표 컬럼 폭을 비율에 따라 고정합니다.
+    
+    Args:
+        table: python-docx Table 객체
+        ratios: 각 컬럼의 비율 리스트 (예: [0.20, 0.40, 0.40])
+        usable_width_inches: 사용 가능한 페이지 폭 (인치, 기본값: 6.5 = A4 - 양쪽 1인치 마진)
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    
+    table.autofit = False
+    
+    tbl = table._tbl
+    tblPr = tbl.get_or_add_tblPr()
+    
+    existing_layout = tblPr.find(qn('w:tblLayout'))
+    if existing_layout is not None:
+        tblPr.remove(existing_layout)
+    
+    tblLayout = OxmlElement('w:tblLayout')
+    tblLayout.set(qn('w:type'), 'fixed')
+    tblPr.append(tblLayout)
+    
+    total_width_twips = int(usable_width_inches * 1440)
+    
+    existing_tblW = tblPr.find(qn('w:tblW'))
+    if existing_tblW is not None:
+        tblPr.remove(existing_tblW)
+    tblW = OxmlElement('w:tblW')
+    tblW.set(qn('w:w'), str(total_width_twips))
+    tblW.set(qn('w:type'), 'dxa')
+    tblPr.append(tblW)
+    
+    for row in table.rows:
+        for i, cell in enumerate(row.cells):
+            if i < len(ratios):
+                cell_width = int(total_width_twips * ratios[i])
+                cell.width = cell_width
+                tcPr = cell._tc.get_or_add_tcPr()
+                existing_tcW = tcPr.find(qn('w:tcW'))
+                if existing_tcW is not None:
+                    tcPr.remove(existing_tcW)
+                tcW = OxmlElement('w:tcW')
+                tcW.set(qn('w:w'), str(cell_width))
+                tcW.set(qn('w:type'), 'dxa')
+                tcPr.append(tcW)
+
+
+def generate_satisfaction_charts(survey_data: list, total_respondents: int = 30):
+    """
+    만족도 조사 차트 2개 생성 (항목별 평균 점수 / 응답 분포)
+    
+    Returns:
+        tuple: (chart1_bytes, chart2_bytes, error_log) - 에러 시 None 반환
+    """
+    font_prop = ensure_korean_font()
+    
+    try:
+        if not survey_data or len(survey_data) == 0:
+            return None, None, "survey_data가 비어있습니다."
+        
+        questions = []
+        averages = []
+        distributions = {'5점': [], '4점': [], '3점': [], '2점': [], '1점': []}
+        
+        for i, item in enumerate(survey_data):
+            q_text = str(item.get('문항', f'Q{i+1}'))
+            if len(q_text) > 15:
+                q_text = q_text[:12] + "..."
+            questions.append(q_text)
+            
+            s5 = int(item.get('5점', 0) or 0)
+            s4 = int(item.get('4점', 0) or 0)
+            s3 = int(item.get('3점', 0) or 0)
+            s2 = int(item.get('2점', 0) or 0)
+            s1 = int(item.get('1점', 0) or 0)
+            
+            total = s5 + s4 + s3 + s2 + s1
+            if total > 0:
+                avg = (5*s5 + 4*s4 + 3*s3 + 2*s2 + 1*s1) / total
+            else:
+                avg = 0
+            averages.append(avg)
+            
+            distributions['5점'].append(s5)
+            distributions['4점'].append(s4)
+            distributions['3점'].append(s3)
+            distributions['2점'].append(s2)
+            distributions['1점'].append(s1)
+        
+        fig1, ax1 = plt.subplots(figsize=(6, 4))
+        x = np.arange(len(questions))
+        bars = ax1.bar(x, averages, color='#4472C4', edgecolor='none')
+        ax1.set_ylabel('평균 점수', fontproperties=font_prop)
+        ax1.set_title('항목별 평균 점수', fontproperties=font_prop, fontsize=12, fontweight='bold')
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(questions, rotation=45, ha='right', fontproperties=font_prop, fontsize=8)
+        ax1.set_ylim(0, 5)
+        ax1.axhline(y=sum(averages)/len(averages) if averages else 0, color='red', linestyle='--', linewidth=1, label='전체 평균')
+        ax1.legend(prop=font_prop)
+        
+        for bar, avg in zip(bars, averages):
+            ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1, 
+                    f'{avg:.1f}', ha='center', va='bottom', fontsize=8, fontproperties=font_prop)
+        
+        plt.tight_layout()
+        chart1_buffer = io.BytesIO()
+        fig1.savefig(chart1_buffer, format='png', dpi=150, bbox_inches='tight')
+        chart1_buffer.seek(0)
+        plt.close(fig1)
+        
+        fig2, ax2 = plt.subplots(figsize=(6, 4))
+        bar_width = 0.15
+        colors = ['#2E7D32', '#4CAF50', '#FFC107', '#FF9800', '#F44336']
+        score_labels = ['5점', '4점', '3점', '2점', '1점']
+        
+        for i, (score, color) in enumerate(zip(score_labels, colors)):
+            offset = (i - 2) * bar_width
+            ax2.bar(x + offset, distributions[score], bar_width, label=score, color=color)
+        
+        ax2.set_ylabel('응답 인원(명)', fontproperties=font_prop)
+        ax2.set_title('응답 분포 (인원수)', fontproperties=font_prop, fontsize=12, fontweight='bold')
+        ax2.set_xticks(x)
+        ax2.set_xticklabels(questions, rotation=45, ha='right', fontproperties=font_prop, fontsize=8)
+        ax2.legend(prop=font_prop, loc='upper right')
+        
+        plt.tight_layout()
+        chart2_buffer = io.BytesIO()
+        fig2.savefig(chart2_buffer, format='png', dpi=150, bbox_inches='tight')
+        chart2_buffer.seek(0)
+        plt.close(fig2)
+        
+        return chart1_buffer, chart2_buffer, None
+        
+    except Exception as e:
+        plt.close('all')
+        return None, None, f"차트 생성 오류: {str(e)}"
 
 
 def _add_table_from_rows(doc: Document, headers, rows):
@@ -167,6 +309,7 @@ def generate_part1_report(data_dict):
             add_markdown_text(row[1], str(item.get('problem', '') or ''))
             add_markdown_text(row[2], str(item.get('improvement', '') or ''))
         
+        set_table_width_by_ratio(table, [0.20, 0.40, 0.40])
         doc.add_paragraph("")
     
     doc.add_heading("2) 총평", level=3)
@@ -185,6 +328,7 @@ def generate_part1_report(data_dict):
             row[0].text = str(item.get('category', '') or '')
             add_markdown_text(row[1], str(item.get('content', '') or ''))
         
+        set_table_width_by_ratio(table, [0.20, 0.80])
         doc.add_paragraph("")
     
     doc.add_heading("3. 만족도조사", level=2)
@@ -231,6 +375,8 @@ def generate_part1_report(data_dict):
                 else:
                     row[6].text = "-"
             
+            score_ratio = 0.40 / 6
+            set_table_width_by_ratio(table, [0.60, score_ratio, score_ratio, score_ratio, score_ratio, score_ratio, score_ratio])
             doc.add_paragraph("")
             
             if total_count > 0:
@@ -238,6 +384,30 @@ def generate_part1_report(data_dict):
                 avg_para = doc.add_paragraph()
                 avg_para.add_run(f"전체 평균 만족도: {overall_avg:.2f}점 (5점 만점)").bold = True
                 doc.add_paragraph("")
+            
+            doc.add_heading("만족도 분포 차트", level=3)
+            chart1, chart2, chart_error = generate_satisfaction_charts(survey_data, total_resp)
+            
+            if chart1 and chart2:
+                chart_table = doc.add_table(rows=1, cols=2)
+                chart_table.style = "Table Grid"
+                chart_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                
+                cell1 = chart_table.rows[0].cells[0]
+                cell2 = chart_table.rows[0].cells[1]
+                
+                para1 = cell1.paragraphs[0]
+                run1 = para1.add_run()
+                run1.add_picture(chart1, width=Inches(3.0))
+                
+                para2 = cell2.paragraphs[0]
+                run2 = para2.add_run()
+                run2.add_picture(chart2, width=Inches(3.0))
+                
+                set_table_width_by_ratio(chart_table, [0.50, 0.50])
+                doc.add_paragraph("")
+            elif chart_error:
+                doc.add_paragraph(f"[차트 생성 실패: {chart_error}]")
         
         subjective_q = satisfaction.get('subjective_question', '')
         subjective_analysis = satisfaction.get('subjective_analysis', '')

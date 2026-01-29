@@ -9,6 +9,20 @@ import google.generativeai as genai
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
 
+SURVEY_QUESTION_COUNT = 10
+SURVEY_DEFAULT_QUESTIONS = [
+    "1. 급식 및 간식의 질과 위생 상태",
+    "2. 프로그램 내용과 운영",
+    "3. 시설의 안전 및 위생 관리",
+    "4. 담당 선생님의 아동 지도 능력",
+    "5. 학습지도 프로그램의 효과",
+    "6. 아동의 정서적 지원",
+    "7. 부모 상담 및 소통",
+    "8. 문화체험 활동",
+    "9. 시설 운영 시간",
+    "10. 전반적인 시설 운영"
+]
+
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
@@ -1098,6 +1112,19 @@ def _apply_table_rule(table: list, rule: dict, table_name: str = "") -> dict:
     return {"table": table, "log": log}
 
 
+def _generate_survey_row(question: str, total_resp: int, index: int = 0) -> dict:
+    """만족도 조사 문항 1개에 대한 응답 분포를 생성합니다."""
+    s5 = int(total_resp * 0.45) + (index % 3)
+    s4 = int(total_resp * 0.35)
+    s3 = int(total_resp * 0.12)
+    s2 = int(total_resp * 0.05)
+    s1 = total_resp - s5 - s4 - s3 - s2
+    if s1 < 0:
+        s5 += s1
+        s1 = 0
+    return {"문항": question, "5점": s5, "4점": s4, "3점": s3, "2점": s2, "1점": s1}
+
+
 def normalize_satisfaction_survey(satisfaction: dict) -> dict:
     """
     만족도 조사 데이터를 표준 형식으로 정규화합니다.
@@ -1105,12 +1132,15 @@ def normalize_satisfaction_survey(satisfaction: dict) -> dict:
     - survey_data의 컬럼명을 표준화 (5점(명)→5점, 5→5점 등)
     - 누락된 컬럼 기본값 추가
     - 데이터가 없으면 샘플 데이터 생성
+    - 항상 정확히 SURVEY_QUESTION_COUNT(10)개 문항을 보장
     """
     if not satisfaction:
         satisfaction = {}
     
     if 'total_respondents' not in satisfaction or not satisfaction.get('total_respondents'):
         satisfaction['total_respondents'] = 30
+    
+    total_resp = satisfaction.get('total_respondents', 30)
     
     score_column_map = {
         '5점(명)': '5점', '5점 (명)': '5점', '5': '5점', '매우만족': '5점',
@@ -1124,37 +1154,9 @@ def normalize_satisfaction_survey(satisfaction: dict) -> dict:
     survey_data = satisfaction.get('survey_data', [])
     
     if not survey_data or len(survey_data) == 0:
-        total_resp = satisfaction.get('total_respondents', 30)
-        default_questions = [
-            "1. 급식 및 간식의 질과 위생 상태",
-            "2. 프로그램 내용과 운영",
-            "3. 시설의 안전 및 위생 관리",
-            "4. 담당 선생님의 아동 지도 능력",
-            "5. 학습지도 프로그램의 효과",
-            "6. 아동의 정서적 지원",
-            "7. 부모 상담 및 소통",
-            "8. 문화체험 활동",
-            "9. 시설 운영 시간",
-            "10. 전반적인 시설 운영"
-        ]
         survey_data = []
-        for i, q in enumerate(default_questions):
-            s5 = int(total_resp * 0.45) + (i % 3)
-            s4 = int(total_resp * 0.35)
-            s3 = int(total_resp * 0.12)
-            s2 = int(total_resp * 0.05)
-            s1 = total_resp - s5 - s4 - s3 - s2
-            if s1 < 0:
-                s5 += s1
-                s1 = 0
-            survey_data.append({
-                "문항": q,
-                "5점": s5,
-                "4점": s4,
-                "3점": s3,
-                "2점": s2,
-                "1점": s1
-            })
+        for i, q in enumerate(SURVEY_DEFAULT_QUESTIONS):
+            survey_data.append(_generate_survey_row(q, total_resp, i))
     
     normalized_data = []
     for item in survey_data:
@@ -1176,6 +1178,14 @@ def normalize_satisfaction_survey(satisfaction: dict) -> dict:
                 normalized_item[score_col] = 0
         
         normalized_data.append(normalized_item)
+    
+    if len(normalized_data) < SURVEY_QUESTION_COUNT:
+        existing_count = len(normalized_data)
+        for i in range(existing_count, SURVEY_QUESTION_COUNT):
+            q = SURVEY_DEFAULT_QUESTIONS[i] if i < len(SURVEY_DEFAULT_QUESTIONS) else f"{i+1}. 추가 문항"
+            normalized_data.append(_generate_survey_row(q, total_resp, i))
+    elif len(normalized_data) > SURVEY_QUESTION_COUNT:
+        normalized_data = normalized_data[:SURVEY_QUESTION_COUNT]
     
     satisfaction['survey_data'] = normalized_data
     
