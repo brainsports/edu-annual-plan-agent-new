@@ -394,7 +394,7 @@ def render_file_upload_section():
 def render_sample_button():
     """샘플 데이터 버튼 렌더링"""
     st.markdown("---")
-    st.caption("처음이라면 샘플로 체험해 보세요")
+    st.caption("처음이라면 예시데이터로 체험해 보세요")
     if st.button("📋 예시 데이터", use_container_width=True):
         raw_data = get_default_data()
         rules = load_guideline_rules()
