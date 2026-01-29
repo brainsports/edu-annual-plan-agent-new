@@ -34,15 +34,30 @@ Preferred communication style: Simple, everyday language (Korean)
 - **Chart Generation**: `matplotlib` with Korean font configuration for generating satisfaction pie charts.
 - **Satisfaction Survey Normalization**: `normalize_satisfaction_survey()` function ensures consistent data structure between sample and uploaded data, with automatic column name normalization (5점(명)→5점, 매우만족→5점, etc.) and validation. Default survey data uses deterministic distribution (45% 5점, 35% 4점, 12% 3점, 5% 2점, remainder 1점) to always sum to total_respondents.
 
-## Recent Changes (2026-01-28)
+## Recent Changes (2026-01-29)
 
-- **PART 1 Word Generation**: Complete rewrite of `generate_part1_report()` to include all 5 sections in correct order:
-  1. 사업의 필요성 (need_1, need_2_1, need_2_2, need_2_3)
-  2. 전년도 사업평가 및 환류계획 (feedback_table, total_review_table)
-  3. 만족도조사 (survey_data table with scores, subjective_analysis, overall_suggestion)
-  4. 사업목적 (purpose_text)
-  5. 사업목표 (goals_text)
-- **Satisfaction Survey Normalization**: Added `normalize_satisfaction_survey()` function integrated in two places (get_partitioned_analysis and apply_guidelines_to_analysis) to ensure consistency for both sample and uploaded data.
+- **10-Question Enforcement for Satisfaction Survey**: 
+  - Added `SURVEY_QUESTION_COUNT = 10` constant in both `utils.py` and `doc_utils.py`
+  - `normalize_satisfaction_survey()` now enforces exactly 10 questions (pads with defaults if < 10, truncates if > 10)
+  - Default questions stored in `SURVEY_DEFAULT_QUESTIONS` constant
+
+- **Satisfaction Survey Charts in Word Output**:
+  - Added `generate_satisfaction_charts()` function creating 2 bar charts:
+    1. 항목별 평균 점수 (horizontal bar chart showing average scores per question)
+    2. 응답 분포 (인원수) (grouped bar chart showing response distribution)
+  - Charts displayed side-by-side in a 2-column table with 50/50 width ratio
+
+- **Fixed Table Column Widths**:
+  - Added `set_table_width_by_ratio()` utility function with proper autofit disable and fixed layout
+  - Applied to all PART 1 tables:
+    - 차년도사업환류계획 테이블: 20% / 40% / 40%
+    - 총평 테이블: 20% / 80%
+    - 만족도조사 테이블: 60% / (40%÷6 per score column)
+
+## Previous Changes (2026-01-28)
+
+- **PART 1 Word Generation**: Complete rewrite of `generate_part1_report()` to include all 5 sections in correct order
+- **Satisfaction Survey Normalization**: Added `normalize_satisfaction_survey()` function integrated in two places
 
 ## External Dependencies
 
