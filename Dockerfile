@@ -2,8 +2,10 @@
 FROM python:3.11-slim
 
 # 2. 한글 폰트 및 시스템 필수 패키지 설치
+# fc-cache 명령어를 사용하기 위해 fontconfig를 반드시 추가해야 합니다.
 RUN apt-get update && apt-get install -y \
     fonts-nanum \
+    fontconfig \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
