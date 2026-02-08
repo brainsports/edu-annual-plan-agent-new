@@ -1079,13 +1079,34 @@ else:
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
                 part1_report = generate_part1_report(data['part1_general'])
-                st.download_button(
+                clicked_p1 = st.download_button(
                     label="📥 PART 1 다운로드 (Word)",
                     data=part1_report,
                     file_name=f"part1_{timestamp}.docx",
                     mime=
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
+
+                # ✅ 다운로드 클릭 순간 WordPress로 알림(postMessage) 보내기
+                if clicked_p1:
+                    st.components.v1.html(f"""
+                        <script>
+                          try {{
+                            if (window.parent !== window) {{
+                              window.parent.postMessage({{
+                                type: "chamcham_download",
+                                fileName: "part1_{timestamp}.docx"
+                              }}, "*");
+                              console.log("[CC] postMessage sent: PART1");
+                            }} else {{
+                              console.log("[CC] not in iframe");
+                            }}
+                          }} catch (e) {{
+                            console.log("[CC] postMessage error", e);
+                          }}
+                        </script>
+                        """,
+                                          height=0)
             else:
                 st.warning("먼저 참참AI 분석 시작을 눌러 내용을 생성해 주세요.")
 
@@ -1284,13 +1305,31 @@ else:
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
                 part2_report = generate_part2_report(data['part2_programs'])
-                st.download_button(
+                clicked_p2 = st.download_button(
                     label="📥 PART 2 다운로드 (Word)",
                     data=part2_report,
                     file_name=f"part2_{timestamp}.docx",
                     mime=
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
+
+                if clicked_p2:
+                    st.components.v1.html(f"""
+                        <script>
+                          try {{
+                            if (window.parent !== window) {{
+                              window.parent.postMessage({{
+                                type: "chamcham_download",
+                                fileName: "part2_{timestamp}.docx"
+                              }}, "*");
+                              console.log("[CC] postMessage sent: PART2");
+                            }}
+                          }} catch (e) {{
+                            console.log("[CC] postMessage error", e);
+                          }}
+                        </script>
+                        """,
+                                          height=0)
             else:
                 st.warning("먼저 참참 AI 분석 시작을 눌러 내용을 생성해 주세요.")
 
@@ -1378,13 +1417,31 @@ else:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
                 h1_report = generate_monthly_program_report(
                     data['part3_monthly_plan'], h1_months)
-                st.download_button(
+                clicked_p3 = st.download_button(
                     label="📥 PART 3 다운로드 (Word)",
                     data=h1_report,
                     file_name=f"part3_{timestamp}.docx",
                     mime=
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
+
+                if clicked_p3:
+                    st.components.v1.html(f"""
+                        <script>
+                          try {{
+                            if (window.parent !== window) {{
+                              window.parent.postMessage({{
+                                type: "chamcham_download",
+                                fileName: "part3_{timestamp}.docx"
+                              }}, "*");
+                              console.log("[CC] postMessage sent: PART3");
+                            }}
+                          }} catch (e) {{
+                            console.log("[CC] postMessage error", e);
+                          }}
+                        </script>
+                        """,
+                                          height=0)
             else:
                 st.warning("먼저 참참 AI 분석 시작을 눌러 내용을 생성해 주세요.")
 
@@ -1476,13 +1533,31 @@ else:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
                 h2_report = generate_part4_full_report(
                     data['part4_monthly_plan'], h2_months, budget_eval)
-                st.download_button(
+                clicked_p4 = st.download_button(
                     label="📥 PART 4 다운로드 (Word)",
                     data=h2_report,
                     file_name=f"part4_{timestamp}.docx",
                     mime=
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
+
+                if clicked_p4:
+                    st.components.v1.html(f"""
+                        <script>
+                          try {{
+                            if (window.parent !== window) {{
+                              window.parent.postMessage({{
+                                type: "chamcham_download",
+                                fileName: "part4_{timestamp}.docx"
+                              }}, "*");
+                              console.log("[CC] postMessage sent: PART4");
+                            }}
+                          }} catch (e) {{
+                            console.log("[CC] postMessage error", e);
+                          }}
+                        </script>
+                        """,
+                                          height=0)
             else:
                 st.warning("먼저 참참 AI 분석 시작을 눌러 내용을 생성해 주세요.")
 
