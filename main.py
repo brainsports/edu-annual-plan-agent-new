@@ -6,6 +6,11 @@ import altair as alt
 import logging
 import os
 
+# ============================================================
+# [필수 수정 1] st.set_page_config는 반드시 최상단에 위치해야 합니다.
+# ============================================================
+st.set_page_config(page_title="AI 사업계획 도우미", page_icon="🤝", layout="wide")
+
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -43,9 +48,9 @@ try:
 except:
     pass
 
-st.set_page_config(page_title="AI 사업계획 도우미", page_icon="🤝", layout="wide")
-
-# 전체 스타일 적용 (연두색 테마, 참참 공문서 스타일)
+# ============================================================
+# [필수 수정 2] APP_STYLE: 아이프레임 내 여백 최적화 적용
+# ============================================================
 APP_STYLE = """
 <style>
 /* ===== 컬러 시스템 (연두색 테마) ===== */
@@ -68,11 +73,11 @@ footer {visibility: hidden;}
     display: none !important;
 }
 
-/* 박스형 레이아웃 - 메인 컨테이너 (A4 공문서 스타일) */
+/* 박스형 레이아웃 - 메인 컨테이너 (아이프레임 맞춤형 여백 수정) */
 .main .block-container {
     max-width: 1000px !important;
-    margin: 2rem auto !important;
-    padding: 2.5rem 3rem !important;
+    margin: 0rem auto !important;  /* 상단 마진 제거 */
+    padding: 1.5rem 2rem !important; /* 패딩 축소 */
     background: #FFFFFF;
     border: 1px solid #D1D5DB;
     border-radius: 8px;
