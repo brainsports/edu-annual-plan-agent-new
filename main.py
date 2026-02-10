@@ -1093,10 +1093,18 @@ else:
                         <script>
                           try {{
                             if (window.parent !== window) {{
-                              window.parent.postMessage({{
-                                type: "chamcham_download",
-                                fileName: "part1_{timestamp}.docx"
-                              }}, "*");
+                              window.parent.postMessage(
+                                {{
+                                  type: "CHAMCHAM_ANNUALPLAN_DOWNLOAD",
+                                  meta: {{
+                                    fileName: "PART1",
+                                    part: "PART1",
+                                    source: "streamlit",
+                                    file: "part1_{timestamp}.docx"
+                                  }}
+                                }},
+                                "*"
+                              );
                               console.log("[CC] postMessage sent: PART1");
                             }} else {{
                               console.log("[CC] not in iframe");
@@ -1318,10 +1326,18 @@ else:
                         <script>
                           try {{
                             if (window.parent !== window) {{
-                              window.parent.postMessage({{
-                                type: "chamcham_download",
-                                fileName: "part2_{timestamp}.docx"
-                              }}, "*");
+                              window.parent.postMessage(
+                                {{
+                                  type: "CHAMCHAM_ANNUALPLAN_DOWNLOAD",
+                                  meta: {{
+                                    fileName: "PART2",
+                                    part: "PART2",
+                                    source: "streamlit",
+                                    file: "part2_{timestamp}.docx"
+                                  }}
+                                }},
+                                "*"
+                              );
                               console.log("[CC] postMessage sent: PART2");
                             }}
                           }} catch (e) {{
@@ -1430,10 +1446,18 @@ else:
                         <script>
                           try {{
                             if (window.parent !== window) {{
-                              window.parent.postMessage({{
-                                type: "chamcham_download",
-                                fileName: "part3_{timestamp}.docx"
-                              }}, "*");
+                              window.parent.postMessage(
+                                {{
+                                  type: "CHAMCHAM_ANNUALPLAN_DOWNLOAD",
+                                  meta: {{
+                                    fileName: "PART3",
+                                    part: "PART3",
+                                    source: "streamlit",
+                                    file: "part3_{timestamp}.docx"
+                                  }}
+                                }},
+                                "*"
+                              );
                               console.log("[CC] postMessage sent: PART3");
                             }}
                           }} catch (e) {{
@@ -1546,10 +1570,18 @@ else:
                         <script>
                           try {{
                             if (window.parent !== window) {{
-                              window.parent.postMessage({{
-                                type: "chamcham_download",
-                                fileName: "part4_{timestamp}.docx"
-                              }}, "*");
+                              window.parent.postMessage(
+                                {{
+                                  type: "CHAMCHAM_ANNUALPLAN_DOWNLOAD",
+                                  meta: {{
+                                    fileName: "PART4",
+                                    part: "PART4",
+                                    source: "streamlit",
+                                    file: "part4_{timestamp}.docx"
+                                  }}
+                                }},
+                                "*"
+                              );
                               console.log("[CC] postMessage sent: PART4");
                             }}
                           }} catch (e) {{
