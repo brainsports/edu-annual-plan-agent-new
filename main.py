@@ -511,6 +511,7 @@ if st.session_state.analysis_data is None:
     # 오른쪽 칼럼: 작성 팁
     with right_col:
         st.markdown(WRITING_TIPS_HTML, unsafe_allow_html=True)
+
 else:
     # 데이터 있을 때도 3단 레이아웃 유지
     left_col, center_col, right_col = st.columns([1, 3, 1])
@@ -555,150 +556,6 @@ else:
         </div>
         """,
                     unsafe_allow_html=True)
-
-        if SHOW_INTERNAL:
-            with st.expander("규칙 검증 결과 (디버그)", expanded=False):
-                st.subheader("규칙 로드 상태")
-                rules = st.session_state.guideline_rules or {}
-                load_status = rules.get('_load_status', 'unknown')
-                load_error = rules.get('_load_error', None)
-
-                if load_status == 'success':
-                    st.success(f"규칙 로드 성공")
-                    p1_keys = list(rules.get('part1', {}).keys())
-                    st.caption(f"Part1 규칙 키: {', '.join(p1_keys)}")
-                    sample_rule = rules.get('part1',
-                                            {}).get('need_1_user_desire', {})
-                    st.caption(
-                        f"need_1_user_desire 규칙: min={sample_rule.get('min_chars_no_space')}, max={sample_rule.get('max_chars_no_space')}, bullet={sample_rule.get('bullet_count')}"
-                    )
-                else:
-                    st.error(f"규칙 로드 실패: {load_status}")
-                    if load_error:
-                        st.error(load_error)
-
-                st.markdown("---")
-                st.subheader("작성지침 적용 로그")
-
-                if st.session_state.guideline_logs:
-                    for log in st.session_state.guideline_logs:
-                        st.caption(log)
-                else:
-                    st.caption("(작성지침 적용 로그 없음)")
-
-                st.markdown("---")
-                st.subheader("현재 데이터 검증")
-
-                rules = st.session_state.guideline_rules or {}
-                p1_rules = rules.get('part1', {})
-                part1 = data.get('part1_general', {})
-
-                st.markdown("**Part 1 텍스트 필드:**")
-                text_fields = [('need_1_user_desire', '이용아동 욕구'),
-                               ('need_2_1_regional', '지역적 특성'),
-                               ('need_2_2_environment', '주변환경'),
-                               ('need_2_3_educational', '교육적 특성'),
-                               ('purpose_text', '사업목적'),
-                               ('goals_text', '사업목표')]
-
-                for field_key, field_label in text_fields:
-                    text = part1.get(field_key, '')
-                    rule = p1_rules.get(field_key, {})
-                    max_c = rule.get('max_chars_no_space', 0)
-                    min_c = rule.get('min_chars_no_space', 0)
-                    bullet = rule.get('bullet_count', 0)
-                    fmt = rule.get('format', 'paragraph')
-
-                    actual_chars = count_chars_no_space(text)
-                    actual_bullets = len([
-                        l for l in text.split('\n')
-                        if l.strip().startswith('•')
-                    ]) if text else 0
-
-                    status = "✅"
-                    if max_c > 0 and actual_chars > max_c:
-                        status = "❌ (초과)"
-                    elif min_c > 0 and actual_chars < min_c:
-                        status = "⚠️ (미달)"
-
-                    bullet_status = ""
-                    if bullet > 0:
-                        if actual_bullets == bullet:
-                            bullet_status = f"✅ 불릿:{actual_bullets}/{bullet}"
-                        else:
-                            bullet_status = f"❌ 불릿:{actual_bullets}/{bullet}"
-
-                    st.caption(
-                        f"• {field_label}: {actual_chars}자 (범위:{min_c}~{max_c}) {status} {bullet_status}"
-                    )
-
-                st.markdown("**Part 1 테이블:**")
-                for table_name in ['feedback_table', 'total_review_table']:
-                    table = part1.get(table_name, [])
-                    rule = p1_rules.get(table_name, {})
-                    max_rows = rule.get('max_rows', 100)
-                    actual_rows = len(table) if isinstance(table, list) else 0
-                    status = "✅" if actual_rows <= max_rows else "❌"
-                    st.caption(
-                        f"• {table_name}: {actual_rows}행 (max:{max_rows}) {status}"
-                    )
-
-                st.markdown("**Part 2 세부사업 테이블:**")
-                part2 = data.get('part2_programs', {})
-                p2_rules = rules.get('part2', {})
-                detail_rule = p2_rules.get('detail_table', {})
-                eval_rule = p2_rules.get('eval_table', {})
-                detail_max = detail_rule.get('max_rows_per_category', 5)
-                eval_max = eval_rule.get('max_rows_per_category', 5)
-
-                for cat_name, cat_data in part2.items():
-                    if isinstance(cat_data, dict):
-                        dt_cnt = len(cat_data.get('detail_table', []))
-                        et_cnt = len(cat_data.get('eval_table', []))
-                        dt_status = "✅" if dt_cnt <= detail_max else "❌"
-                        et_status = "✅" if et_cnt <= eval_max else "❌"
-                        st.caption(
-                            f"• {cat_name}: detail={dt_cnt}{dt_status} eval={et_cnt}{et_status}"
-                        )
-
-                st.markdown("**Part 3/4 월별 프로그램:**")
-                for part_key, part_label in [('part3_monthly_plan', 'Part3'),
-                                             ('part4_monthly_plan', 'Part4')]:
-                    monthly = data.get(part_key, {})
-                    p_rules = rules.get(part_key.replace('_monthly_plan', ''),
-                                        {})
-                    mp_rule = p_rules.get('monthly_program', {})
-                    max_per_month = mp_rule.get('max_programs_per_month', 8)
-
-                    month_summary = []
-                    for m, progs in monthly.items():
-                        cnt = len(progs) if isinstance(progs, list) else 0
-                        status = "✅" if cnt <= max_per_month else "❌"
-                        month_summary.append(f"{m}:{cnt}{status}")
-
-                    if month_summary:
-                        st.caption(
-                            f"• {part_label}: {', '.join(month_summary[:6])}... (max:{max_per_month})"
-                        )
-
-                st.markdown("**Part 4 예산/환류 테이블:**")
-                budget_eval = data.get('part4_budget_evaluation', {})
-                p4_rules = rules.get('part4', {})
-                budget_rule = p4_rules.get('budget_table', {})
-                feedback_rule = p4_rules.get('feedback_summary', {})
-                budget_max = budget_rule.get('max_rows', 10)
-                feedback_max = feedback_rule.get('max_rows', 5)
-
-                bt_cnt = len(budget_eval.get('budget_table', []))
-                fs_cnt = len(budget_eval.get('feedback_summary', []))
-                bt_status = "✅" if bt_cnt <= budget_max else "❌"
-                fs_status = "✅" if fs_cnt <= feedback_max else "❌"
-                st.caption(
-                    f"• budget_table: {bt_cnt}행 (max:{budget_max}) {bt_status}"
-                )
-                st.caption(
-                    f"• feedback_summary: {fs_cnt}행 (max:{feedback_max}) {fs_status}"
-                )
 
         # 중앙 칼럼 내 탭 (center_col 안에서 렌더링)
         tab1, tab2, tab3, tab4 = st.tabs([
@@ -939,7 +796,6 @@ else:
                     edited_survey['평균점수'] = edited_survey.apply(
                         calculate_weighted_avg, axis=1)
                     overall_avg = edited_survey['평균점수'].mean()
-
                     st.metric("전체 평균 만족도", f"{overall_avg:.2f}점 (5점 만점)")
 
                     st.markdown("---")
@@ -955,7 +811,6 @@ else:
                                 '척도': scale,
                                 '인원수': row[scale]
                             })
-
                     chart_df = pd.DataFrame(chart_data)
 
                     color_map = [
@@ -1087,7 +942,7 @@ else:
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
 
-                # ✅ 다운로드 클릭 순간 WordPress로 알림(postMessage) 보내기
+                # ✅ [수정] WP가 인식하기 쉬운 최상위 key(text/part/fileName)를 추가하고 meta도 유지
                 if clicked_p1:
                     st.components.v1.html(f"""
                         <script>
@@ -1096,6 +951,9 @@ else:
                               window.parent.postMessage(
                                 {{
                                   type: "CHAMCHAM_ANNUALPLAN_DOWNLOAD",
+                                  text: "📥 PART 1 다운로드 (Word)",
+                                  part: "PART1",
+                                  fileName: "part1_{timestamp}.docx",
                                   meta: {{
                                     fileName: "PART1",
                                     part: "PART1",
@@ -1170,7 +1028,7 @@ else:
                 ])
 
             if preview_mode_p2:
-                for idx, row in detail_df.iterrows():
+                for _, row in detail_df.iterrows():
                     st.markdown(
                         f"#### 📄 {row.get('세부영역', '')} > {row.get('프로그램명', '')}"
                     )
@@ -1233,7 +1091,6 @@ else:
                     if 'sub_area' not in item:
                         item['sub_area'] = ''
                     if 'expected_effect' not in item:
-                        # detail_table에서 program_name으로 기대효과 연동
                         prog_name = item.get('program_name', '')
                         for detail in detail_data:
                             if detail.get('program_name') == prog_name:
@@ -1264,7 +1121,7 @@ else:
                     columns=['세부영역', '프로그램명', '기대효과', '평가계획', '평가방법'])
 
             if preview_mode_p2:
-                for idx, row in eval_df.iterrows():
+                for _, row in eval_df.iterrows():
                     st.markdown(
                         f"#### 📊 {row.get('세부영역', '')} > {row.get('프로그램명', '')}"
                     )
@@ -1329,6 +1186,9 @@ else:
                               window.parent.postMessage(
                                 {{
                                   type: "CHAMCHAM_ANNUALPLAN_DOWNLOAD",
+                                  text: "📥 PART 2 다운로드 (Word)",
+                                  part: "PART2",
+                                  fileName: "part2_{timestamp}.docx",
                                   meta: {{
                                     fileName: "PART2",
                                     part: "PART2",
@@ -1449,6 +1309,9 @@ else:
                               window.parent.postMessage(
                                 {{
                                   type: "CHAMCHAM_ANNUALPLAN_DOWNLOAD",
+                                  text: "📥 PART 3 다운로드 (Word)",
+                                  part: "PART3",
+                                  fileName: "part3_{timestamp}.docx",
                                   meta: {{
                                     fileName: "PART3",
                                     part: "PART3",
@@ -1573,6 +1436,9 @@ else:
                               window.parent.postMessage(
                                 {{
                                   type: "CHAMCHAM_ANNUALPLAN_DOWNLOAD",
+                                  text: "📥 PART 4 다운로드 (Word)",
+                                  part: "PART4",
+                                  fileName: "part4_{timestamp}.docx",
                                   meta: {{
                                     fileName: "PART4",
                                     part: "PART4",
