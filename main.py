@@ -933,17 +933,14 @@ else:
             if part1_has_data:
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-                part1_report = generate_part1_report(data['part1_general'])
-                clicked_p1 = st.download_button(
+                clicked_p1 = st.button(
                     label="📥 PART 1 다운로드 (Word)",
-                    data=part1_report,
-                    file_name=f"part1_{timestamp}.docx",
-                    mime=
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    key="btn_download_p1"
                 )
 
-                # ✅ [수정] WP가 인식하기 쉬운 최상위 key(text/part/fileName)를 추가하고 meta도 유지
                 if clicked_p1:
+                    st.info("다운로드는 유료버전에서 사용하세요")
+                if False and clicked_p1:
                     st.components.v1.html(f"""
                         <script>
                           try {{
@@ -1169,16 +1166,14 @@ else:
             if part2_has_data:
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-                part2_report = generate_part2_report(data['part2_programs'])
-                clicked_p2 = st.download_button(
+                clicked_p2 = st.button(
                     label="📥 PART 2 다운로드 (Word)",
-                    data=part2_report,
-                    file_name=f"part2_{timestamp}.docx",
-                    mime=
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    key="btn_download_p2"
                 )
 
                 if clicked_p2:
+                    st.info("다운로드는 유료버전에서 사용하세요")
+                if False and clicked_p2:
                     st.components.v1.html(f"""
                         <script>
                           try {{
@@ -1291,17 +1286,14 @@ else:
             if part3_has_data:
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-                h1_report = generate_monthly_program_report(
-                    data['part3_monthly_plan'], h1_months)
-                clicked_p3 = st.download_button(
+                clicked_p3 = st.button(
                     label="📥 PART 3 다운로드 (Word)",
-                    data=h1_report,
-                    file_name=f"part3_{timestamp}.docx",
-                    mime=
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    key="btn_download_p3"
                 )
 
                 if clicked_p3:
+                    st.info("다운로드는 유료버전에서 사용하세요")
+                if False and clicked_p3:
                     st.components.v1.html(f"""
                         <script>
                           try {{
@@ -1418,17 +1410,14 @@ else:
             if part4_has_data:
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-                h2_report = generate_part4_full_report(
-                    data['part4_monthly_plan'], h2_months, budget_eval)
-                clicked_p4 = st.download_button(
+                clicked_p4 = st.button(
                     label="📥 PART 4 다운로드 (Word)",
-                    data=h2_report,
-                    file_name=f"part4_{timestamp}.docx",
-                    mime=
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    key="btn_download_p4"
                 )
 
                 if clicked_p4:
+                    st.info("다운로드는 유료버전에서 사용하세요")
+                if False and clicked_p4:
                     st.components.v1.html(f"""
                         <script>
                           try {{
