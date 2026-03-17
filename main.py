@@ -304,6 +304,57 @@ h1, h2, h3, h4, h5, h6 {
 """
 st.markdown(APP_STYLE, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+body, * {
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+}
+</style>
+<script>
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    return false;
+});
+document.addEventListener('copy', function(e) {
+    e.preventDefault();
+    return false;
+});
+document.addEventListener('cut', function(e) {
+    e.preventDefault();
+    return false;
+});
+document.addEventListener('selectstart', function(e) {
+    e.preventDefault();
+    return false;
+});
+document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+    return false;
+});
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C' ||
+        e.key === 'a' || e.key === 'A' ||
+        e.key === 'x' || e.key === 'X' ||
+        e.key === 'u' || e.key === 'U' ||
+        e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        return false;
+    }
+    if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+    }
+    if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) {
+        e.preventDefault();
+        return false;
+    }
+});
+</script>
+""", unsafe_allow_html=True)
+
 if 'analysis_data' not in st.session_state:
     st.session_state.analysis_data = None
 
